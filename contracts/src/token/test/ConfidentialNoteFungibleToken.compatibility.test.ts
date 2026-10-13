@@ -52,8 +52,8 @@ import type {
   Circuits,
   Ledger,
   ProvableCircuits,
-} from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
-import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
+} from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
+import { pureCircuits as core } from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
 import {
   INSTANCE_SALT,
@@ -202,7 +202,7 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
 
 /** Emitted with or without keys, so this section runs under `SKIP_ZK`. */
 const contractInfo = () =>
-  readContractInfo('MockConfidentialNoteFungibleToken');
+  readContractInfo('token/test/mocks/MockConfidentialNoteFungibleToken');
 
 describe('ConfidentialNoteFungibleToken compatibility: published surface', () => {
   /**

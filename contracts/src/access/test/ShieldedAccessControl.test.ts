@@ -8,7 +8,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
+import type { Ledger } from '../../../artifacts/access/test/mocks/MockShieldedAccessControl/contract/index.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
 

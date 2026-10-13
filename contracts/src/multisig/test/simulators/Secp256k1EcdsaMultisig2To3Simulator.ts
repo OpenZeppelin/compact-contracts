@@ -8,7 +8,7 @@ import {
   ledger,
   Contract as MockSecp256k1EcdsaMultisig2To3,
   pureCircuits,
-} from '../../../../artifacts/MockSecp256k1EcdsaMultisig2To3/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockSecp256k1EcdsaMultisig2To3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Secp256k1EcdsaMultisigArgs = readonly [

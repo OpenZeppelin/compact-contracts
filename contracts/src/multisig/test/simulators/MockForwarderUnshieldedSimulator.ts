@@ -8,7 +8,7 @@ import {
   ledger,
   Contract as MockForwarderUnshielded,
   type UserAddress,
-} from '../../../../artifacts/MockForwarderUnshielded/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockForwarderUnshielded/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type MockForwarderUnshieldedArgs = readonly [

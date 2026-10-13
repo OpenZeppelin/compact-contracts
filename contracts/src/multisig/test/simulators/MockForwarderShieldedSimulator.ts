@@ -10,7 +10,7 @@ import {
   type ShieldedCoinInfo,
   type ShieldedSendResult,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockForwarderShielded/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockForwarderShielded/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type MockForwarderShieldedArgs = readonly [

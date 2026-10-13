@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockSigner,
-} from '../../../../artifacts/MockSigner/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockSigner/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 /**

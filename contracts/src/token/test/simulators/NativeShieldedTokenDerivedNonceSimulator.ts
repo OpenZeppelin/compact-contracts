@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockNativeShieldedTokenDerivedNonce,
-} from '../../../../artifacts/MockNativeShieldedTokenDerivedNonce/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockNativeShieldedTokenDerivedNonce/contract/index.js';
 
 /**
  * The derived-nonce extension declares no witnesses, so the private state is

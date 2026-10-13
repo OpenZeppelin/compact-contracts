@@ -24,11 +24,44 @@ private_state_id = "{name}-ps"
 [contracts."src/multisig/examples/*"]
 signing_key_file = "deploy/local.signingkey"
 private_state_id = "{name}-ps"
+artifact         = "multisig/examples/{name}"
 
 [contracts."src/token/examples/*"]
 signing_key_file = "deploy/local.signingkey"
 private_state_id = "{name}-ps"
+artifact         = "token/examples/{name}"
 
 [contracts."test/integration/_mocks/*"]
 signing_key_file = "deploy/local.signingkey"
 private_state_id = "{name}-ps"
+artifact         = "integration/{name}"
+
+# Artifacts mirror the source tree (`compact-compiler --hierarchical`), so each
+# mocks directory names its own. Merged with `**/test/mocks/*` above.
+
+[contracts."src/access/test/mocks/*"]
+artifact = "access/test/mocks/{name}"
+
+[contracts."src/archive/test/mocks/*"]
+artifact = "archive/test/mocks/{name}"
+
+[contracts."src/crypto/test/mocks/*"]
+artifact = "crypto/test/mocks/{name}"
+
+[contracts."src/multisig/test/mocks/*"]
+artifact = "multisig/test/mocks/{name}"
+
+[contracts."src/multisig/presets/test/mocks/*"]
+artifact = "multisig/presets/test/mocks/{name}"
+
+[contracts."src/security/test/mocks/*"]
+artifact = "security/test/mocks/{name}"
+
+[contracts."src/token/test/mocks/*"]
+artifact = "token/test/mocks/{name}"
+
+[contracts."src/token/presets/test/mocks/*"]
+artifact = "token/presets/test/mocks/{name}"
+
+[contracts."src/utils/test/mocks/*"]
+artifact = "utils/test/mocks/{name}"

@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockEvmAbi,
-} from '../../../../artifacts/MockEvmAbi/contract/index.js';
+} from '../../../../artifacts/utils/test/mocks/MockEvmAbi/contract/index.js';
 
 // The EvmAbi module is stateless and declares no witnesses, so the private
 // state and witness set are both empty.

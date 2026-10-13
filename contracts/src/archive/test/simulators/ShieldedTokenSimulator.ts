@@ -18,7 +18,7 @@ import {
   Contract as MockShielded,
   type SendResult,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockShieldedToken/contract/index.js'; // Combined imports
+} from '../../../../artifacts/archive/test/mocks/MockShieldedToken/contract/index.js'; // Combined imports
 import type { IContractSimulator } from '../types/test.js';
 import {
   type ShieldedTokenPrivateState,

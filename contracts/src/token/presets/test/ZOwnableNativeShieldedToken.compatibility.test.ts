@@ -28,8 +28,8 @@ import type {
   Ledger,
   ProvableCircuits,
   PureCircuits,
-} from '../../../../artifacts/MockZOwnableNativeShieldedToken/contract/index.js';
-import { pureCircuits } from '../../../../artifacts/MockZOwnableNativeShieldedToken/contract/index.js';
+} from '../../../../artifacts/token/presets/test/mocks/MockZOwnableNativeShieldedToken/contract/index.js';
+import { pureCircuits } from '../../../../artifacts/token/presets/test/mocks/MockZOwnableNativeShieldedToken/contract/index.js';
 import { ZOwnablePKPrivateState } from '../../../access/test/witnesses/ZOwnablePKWitnesses.js';
 import {
   buildCommitmentFromId,
@@ -169,8 +169,8 @@ describe.skipIf(isLiveBackend())(
 // Published surface
 // ---------------------------------------------------------------------------
 
-const MOCK = 'MockZOwnableNativeShieldedToken';
-const EXAMPLE = 'ZOwnableNativeShieldedTokenExample';
+const MOCK = 'token/presets/test/mocks/MockZOwnableNativeShieldedToken';
+const EXAMPLE = 'token/examples/ZOwnableNativeShieldedTokenExample';
 
 const BYTES_32: CompactTypeInfo = { 'type-name': 'Bytes', length: 32 };
 const BOOLEAN: CompactTypeInfo = { 'type-name': 'Boolean' };

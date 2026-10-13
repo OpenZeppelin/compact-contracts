@@ -57,7 +57,7 @@ import {
   type PublishedTx,
   publishedContains,
 } from '#test-utils/harness/publishedTx.js';
-import { Contract as ForwarderExample } from '../../../artifacts/ForwarderPrivateExample/contract/index.js';
+import { Contract as ForwarderExample } from '../../../artifacts/multisig/examples/ForwarderPrivateExample/contract/index.js';
 import {
   Contract as MockForwarder,
   pureCircuits,
@@ -65,7 +65,7 @@ import {
   type ShieldedCoinInfo,
   type ShieldedSendResult,
   type ZswapCoinPublicKey,
-} from '../../../artifacts/MockForwarderPrivate/contract/index.js';
+} from '../../../artifacts/multisig/test/mocks/MockForwarderPrivate/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from './EmptyWitnesses.js';
 import { MockForwarderPrivateSimulator } from './simulators/MockForwarderPrivateSimulator.js';
 

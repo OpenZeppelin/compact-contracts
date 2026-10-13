@@ -13,7 +13,7 @@ import {
   ledger,
   Contract as MockConfidentialFungibleTokenPublicSupply,
   type Token_EscrowEntry,
-} from '../../../artifacts/ComposedConfidentialFungibleTokenPublicSupply/contract/index.js';
+} from '../../../artifacts/integration/ComposedConfidentialFungibleTokenPublicSupply/contract/index.js';
 import {
   ConfidentialFungibleTokenPrivateState,
   ConfidentialFungibleTokenWitnesses,

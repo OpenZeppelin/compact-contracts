@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockEip712,
-} from '../../../../artifacts/MockEip712/contract/index.js';
+} from '../../../../artifacts/crypto/test/mocks/MockEip712/contract/index.js';
 
 // The Eip712 module is stateless and declares no witnesses, so the private
 // state and witness set are both empty.

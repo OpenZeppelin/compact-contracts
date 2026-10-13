@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockCtorMint,
-} from '../../../../artifacts/MockConfidentialNoteFungibleTokenCtorMint/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleTokenCtorMint/contract/index.js';
 import {
   type ConfidentialNoteFungibleTokenPrivateState,
   ConfidentialNoteFungibleTokenWitnesses,

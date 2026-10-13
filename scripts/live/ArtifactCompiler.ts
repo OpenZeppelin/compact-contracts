@@ -1,6 +1,5 @@
-import { rmSync } from 'node:fs';
 import { emptyKeyArtifacts, missingKeyArtifacts } from '../keyIntegrity.ts';
-import { ARTIFACTS, rel, TURBO_CACHE } from './paths.ts';
+import { ARTIFACTS, rel } from './paths.ts';
 import { run } from './shell.ts';
 import type { CompileScope } from './targets.ts';
 
@@ -14,13 +13,12 @@ import type { CompileScope } from './targets.ts';
  * paying for every other target's key generation. See `compileScope` in
  * `targets.ts` for how a plan resolves to one.
  *
- * A killed compile (or machine crash) can leave a truncated key on disk, and a
- * concurrent compile racing over the shared `artifacts/` tree can truncate keys
- * directly (OpenZeppelin/compact-contracts#675). A 0-byte `.prover` makes the
- * deploy fail in `beforeAll`, which vitest turns into a silent whole-suite skip
- * — the failure mode this check exists to prevent. The repair is mechanical, so
- * self-heal once (recompile serially — a parallel recompile can re-truncate
- * them) and only abort if keys are still truncated afterwards.
+ * A killed compile (or machine crash) can leave a truncated key on disk. A
+ * 0-byte `.prover` makes the deploy fail in `beforeAll`, which vitest turns into
+ * a silent whole-suite skip — the failure mode this check exists to prevent.
+ * The repair is mechanical, so self-heal once (recompile, bypassing a turbo
+ * cache entry that may hold the truncated key) and only abort if keys are still
+ * truncated afterwards.
  *
  * In `prebuilt` mode the tree was built somewhere else and arrives ready — a CI
  * compile job builds it once and every suite job for that target downloads it.
@@ -56,22 +54,18 @@ export class ArtifactCompiler {
       '\ncompile reported success but left truncated (0-byte) ZK key(s):',
     );
     for (const k of empty) console.log(`  ✗ ${rel(k)}`);
-    console.log(
-      '\nPoisoned artifact tree ' +
-        '(OpenZeppelin/compact-contracts#675) — recompiling serially...',
-    );
-    rmSync(TURBO_CACHE, { recursive: true, force: true });
-    if (!(await this.#compileAll(['--concurrency=1']))) {
-      console.log('serial recompile failed.');
+    console.log('\nPoisoned artifact tree — recompiling without the cache...');
+    if (!(await this.#compileAll(['--force']))) {
+      console.log('forced recompile failed.');
       return false;
     }
     const stillEmpty = this.#truncatedKeys();
     if (stillEmpty.length === 0) {
-      console.log('recovered — ZK keys intact after the serial recompile.');
+      console.log('recovered — ZK keys intact after the forced recompile.');
       return true;
     }
     console.log(
-      '\nstill truncated after a serial recompile — needs investigation:',
+      '\nstill truncated after a forced recompile — needs investigation:',
     );
     for (const k of stillEmpty) console.log(`  ✗ ${rel(k)}`);
     return false;
@@ -84,12 +78,6 @@ export class ArtifactCompiler {
    * run always needs real proving keys, and the dry `test:integration` path
    * exports `SKIP_ZK=true`. Clearing it here means an ambient value can never
    * hand the live path keyless artifacts, whatever turbo's env mode does.
-   *
-   * Artifact directories are keyed on the source basename, so basenames must stay
-   * unique across `src/` and `test/integration/_mocks/` — two files sharing one
-   * would overwrite each other's `artifacts/<name>/`. The composed mock is named
-   * `ComposedConfidentialFungibleTokenPublicSupply.compact` for exactly this
-   * reason.
    */
   async #compileAll(extraArgs: string[]): Promise<boolean> {
     const { SKIP_ZK: _skipZk, ...fullKeyEnv } = process.env;
@@ -110,19 +98,18 @@ export class ArtifactCompiler {
    *   - a contract is absent or incomplete, because the upload or the download
    *     only partly landed (or the compile job built a different scope than
    *     this run needs);
-   *   - a key is truncated, the #675 failure mode, here carried in rather than
-   *     produced locally.
+   *   - a key is truncated, here carried in rather than produced locally.
    * Both abort. Recompiling would paper over a broken hand-off, and every job
    * sharing this tree would pay for it separately.
    */
   #verifyPrebuilt(): boolean {
-    const missing = missingKeyArtifacts(ARTIFACTS, ...this.#scope.verifyRoots);
+    const missing = missingKeyArtifacts(...this.#scope.verifyRoots);
     if (missing.length > 0) {
       console.log(
         `\n${rel(ARTIFACTS)} is missing ${missing.length} artifact(s) this ` +
           'run deploys:',
       );
-      for (const name of missing) console.log(`  ✗ ${name}`);
+      for (const p of missing) console.log(`  ✗ ${rel(p)}`);
       console.log(
         '\nThe artifacts are an input to this run, not its product ' +
           '(--prebuilt), so there is nothing to rebuild from here. Check that ' +
@@ -136,8 +123,7 @@ export class ArtifactCompiler {
     console.log('\nprovided artifacts carry truncated (0-byte) ZK key(s):');
     for (const k of empty) console.log(`  ✗ ${rel(k)}`);
     console.log(
-      '\nThe tree was poisoned before it got here ' +
-        '(OpenZeppelin/compact-contracts#675); rerun the compile job.',
+      '\nThe tree was poisoned before it got here; rerun the compile job.',
     );
     return false;
   }
@@ -146,6 +132,6 @@ export class ArtifactCompiler {
    * nothing here deploys — a stale orphan, or another category's build
    * byproduct — cannot false-positive. */
   #truncatedKeys(): string[] {
-    return emptyKeyArtifacts(ARTIFACTS, ...this.#scope.verifyRoots);
+    return emptyKeyArtifacts(...this.#scope.verifyRoots);
   }
 }

@@ -14,7 +14,7 @@ import {
   type ElGamal_Ciphertext,
   ledger,
   Contract as MockCFT,
-} from '../../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockConfidentialFungibleToken/contract/index.js';
 import {
   ConfidentialFungibleTokenPrivateState,
   ConfidentialFungibleTokenWitnesses,

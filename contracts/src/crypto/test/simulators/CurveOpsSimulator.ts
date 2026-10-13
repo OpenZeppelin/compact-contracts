@@ -6,7 +6,7 @@ import {
 import {
   ledger,
   Contract as MockCurveOps,
-} from '../../../../artifacts/MockCurveOps/contract/index.js';
+} from '../../../../artifacts/crypto/test/mocks/MockCurveOps/contract/index.js';
 
 // The mock wraps stdlib curve built-ins and declares no witnesses, so the
 // private state and witness set are both empty.

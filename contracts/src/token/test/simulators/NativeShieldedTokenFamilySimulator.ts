@@ -9,7 +9,7 @@ import {
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNativeShieldedTokenFamily/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockNativeShieldedTokenFamily/contract/index.js';
 
 /**
  * The family core module declares no witnesses, so the private state is empty
