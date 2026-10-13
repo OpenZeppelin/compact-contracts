@@ -106,8 +106,6 @@ module ZOwnablePK {
    * @warning The `ownerId` must be calculated prior to contract deployment using the SHA256 hashing algorithm.
    * Using any other algorithm will result in a permanent loss of contract access.
    *
-   * @constraints k=13, rows=6765
-   *
    * Requirements:
    *
    * - Contract is not initialized.

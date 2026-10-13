@@ -35,8 +35,6 @@ module Initializable {
   /**
    * @description Initializes the state thus ensuring the calling circuit can only be called once.
    *
-   * @constraints k=6, rows=28
-   *
    * Requirements:
    *
    * - Contract must not be initialized.
