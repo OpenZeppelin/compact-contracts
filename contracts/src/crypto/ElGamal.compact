@@ -77,6 +77,16 @@ pragma language_version >= 0.26.0;
  * (e.g. at registration) to fail fast with a clear error rather than at first
  * encryption — a UX nicety, not a confidentiality requirement.
  *
+ * @dev Key association. A `Ciphertext` carries nothing binding it to a recipient
+ * key, and the key is not recoverable from `(c1, c2)` without the randomness or
+ * the secret. So `addEncrypted`, `subEncrypted` and `rerandomize` CANNOT check
+ * the `pk` they are given against the key their input was encrypted under: a
+ * mismatched `pk` silently yields a ciphertext no key can open. Wherever the
+ * result is persisted and must stay decryptable, `pk` MUST come from a source
+ * the importing contract controls (e.g. a lookup in its own registration map),
+ * never a caller-supplied or mutable value. Possession CAN be checked by a
+ * holder of the `ek` — see `assertKeyPair`/`assertDecryptsTo`.
+ *
  * @dev Randomness. `encryptPoint` asserts `r != 0` — like `pk = identity`,
  * `r = 0` zeros the mask (`r*pk = O`), yielding the non-hiding `(O, m)`; it is
  * the unique mask-zeroing randomness, so the two asserts together guarantee a
@@ -320,6 +330,9 @@ module ElGamal {
    * Convenience over `add` for folding a known plaintext into a ciphertext:
    * `add(old, encrypt(pk, value, r))`.
    *
+   * @notice `pk` MUST be the key `old` was encrypted under; the circuit cannot
+   * check it (see the key-association note in the module header).
+   *
    * Requirements:
    *
    * - `pk` is not the identity point.
@@ -337,6 +350,9 @@ module ElGamal {
   /**
    * @description Homomorphically subtracts `value` from the plaintext encrypted
    * by `old`. Convenience over `sub`: `sub(old, encrypt(pk, value, r))`.
+   *
+   * @notice `pk` MUST be the key `old` was encrypted under; the circuit cannot
+   * check it (see the key-association note in the module header).
    *
    * @notice The caller MUST ensure the underlying plaintext subtraction does
    * not underflow; this circuit cannot check it. Callers verify sufficiency by
