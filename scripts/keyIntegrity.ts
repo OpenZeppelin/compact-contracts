@@ -78,11 +78,13 @@ export function emptyKeyArtifacts(
 const REQUIRED_FILES = ['contract/index.js', 'compiler/contract-info.json'];
 
 /** Key files the contract's circuits need, off its `contract-info.json`: one
- * prover/verifier pair per impure circuit. A module with no circuits (most of
- * `src/`) needs none, so an absent `keys/` is right for it. Unreadable info is
- * not reported here; `REQUIRED_FILES` already names the file. */
+ * prover/verifier pair per circuit the compiler proves. Pure circuits and
+ * witness-only ones (`proof: false`) get no keys; the field is absent on older
+ * artifacts, which only know pure. A module with no circuits (most of `src/`)
+ * needs none, so an absent `keys/` is right for it. Unreadable info is not
+ * reported here; `REQUIRED_FILES` already names the file. */
 function requiredKeyFiles(contractDir: string): string[] {
-  let circuits: readonly { name: string; pure: boolean }[];
+  let circuits: readonly { name: string; pure: boolean; proof?: boolean }[];
   try {
     const info = readFileSync(
       path.join(contractDir, 'compiler/contract-info.json'),
@@ -94,7 +96,7 @@ function requiredKeyFiles(contractDir: string): string[] {
     return [];
   }
   return circuits
-    .filter((c) => !c.pure)
+    .filter((c) => !c.pure && c.proof !== false)
     .flatMap((c) => [`keys/${c.name}.prover`, `keys/${c.name}.verifier`]);
 }
 

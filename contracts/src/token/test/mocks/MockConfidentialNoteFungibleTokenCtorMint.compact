@@ -1,0 +1,28 @@
+// TEST-ONLY. Mints a deployer-built note from the constructor through
+// `_mintNote`, the path a composer without on-chain delivery takes. `twice`
+// mints the same note again so the deployment fails. The self-gated spend
+// surface is exported so the owner can prove the note is live. DO NOT deploy
+// this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
+
+export { Core_Note }
+
+export { Core__isInitialized, Core__instanceSalt, Core__commitments, Core__nullifiers, Core__issuedNonces };
+
+constructor(instanceSalt: Bytes<32>, note: Core_Note, ownerPk: Field, twice: Boolean) {
+  Core_initialize(instanceSalt);
+  Core__mintNote(note, ownerPk);
+  if (disclose(twice)) {
+    Core__mintNote(note, ownerPk);
+  }
+}
+
+export circuit burn(value: Uint<128>): Core_Note {
+  return Core_burn(value);
+}
+
+export circuit transfer(recipientPk: Field, value: Uint<128>): [Core_Note, Core_Note] {
+  return Core_transfer(recipientPk, value);
+}

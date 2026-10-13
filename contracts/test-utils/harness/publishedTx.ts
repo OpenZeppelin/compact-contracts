@@ -91,7 +91,9 @@ export interface AwaitedCall {
   readonly entryPoint: string;
 }
 
-const bare = (address: string): string => address.replace(/^0x/, '');
+/** Hex address as a comparison key: no `0x`, lower case. */
+const bare = (address: string): string =>
+  address.replace(/^0x/i, '').toLowerCase();
 
 /**
  * How long one request may take: its own ceiling, or whatever is left of the

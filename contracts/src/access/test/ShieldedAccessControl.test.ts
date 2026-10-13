@@ -557,9 +557,18 @@ describe('ShieldedAccessControl', () => {
         });
 
         it('when granting the same role multiple times to the same accountId', async () => {
+          const slotsBefore = (
+            await contract.getPublicState()
+          ).ShieldedAccessControl__operatorRoles.firstFree();
+
           await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
           await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
           await contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+
+          const slotsAfter = (
+            await contract.getPublicState()
+          ).ShieldedAccessControl__operatorRoles.firstFree();
+          expect(slotsAfter).toBe(slotsBefore + 1n);
 
           await contract.privateState.injectSecretKey(OPERATOR_1_SK);
           expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
@@ -661,7 +670,7 @@ describe('ShieldedAccessControl', () => {
         expect(root2.field).not.toBe(root1.field);
       });
 
-      it('should insert multiple leaves for the same (role, accountId)', async () => {
+      it('should not insert a second leaf for the same (role, accountId)', async () => {
         const rootBefore = (
           await contract.getPublicState()
         ).ShieldedAccessControl__operatorRoles.root();
@@ -676,9 +685,31 @@ describe('ShieldedAccessControl', () => {
           await contract.getPublicState()
         ).ShieldedAccessControl__operatorRoles.root();
 
-        // Each grant should change the root (new leaf inserted)
         expect(rootAfterFirst).not.toEqual(rootBefore);
-        expect(rootAfterSecond).not.toEqual(rootAfterFirst);
+        expect(rootAfterSecond).toEqual(rootAfterFirst);
+      });
+
+      it('should consume one slot per distinct pairing under repeated grants', async () => {
+        const slotsBefore = (
+          await contract.getPublicState()
+        ).ShieldedAccessControl__operatorRoles.firstFree();
+
+        for (let i = 0; i < 20; i++) {
+          await contract._grantRole(ROLE_OP1, OP1_ACCOUNT_ID);
+        }
+        const slotsAfterRepeats = (
+          await contract.getPublicState()
+        ).ShieldedAccessControl__operatorRoles.firstFree();
+        expect(slotsAfterRepeats).toBe(slotsBefore + 1n);
+
+        await contract._grantRole(ROLE_OP1, OP2_ACCOUNT_ID);
+        const slotsAfterDistinct = (
+          await contract.getPublicState()
+        ).ShieldedAccessControl__operatorRoles.firstFree();
+        expect(slotsAfterDistinct).toBe(slotsBefore + 2n);
+
+        await contract.privateState.injectSecretKey(OPERATOR_1_SK);
+        expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
       });
 
       it('should invalidate all duplicates with a single revocation', async () => {
@@ -701,6 +732,23 @@ describe('ShieldedAccessControl', () => {
         await expect(
           contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
         ).rejects.toThrow('ShieldedAccessControl: role is already revoked');
+      });
+
+      it('should throw when re-granting a repeatedly granted then revoked pairing', async () => {
+        await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+        await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+        await contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+
+        const slotsBefore = (
+          await contract.getPublicState()
+        ).ShieldedAccessControl__operatorRoles.firstFree();
+        await expect(
+          contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow('ShieldedAccessControl: role is already revoked');
+        const slotsAfter = (
+          await contract.getPublicState()
+        ).ShieldedAccessControl__operatorRoles.firstFree();
+        expect(slotsAfter).toBe(slotsBefore);
       });
 
       it('should not update tree when granting to a revoked accountId', async () => {
@@ -1157,6 +1205,21 @@ describe('ShieldedAccessControl', () => {
         expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
         expect(await contract.canProveRole(ROLE_OP2)).toBe(false);
         expect(await contract.canProveRole(ROLE_OP3)).toBe(true);
+      });
+
+      it('should consume one slot per role for the same accountId', async () => {
+        const slots = (
+          await contract.getPublicState()
+        ).ShieldedAccessControl__operatorRoles.firstFree();
+        expect(slots).toBe(4n);
+
+        await contract._grantRole(ROLE_OP1, ADMIN_ACCOUNT_ID);
+        await contract._grantRole(ROLE_OP2, ADMIN_ACCOUNT_ID);
+
+        const slotsAfter = (
+          await contract.getPublicState()
+        ).ShieldedAccessControl__operatorRoles.firstFree();
+        expect(slotsAfter).toBe(4n);
       });
     });
 
