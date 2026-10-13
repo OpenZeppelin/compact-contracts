@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockPausable,
-} from '../../../../artifacts/MockPausable/contract/index.js';
+} from '../../../../artifacts/security/test/mocks/MockPausable/contract/index.js';
 import {
   PausablePrivateState,
   PausableWitnesses,

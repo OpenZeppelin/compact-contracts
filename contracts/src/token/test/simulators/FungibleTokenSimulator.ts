@@ -7,7 +7,7 @@ import {
   type Either,
   ledger,
   Contract as MockFungibleToken,
-} from '../../../../artifacts/MockFungibleToken/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockFungibleToken/contract/index.js';
 import {
   FungibleTokenPrivateState,
   FungibleTokenWitnesses,

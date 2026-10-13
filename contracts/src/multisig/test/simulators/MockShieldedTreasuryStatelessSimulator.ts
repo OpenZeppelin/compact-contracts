@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockShieldedTreasuryStateless,
-} from '../../../../artifacts/MockShieldedTreasuryStateless/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockShieldedTreasuryStateless/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };

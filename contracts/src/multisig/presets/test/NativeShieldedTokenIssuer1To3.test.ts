@@ -8,7 +8,7 @@ import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import type {
   ShieldedCoinInfo,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNativeShieldedTokenIssuer1To3/contract/index.js';
+} from '../../../../artifacts/multisig/presets/test/mocks/MockNativeShieldedTokenIssuer1To3/contract/index.js';
 import { mintMsgHash } from '../../test/EcdsaTestUtils.js';
 import {
   calculateSignerId,

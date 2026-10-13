@@ -7,7 +7,7 @@ import {
   type EcdhMask_Ciphertext as Ciphertext,
   ledger,
   Contract as MockEcdhMask,
-} from '../../../../artifacts/MockEcdhMask/contract/index.js';
+} from '../../../../artifacts/crypto/test/mocks/MockEcdhMask/contract/index.js';
 
 export type { Ciphertext };
 

@@ -34,7 +34,7 @@ import { VitestRunner } from './live/VitestRunner.ts';
  *     flaky-only);
  *   - docker lifecycle between targets and rounds against ONE shared node —
  *     parallel turbo tasks would race over it;
- *   - ZK-key integrity self-heal (turbo's own poisoned cache, #675);
+ *   - ZK-key integrity self-heal (truncated keys, on disk or in turbo's cache);
  *   - infra-vs-test exit codes (2 vs 1), the pid lock, CI verdict summaries.
  * Turbo still runs where the DAG helps: the compile and harness-smoke steps go
  * through it (cached keygen, dependency ordering).
@@ -97,8 +97,8 @@ async function main(): Promise<number> {
   // `--compile-only` stops here: no stack, no specs. The CI compile job runs
   // this so the suite jobs that fan out per spec file can share one build
   // instead of each repeating it (see `live.yml`). It still takes the run lock:
-  // it writes the same shared `artifacts/` tree a full run deploys from, and a
-  // compile racing a live run over that tree is the #675 truncation.
+  // it writes the same `artifacts/` tree a full run deploys from, and a compile
+  // racing a live run can truncate the keys it deploys.
   if (mode === 'build-only') {
     banner(`COMPILE — ${plan.targets.map((t) => t.name).join(', ')}`);
     const lock = new RunLock();

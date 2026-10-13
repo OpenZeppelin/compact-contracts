@@ -27,8 +27,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
-    # Real ZK key generation for one slice, plus the self-heal path's serial
-    # recompile if the tree comes back poisoned (#675).
+    # Real ZK key generation for one slice, plus the self-heal path's forced
+    # recompile if the tree comes back poisoned.
     timeout-minutes: 90
 
     steps:
@@ -80,7 +80,7 @@ jobs:
           turbo-cache-key: live-${{ inputs.target }}
 
       # Compiles and verifies the slice, then stops: no stack, no specs. Exits 2
-      # if the tree is still poisoned after the serial recompile.
+      # if the tree is still poisoned after the forced recompile.
       - name: Compile the target
         env:
           TARGET: ${{ inputs.target }}

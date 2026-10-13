@@ -19,7 +19,7 @@ import type {
   ledger,
   ShieldedCoinInfo,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/MockZOwnableNativeShieldedToken/contract/index.js';
+} from '../../../../artifacts/token/presets/test/mocks/MockZOwnableNativeShieldedToken/contract/index.js';
 import { ZOwnablePKPrivateState } from '../../../access/test/witnesses/ZOwnablePKWitnesses.js';
 import {
   buildCommitmentFromId,

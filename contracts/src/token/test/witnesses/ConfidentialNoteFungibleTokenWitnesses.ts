@@ -6,7 +6,7 @@ import type {
   MerkleTreePath,
   WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
+import type { Ledger } from '../../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
 
 /** A note as the circuits see it: value plus a field-typed nonce. */
 export type Note = { value: bigint; nonce: bigint };

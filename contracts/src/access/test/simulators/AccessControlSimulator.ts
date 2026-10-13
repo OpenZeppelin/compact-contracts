@@ -7,7 +7,7 @@ import {
   type Either,
   ledger,
   Contract as MockAccessControl,
-} from '../../../../artifacts/MockAccessControl/contract/index.js';
+} from '../../../../artifacts/access/test/mocks/MockAccessControl/contract/index.js';
 import {
   AccessControlPrivateState,
   AccessControlWitnesses,

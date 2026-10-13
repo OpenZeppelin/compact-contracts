@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockSecp256k1EcdsaMultisig2To1,
-} from '../../../../artifacts/MockSecp256k1EcdsaMultisig2To1/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockSecp256k1EcdsaMultisig2To1/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Secp256k1EcdsaMultisig2To1Args = readonly [

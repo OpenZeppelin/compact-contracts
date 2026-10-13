@@ -1,6 +1,6 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../artifacts/MockOwnable/contract/index.js';
+import type { Ledger } from '../../../../artifacts/access/test/mocks/MockOwnable/contract/index.js';
 import { OwnablePrivateState, OwnableWitnesses } from './OwnableWitnesses.js';
 
 const SECRET_KEY = new Uint8Array(32).fill(0x34);

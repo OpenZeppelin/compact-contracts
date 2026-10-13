@@ -8,7 +8,7 @@ import {
   Contract as ForwarderUnshieldedExample,
   ledger,
   type UserAddress,
-} from '../../../../../artifacts/ForwarderUnshieldedExample/contract/index.js';
+} from '../../../../../artifacts/multisig/examples/ForwarderUnshieldedExample/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,

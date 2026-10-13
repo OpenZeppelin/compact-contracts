@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Compile each module into its own artifact subtree, mirroring `src/` (`artifacts/token/test/mocks/MockFungibleToken/`), and cache each `compile:*` task on that subtree alone. The tasks shared `artifacts/**` as their turbo output, so one task's cache pack or restore truncated ZK keys a sibling was still writing. The aggregate `compile` script, which recompiled `access`, `security`, `token` and `utils` a second time, is removed. Fixes #675.
+
 ## 0.4.0-alpha.6 (2026-10-06)
 
 ### Added

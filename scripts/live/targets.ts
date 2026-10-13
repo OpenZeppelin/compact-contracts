@@ -1,6 +1,12 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { INTEGRATION_MOCKS, SRC } from './paths.ts';
+import {
+  ARTIFACTS,
+  type ArtifactRoot,
+  INTEGRATION_ARTIFACTS,
+  INTEGRATION_MOCKS,
+  SRC,
+} from './paths.ts';
 
 /**
  * What a live invocation resolves to.
@@ -194,9 +200,9 @@ export function parseInvocation(argv: readonly string[]): InvocationResolution {
 export interface CompileScope {
   /** Root `package.json` compile scripts to run, in order. */
   readonly scripts: readonly string[];
-  /** Source roots whose artifacts the plan's specs deploy, scoping the
-   * key-integrity checks. */
-  readonly verifyRoots: readonly string[];
+  /** The source trees whose artifacts the plan's specs deploy, each with the
+   * artifact tree it compiles into, scoping the key-integrity checks. */
+  readonly verifyRoots: readonly ArtifactRoot[];
 }
 
 /**
@@ -221,7 +227,7 @@ const DEPLOYS_FROM = new Map<string, readonly string[]>([
  * specs deploy are self-contained — dependency artifacts are build byproducts
  * nothing deploys. That is also why `verifyRoots` names only the deployed
  * tree: `src/<category>` for a category, the composed mocks for integration
- * (whose `compile:integration` task now depends on the full `compile`).
+ * (which compile their `src` imports in, so no `src` slice is built first).
  *
  * A category without a root `compile:<category>` script fails the run loudly at
  * the yarn level — a new `src/` category joins the live matrix automatically
@@ -232,17 +238,22 @@ export function compileScope(plan: LivePlan): CompileScope {
   if (plan.integration) {
     return {
       scripts: ['compile:integration'],
-      verifyRoots: [INTEGRATION_MOCKS],
+      verifyRoots: [
+        { src: INTEGRATION_MOCKS, artifacts: INTEGRATION_ARTIFACTS },
+      ],
     };
   }
   if (plan.targets.length === 1) {
     const category = plan.targets[0].name;
     return {
       scripts: [`compile:${category}`],
-      verifyRoots: [category, ...(DEPLOYS_FROM.get(category) ?? [])].map((c) =>
-        path.join(SRC, c),
+      verifyRoots: [category, ...(DEPLOYS_FROM.get(category) ?? [])].map(
+        (c) => ({ src: path.join(SRC, c), artifacts: path.join(ARTIFACTS, c) }),
       ),
     };
   }
-  return { scripts: ['compile'], verifyRoots: [SRC] };
+  return {
+    scripts: ['compile'],
+    verifyRoots: [{ src: SRC, artifacts: ARTIFACTS }],
+  };
 }
