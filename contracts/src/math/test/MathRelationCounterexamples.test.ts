@@ -5,7 +5,7 @@ import { RelationForger } from '#test-utils/zkir/forgery.js';
 import { loadZkir } from '#test-utils/zkir/relationCheck.js';
 import { evaluate } from '#test-utils/zkir/zkirV2.js';
 import { MAX_UINT64, MAX_UINT128 } from './utils/consts.js';
-import { findConstraint } from './utils/forgeries.js';
+import { findConstraint, SQRT_FIELD_ROOT } from './utils/forgeries.js';
 import { toU128 } from './utils/oracles.js';
 import { PackWitnesses } from './witnesses/PackWitnesses.js';
 import { Uint64Witnesses } from './witnesses/Uint64Witnesses.js';
@@ -531,12 +531,62 @@ const DIVISION_CASES: Case[] = [
   ...DIVISION_U128_CASES,
 ];
 
+// Uint128.sqrt(Uint<128>) checks the root with native arithmetic
+// (transcript elements 0 to 3: the split of the radicand; element 4: the
+// root). The split is only the argument of wit_sqrtU128, so its limb range
+// checks are implied (Z3 proof Z15).
+const N = 2n ** 100n + 7n;
+const NATIVE_SQRT: Case[] = [
+  {
+    artifact: 'MockUint128',
+    circuit: 'sqrt',
+    constraint: 'range of witness element 4',
+    attack:
+      'the field root of utils/forgeries.ts: root^2 <= n < (root + 1)^2 in the field for n = 2^128 - 1',
+    inputs: [MAX_UINT128],
+    privates: [MAX_UINT64, 0n, MAX_UINT64, 0n, SQRT_FIELD_ROOT],
+    honest: [99n],
+    reason: bits(64),
+  },
+  {
+    artifact: 'MockUint128',
+    circuit: 'sqrt',
+    constraint: 'assert 0',
+    attack: 'a split of the radicand with low + 1 and the true root',
+    inputs: [N],
+    privates: [N >> 64n, 0n, (N & MAX_UINT64) + 1n, 0n, 2n ** 50n],
+    honest: [99n],
+    reason: ASSERTION,
+  },
+  {
+    artifact: 'MockUint128',
+    circuit: 'sqrt',
+    constraint: 'assert 1',
+    attack: 'root + 1',
+    inputs: [N],
+    privates: [N >> 64n, 0n, N & MAX_UINT64, 0n, 2n ** 50n + 1n],
+    honest: [99n],
+    reason: ASSERTION,
+  },
+  {
+    artifact: 'MockUint128',
+    circuit: 'sqrt',
+    constraint: 'assert 2',
+    attack: 'root - 1',
+    inputs: [N],
+    privates: [N >> 64n, 0n, N & MAX_UINT64, 0n, 2n ** 50n - 1n],
+    honest: [99n],
+    reason: ASSERTION,
+  },
+];
+
 const CASES: Case[] = [
   ...DIGITS,
   ...ADD_CHECKED,
   MUL_CHECKED,
   asU128Form(MUL_CHECKED),
   ...DIVISION_CASES,
+  ...NATIVE_SQRT,
 ];
 
 describe.skipIf(isLiveBackend())(

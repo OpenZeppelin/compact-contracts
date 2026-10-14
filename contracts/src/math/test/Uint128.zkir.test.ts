@@ -2,9 +2,14 @@ import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { fieldWidths } from '#test-utils/zkir/fieldRepr.js';
-import { type ForgeryPlan, RelationForger } from '#test-utils/zkir/forgery.js';
+import {
+  type ForgeryPlan,
+  RelationForger,
+  witnessLeaves,
+} from '#test-utils/zkir/forgery.js';
 import { loadZkir } from '#test-utils/zkir/relationCheck.js';
 import { witnessCoverage } from '#test-utils/zkir/witnessCoverage.js';
+import { OUTPUTS } from '#test-utils/zkir/zkirV2.js';
 import { Uint128Simulator } from './simulators/Uint128Simulator.js';
 import { MAX_UINT64, MAX_UINT128 } from './utils/consts.js';
 import {
@@ -15,6 +20,7 @@ import {
   mustRejectPlan,
   RELATION_SEED,
   relationCase,
+  SQRT_FIELD_ROOT,
 } from './utils/forgeries.js';
 import { toU128, toU256, type U128Limbs } from './utils/oracles.js';
 import { sqrtBigint } from './witnesses/sqrtBigint.js';
@@ -256,9 +262,11 @@ describeRelation('MockUint128', {
       ],
       random: fc.tuple(u128),
       forgeries: [[A], [MAX_UINT128]],
-      // hh, offset 2 and offset 3 reach only the high half of the square,
-      // which _sqrt does not check: no forgery with another root passes.
-      isolates: {
+      // In sqrtU128 (_sqrt), hh, offset 2 and offset 3 reach only the high
+      // half of the square, which _sqrt does not check: no forgery with
+      // another root passes. The Uint<128> form splits only the radicand,
+      // before the root.
+      isolatesU128: {
         coordinated: [0, 1, 2, 4, 7, 8, 9, 10, 11, 12],
         single: [3, 5, 6],
       },
@@ -357,6 +365,61 @@ describe.skipIf(isLiveBackend())(
         expect(outcome.failures[0]).toBe('Uint128: division product overflow');
       },
     );
+  },
+);
+
+describe.skipIf(isLiveBackend())(
+  'MockUint128 ZKIR v2 relation: a root that is a field element',
+  () => {
+    // For n = 2^128 - 1, the field element SQRT_FIELD_ROOT has root^2 <= n and
+    // (root + 1)^2 > n in the field (see utils/forgeries.ts). Only the range
+    // check of the root (a Uint<64>) rejects it.
+    const n = MAX_UINT128;
+    const plan: ForgeryPlan = (call) =>
+      call.name === 'wit_sqrtU128' ? SQRT_FIELD_ROOT : undefined;
+    let forger: RelationForger;
+
+    beforeAll(async () => {
+      forger = await RelationForger.create('MockUint128', Uint128Witnesses());
+    });
+
+    test.each([
+      ['sqrt', [n]],
+      ['sqrtU128', [toU128(n)]],
+    ] as [string, unknown[]][])('%s rejects it', async (circuit, args) => {
+      const outcome = await forger.forge(circuit, args, plan);
+      expect(outcome.verdict.accepted).toBe(false);
+    });
+
+    test('sqrt accepts it without the range check of the root, with a wrong result', async () => {
+      const honest = await forger.replay('sqrt', [n]);
+      const position = honest.calls
+        .slice(
+          0,
+          honest.calls.findIndex((c) => c.name === 'wit_sqrtU128'),
+        )
+        .reduce((sum, c) => sum + witnessLeaves(c.result).length, 0);
+      const zkir = loadZkir('MockUint128', 'sqrt');
+      const mutant = structuredClone(zkir);
+      let variable = zkir.num_inputs;
+      let privateIndex = 0;
+      let rootVariable: number | undefined;
+      for (const ins of zkir.instructions) {
+        if (ins.op === 'private_input') {
+          if (privateIndex === position) rootVariable = variable;
+          privateIndex++;
+        }
+        variable += OUTPUTS[ins.op] ?? 0;
+      }
+      const check = mutant.instructions.findIndex(
+        (ins) => ins.op === 'constrain_bits' && ins.var === rootVariable,
+      );
+      expect(check).toBeGreaterThan(0);
+      mutant.instructions.splice(check, 1);
+      const outcome = await forger.forge('sqrt', [n], plan, mutant);
+      expect(outcome.verdict.accepted).toBe(true);
+      expect(outcome.outputChanged).toBe(true);
+    });
   },
 );
 

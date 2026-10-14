@@ -1,5 +1,6 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, test } from 'vitest';
+import { FIELD_MODULUS } from '#test-utils/zkir/fieldRepr.js';
 import { RelationForger, type WitnessCall } from '#test-utils/zkir/forgery.js';
 import { loadZkir } from '#test-utils/zkir/relationCheck.js';
 import { Uint64Witnesses } from '../witnesses/Uint64Witnesses.js';
@@ -13,6 +14,8 @@ import {
   jointForgeries,
   leafForgeries,
   mustRejectPlan,
+  SQRT_FIELD_ROOT,
+  SQRT_FIELD_SQUARE,
 } from './forgeries.js';
 import { toU128 } from './oracles.js';
 
@@ -50,6 +53,25 @@ describe('forgery catalogue', () => {
     expect(isDivisionCall('div', call('wit_divUint64', [5n, 3n], {}))).toBe(
       false,
     );
+  });
+
+  test('gives a field root that passes both bound checks of Uint128.sqrt', () => {
+    const square = (x: bigint) => (x * x) % FIELD_MODULUS;
+    expect(square(SQRT_FIELD_ROOT)).toBe(SQRT_FIELD_SQUARE);
+    expect(SQRT_FIELD_SQUARE).toBeLessThan(2n ** 128n);
+    expect(square(SQRT_FIELD_ROOT + 1n)).toBeGreaterThan(2n ** 128n - 1n);
+    expect(square(SQRT_FIELD_ROOT + 1n)).toBeLessThan(2n ** 129n);
+    expect(SQRT_FIELD_ROOT).toBeGreaterThan(2n ** 64n);
+    const sqrtCall = (n: bigint) =>
+      call('wit_sqrtU128', [toU128(n)], 2n ** 63n);
+    expect(
+      jointForgeries('sqrt', sqrtCall(2n ** 128n - 1n)).map((f) => f.value),
+    ).toContain(SQRT_FIELD_ROOT);
+    expect(
+      jointForgeries('sqrt', sqrtCall(SQRT_FIELD_SQUARE - 1n)).map(
+        (f) => f.value,
+      ),
+    ).not.toContain(SQRT_FIELD_ROOT);
   });
 
   test('names the first failing check of a division in the module order', () => {

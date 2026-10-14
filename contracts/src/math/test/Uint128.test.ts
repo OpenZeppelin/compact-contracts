@@ -1262,6 +1262,32 @@ describe('Uint128', () => {
         );
       },
     );
+
+    testDryOnly(
+      'should call one split of the radicand and the root witness, and no other witness',
+      async () => {
+        const honest = Uint128Witnesses();
+        const n = 2n ** 100n + 7n;
+        const calls: [string, unknown[]][] = [];
+        uint128Simulator.overrideWitness('wit_divUint128', (context, x, y) => {
+          calls.push(['wit_divUint128', [x, y]]);
+          return honest.wit_divUint128(context, x, y);
+        });
+        uint128Simulator.overrideWitness('wit_divU128', (context, x, y) => {
+          calls.push(['wit_divU128', [x, y]]);
+          return honest.wit_divU128(context, x, y);
+        });
+        uint128Simulator.overrideWitness('wit_sqrtU128', (context, x) => {
+          calls.push(['wit_sqrtU128', [x]]);
+          return honest.wit_sqrtU128(context, x);
+        });
+        expect(await uint128Simulator.sqrt(n)).toBe(2n ** 50n);
+        expect(calls).toEqual([
+          ['wit_divUint128', [n, 2n ** 64n]],
+          ['wit_sqrtU128', [u128(n)]],
+        ]);
+      },
+    );
   });
 
   describe('sqrtU128', () => {
