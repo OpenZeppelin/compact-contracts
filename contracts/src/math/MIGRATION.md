@@ -212,6 +212,13 @@ The 64-bit range check of the witness root is necessary in both `sqrt` forms.
 Without it, five field elements that are not a `Uint<64>` pass the two square checks of `sqrt(radicand: Uint<128>)`, and one passes the checks of `sqrt(radicand: U128)`.
 A machine-checked proof on the compiled ZKIR v2 and v3 shows that the range check of the root is the only constraint that rejects each of them.
 
+### Native checked multiplication
+
+`mulChecked(a: Uint<128>, b: Uint<128>)` splits only `a` and computes the product with native arithmetic.
+For every honest input, the result and the failure message do not change.
+A wrong split of `a` still fails with `Uint128: conversion invalid`; the split of `b` and the splits of `_mul` are gone.
+The witness interface (`wit_divUint128`) and the witness taint do not change.
+
 ## Deprecated circuits
 
 A circuit is deprecated when a native expression gives the same result for every input, the circuit has no library-specific failure message, and the native expression costs no more v3 rows at compiler 0.34.0.
