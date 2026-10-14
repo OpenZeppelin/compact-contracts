@@ -14,6 +14,7 @@ import {
   MAX_UINT128,
 } from './utils/consts.js';
 import { toU128 as u128 } from './utils/oracles.js';
+import { Uint128Witnesses } from './witnesses/Uint128Witnesses.js';
 
 let uint128Simulator: Uint128Simulator;
 
@@ -664,6 +665,28 @@ describe('Uint128', () => {
       expect(result.high.low).toBe(0n);
       expect(result.high.high).toBe(0n);
     });
+
+    testDryOnly(
+      'should split the partial products with 7 toU128 calls',
+      async () => {
+        // The _mul carry handling (audit L-06) adds each 64-bit result word in
+        // one step, so a U128 product needs 7 limb splits: 4 partial products
+        // and 3 word sums.
+        const honest = Uint128Witnesses().wit_divUint128;
+        let calls = 0;
+        uint128Simulator.overrideWitness('wit_divUint128', (context, a, b) => {
+          calls += 1;
+          return honest(context, a, b);
+        });
+        const result = await uint128Simulator.mulU128(
+          u128(MAX_UINT128),
+          u128(MAX_UINT128),
+        );
+        // (2^128 - 1)^2 = (2^128 - 2) * 2^128 + 1
+        expect(result).toEqual({ low: u128(1n), high: u128(MAX_UINT128 - 1n) });
+        expect(calls).toBe(7);
+      },
+    );
   });
 
   describe('mulChecked', () => {

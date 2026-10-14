@@ -570,90 +570,59 @@ module Uint128 {
    *
    * @remarks
    * Computes P = a · b for a, b ∈ [0, 2¹²⁸ - 1], returning P as U256 {low: U128, high: U128}.
-   * Uses schoolbook multiplication with partial products and carry propagation.
+   * Uses schoolbook multiplication by aligning 64-bit partial products to their
+   * respective word positions and accumulating each word in a single operation.
    * For a = a_h · 2⁶⁴ + a_l and b = b_h · 2⁶⁴ + b_l:
    * P = a · b = hh · 2¹²⁸ + (hl + lh) · 2⁶⁴ + ll, where ll = a_l·b_l, hl = a_h·b_l,
    * lh = a_l·b_h, hh = a_h·b_h.
    *
    * Mathematical Steps:
-   * 1. Partial Products:
-   *    Compute ll, hl, lh, hh where each ≤ (2⁶⁴ - 1)² = 2¹²⁸ - 2⁶⁵ + 1 < 2¹²⁸.
-   *    - ll = a_l · b_l (bits [0, 127])
-   *    - hl = a_h · b_l (bits [64, 191])
-   *    - lh = a_l · b_h (bits [64, 191])
-   *    - hh = a_h · b_h (bits [128, 255])
+   * 1. Partial Products (each a U128 spanning 2 of the 4 result words):
+   *    - ll = a_l · b_l → occupies words [0, 1]
+   *    - hl = a_h · b_l → occupies words [1, 2]
+   *    - lh = a_l · b_h → occupies words [1, 2]
+   *    - hh = a_h · b_h → occupies words [2, 3]
    *
-   * 2. Cross Terms Addition:
-   *    S = hl + lh ≤ 2(2¹²⁸ - 2⁶⁵ + 1) < 2¹²⁹ (fits in 129 bits)
-   *    - Add low parts: (hl mod 2⁶⁴) + (lh mod 2⁶⁴) → sum s_0, carry c_0
-   *    - Add high parts: ⌊hl/2⁶⁴⌋ + ⌊lh/2⁶⁴⌋ + c_0 → sum s_1, carry c_1
+   * 2. Word-Aligned Accumulation:
+   *    - Word 0: ll.low (no additions needed)
+   *    - Word 1: offset1 = ll.high + hl.low + lh.low (carry → word 2)
+   *    - Word 2: offset2 = offset1.high + hl.high + lh.high + hh.low (carry → word 3)
+   *    - Word 3: offset3 = offset2.high + hh.high (no carry; result fits in 256 bits)
    *
-   * 3. Lower Half [0-127]:
-   *    - Bits [0, 63]: ll mod 2⁶⁴
-   *    - Bits [64, 127]: (⌊ll/2⁶⁴⌋ + s_0) mod 2⁶⁴, with carry c_2 to bit 128
+   * 3. Result Construction:
+   *    - resultLow  = {low: ll.low,     high: offset1.low}
+   *    - resultHigh = {low: offset2.low, high: offset3.low}
    *
-   * 4. Upper Half [128-255]:
-   *    - Bits [128, 191]: (hh mod 2⁶⁴) + s_1 + c_2 → sum, carry c_3
-   *    - Bits [192, 255]: ⌊hh/2⁶⁴⌋ + c_1 + c_3
-   *
-   * 5. Result Bounds:
-   *    Max product = (2¹²⁸ - 1)² = 2²⁵⁶ - 2¹²⁹ + 1 < 2²⁵⁶
-   *    The final high carry is always 0 (result always fits in 256 bits).
+   * 4. Overflow Check:
+   *    Max product = (2¹²⁸ - 1)² = 2²⁵⁶ - 2¹²⁹ + 1 < 2²⁵⁶, so offset3.high must be 0.
    *
    * @circuitInfo k=12, rows=2766
-    *
-    * @param {U128} a - The first U128 value to multiply.
-    * @param {U128} b - The second U128 value to multiply.
-    *
-    * @returns {U256} The product a * b as a U256 struct.
-    */
+   *
+   * @param {U128} a - The first U128 value to multiply.
+   * @param {U128} b - The second U128 value to multiply.
+   *
+   * @throws {Error} "Uint128: unexpected multiplication overflow" if the result does not fit in 256 bits.
+   *
+   * @returns {U256} The product a * b as a U256 struct.
+   */
   circuit _mul(a: U128, b: U128): U256 {
-    // Compute partial products (each is Uint<128>)
-    const ll = a.low * b.low; // Bits 0-127
-    const hl = a.high * b.low; // Bits 64-191
-    const lh = a.low * b.high; // Bits 64-191
-    const hh = a.high * b.high; // Bits 128-255
+    // Work with 64-bit words
+    // Compute partial products (each is Uint<128> comprising 2 words within a 4-word result)
+    const ll = toU128(a.low * b.low); //  0       || 0        || ll.high  || ll.low
+    const hl = toU128(a.high * b.low); //  0       || hl.high  || hl.low   || 0
+    const lh = toU128(a.low * b.high); //  0       || lh.high  || lh.low   || 0
+    const hh = toU128(a.high * b.high); //  hh.high || hh.low   || 0        || 0
 
-    // Convert partial products to U128 structs
-    const llU128 = toU128(ll);
-    const hlU128 = toU128(hl);
-    const lhU128 = toU128(lh);
-    const hhU128 = toU128(hh);
+    // add the values at word 1. offset1.high is the carry, which is added to the next word
+    const offset1 = toU128(ll.high + hl.low + lh.low);
+    // add the values at word 2. offset2.high is the carry, which is added to the next word
+    const offset2 = toU128(offset1.high + hl.high + lh.high + hh.low);
+    // add the values at word 3. There should be no carry here since the result fits in 256 bits
+    const offset3 = toU128(offset2.high + hh.high);
 
-    // Add cross terms (hl + lh) with carry propagation
-    // Add low part of hl and lh
-    const crossSum = hlU128.low + lhU128.low;
-    const crossSumU128 = toU128(crossSum); // { low: sum, high: carry }
-    const carry0 = crossSumU128.high;
-
-    // Add high parts of cross terms + carry0 (bits 128-191)
-    const crossHigh = hlU128.high + lhU128.high + carry0;
-    const crossHighU128 = toU128(crossHigh); // { low: sum, high: carry }
-    const carry1 = crossHighU128.high; // carry for bits 128-191 (0 or 1)
-
-    // Build result low 128 bit (bits 0-127)
-    // Result = ll + (crossSum << 64)
-    const resultLowLow = llU128.low;
-
-    // Bits 64-127: ll.high + crossLow.low (with potential carry)
-    const midSum = llU128.high + crossSumU128.low;
-    const midSumU128 = toU128(midSum); // { low: sum, high: carry }
-    const carry2 = midSumU128.high; // carry for bits 64-127 (0 or 1)
-
-    const resultLow = U128 { low: resultLowLow, high: midSumU128.low };
-
-    // Build result high 128 bits (bits 128-255)
-    // Result = hh + (crossSum >> 64) + carries
-    // Bits 128-191: hh.low + crossHigh.low + carry2
-    const highLowSum = hhU128.low + crossHighU128.low + carry2;
-    const highLowSumU128 = toU128(highLowSum); // { low: sum, high: carry }
-    const carry3 = highLowSumU128.high; // carry for bits 128-191 (0 or 1)
-
-    // Bits 192-255: hh.high + carry1 + carry3
-    const highHighSum = hhU128.high + carry1 + carry3;
-    const highHighSumU128 = toU128(highHighSum); // { low: sum, high: carry }
-
-    const resultHigh = U128 { low: highLowSumU128.low, high: highHighSumU128.low };
+    const resultLow = U128 { low: ll.low, high: offset1.low };
+    const resultHigh = U128 { low: offset2.low, high: offset3.low };
+    assert(isZero(offset3.high), "Uint128: unexpected multiplication overflow");
 
     return U256 { low: resultLow, high: resultHigh };
   }
