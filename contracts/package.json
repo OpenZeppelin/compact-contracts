@@ -28,6 +28,7 @@
     "compile:access": "compact-compiler --dir access",
     "compile:archive": "compact-compiler --dir archive",
     "compile:crypto": "compact-compiler --dir crypto --feature-zkir-v3 --exclude 'MockElGamal.compact' --exclude 'MockEcdhMask.compact' --exclude 'MockCurveOps.compact' && compact-compiler --dir crypto/test/mocks --exclude 'MockEcdsa.compact' --exclude 'MockEip712.compact'",
+    "compile:math": "compact-compiler --dir math",
     "compile:multisig": "compact-compiler --dir multisig --feature-zkir-v3",
     "compile:security": "compact-compiler --dir security",
     "compile:token": "compact-compiler --dir token",
