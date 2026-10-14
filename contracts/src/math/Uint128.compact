@@ -107,7 +107,7 @@ module Uint128 {
    * @returns {Uint<65>} The value 2⁶⁴ (0x10000000000000000).
    */
   export pure circuit MODULUS(): Uint<65> {
-    // pow() is not supported yet, so we hardcode this value.
+    // 2^64 as a Uint<65> literal: Compact has no exponentiation operator.
     return 0x10000000000000000; // 2⁶⁴
   }
 
@@ -712,7 +712,8 @@ module Uint128 {
    * 4. Correctness Verification:
    *    a) Compute P = q·b (returns U256)
    *    b) Assert P.high = {0, 0} (P fits in 128 bits)
-   *    c) Assert a - P.low = r (using subU128 for efficiency)
+   *    c) Assert P.low <= a (a quotient that is too large fails here with "division invalid")
+   *    d) Assert a - P.low = r (using subU128 for efficiency)
    * 5. Return DivResultU128 {quotient: q, remainder: r}
    *
    * @constraints k=12, rows=2761 (zkir-v2)
