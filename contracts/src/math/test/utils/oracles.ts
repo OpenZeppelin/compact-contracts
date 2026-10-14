@@ -46,3 +46,24 @@ export const toVecLE = (n: bigint, length: number): bigint[] =>
 /** Writes a bigint as `length` little-endian bytes. */
 export const toBytesLE = (n: bigint, length: number): Uint8Array =>
   Uint8Array.from(toVecLE(n, length), (b) => Number(b));
+
+/**
+ * Floor of the square root of `n`, by binary search. It does not share code
+ * with the test witness `sqrtBigint` (Newton's method).
+ */
+export const isqrt = (n: bigint): bigint => {
+  let low = 0n;
+  let high = 1n;
+  while (high * high <= n) {
+    high <<= 1n;
+  }
+  while (low + 1n < high) {
+    const mid = (low + high) >> 1n;
+    if (mid * mid <= n) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+};
