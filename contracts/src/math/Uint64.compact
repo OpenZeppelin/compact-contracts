@@ -209,6 +209,8 @@ module Uint64 {
    * @param {Uint<64>} a - The first unsigned 64-bit integer.
    * @param {Uint<64>} b - The second unsigned 64-bit integer.
    * @returns {Uint<128>} The sum of `a` and `b` as a `Uint<128>` value.
+   * @deprecated Use `a + b` instead.
+   * The native result uses a 65-bit range and fits in Uint<128>.
    */
   export pure circuit add(a: Uint<64>, b: Uint<64>): Uint<128> {
     return a + b;
@@ -270,6 +272,7 @@ module Uint64 {
    * @param {Uint<64>} a - The first unsigned 64-bit integer (multiplicand).
    * @param {Uint<64>} b - The second unsigned 64-bit integer (multiplier).
    * @returns {Uint<128>} The product of `a` and `b` as a `Uint<128>` value.
+   * @deprecated Use `a * b` instead.
    */
   export pure circuit mul(a: Uint<64>, b: Uint<64>): Uint<128> {
     return a * b;
@@ -490,6 +493,7 @@ module Uint64 {
    * @param {Uint<64>} a - The first unsigned 64-bit integer.
    * @param {Uint<64>} b - The second unsigned 64-bit integer.
    * @returns {Uint<64>} The smaller of `a` and `b` as a `Uint<64>` value.
+   * @deprecated Use `a < b ? a : b` instead.
    */
   export pure circuit min(a: Uint<64>, b: Uint<64>): Uint<64> {
     return a < b ? a : b;
@@ -504,6 +508,7 @@ module Uint64 {
    * @param {Uint<64>} a - The first unsigned 64-bit integer.
    * @param {Uint<64>} b - The second unsigned 64-bit integer.
    * @returns {Uint<64>} The larger of `a` and `b` as a `Uint<64>` value.
+   * @deprecated Use `a > b ? a : b` instead.
    */
   export pure circuit max(a: Uint<64>, b: Uint<64>): Uint<64> {
     return a > b ? a : b;

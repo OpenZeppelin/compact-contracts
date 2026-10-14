@@ -92,6 +92,7 @@ module Field255 {
    *
    * @param {Field} value - The Field value to convert.
    * @returns {Bytes<32>} The Bytes<32> representation of the Field value.
+   * @deprecated Use `value as Bytes<32>` instead.
    */
   export circuit toBytes(value: Field): Bytes<32> {
     return value as Bytes<32>;
@@ -131,6 +132,7 @@ module Field255 {
    * @param {Field} a - The first Field value to compare.
    * @param {Field} b - The second Field value to compare.
    * @returns {Boolean} True if a == b, false otherwise.
+   * @deprecated Use `a == b` instead.
    */
   export circuit eq(a: Field, b: Field): Boolean {
     return a == b;
@@ -225,6 +227,7 @@ module Field255 {
    *
    * @param {Field} a - The Field value to check.
    * @returns {Boolean} True if a equals zero, false otherwise.
+   * @deprecated Use `a == default<Field>` instead.
    */
   export circuit isZero(a: Field): Boolean {
     return a == 0 as Field;

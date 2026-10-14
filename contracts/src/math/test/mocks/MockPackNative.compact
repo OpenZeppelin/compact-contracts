@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: MIT
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Do not deploy this contract in a production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { U128, U256 } from "../../Types";
+
+ledger _invocations: Counter;
+
+export circuit pack8Native(vec: Vector<8, Uint<8>>): Bytes<8> {
+  _invocations.increment(1);
+  return vec as Bytes<8>;
+}
+
+export circuit pack16Native(vec: Vector<16, Uint<8>>): Bytes<16> {
+  _invocations.increment(1);
+  return vec as Bytes<16>;
+}
+
+export circuit pack32Native(vec: Vector<32, Uint<8>>): Bytes<32> {
+  _invocations.increment(1);
+  return vec as Bytes<32>;
+}

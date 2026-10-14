@@ -58,6 +58,7 @@ module Bytes32 {
    *
    * @param {Vector<32, Uint<8>>} vec - The vector of 32 bytes to convert.
    * @returns {Bytes<32>} - The 32-byte array.
+   * @deprecated Use `vec as Bytes<32>` instead.
    */
   export pure circuit pack(vec: Vector<32, Uint<8>>): Bytes<32> {
     return Pack32_pack(vec);
@@ -164,6 +165,7 @@ module Bytes32 {
    * @param {Bytes<32>} a - First bytes value to compare.
    * @param {Bytes<32>} b - Second bytes value to compare.
    * @returns {Boolean} - True if the bytes are equal, false otherwise.
+   * @deprecated Use `a == b` instead.
    */
   export circuit eq(a: Bytes<32>, b: Bytes<32>): Boolean {
     return a == b;
@@ -257,6 +259,7 @@ module Bytes32 {
    *
    * @param {Bytes<32>} a - The bytes value to check.
    * @returns {Boolean} - True if the bytes are zero, false otherwise.
+   * @deprecated Use `a == default<Bytes<32>>` instead.
    */
   export circuit isZero(a: Bytes<32>): Boolean {
     return a == pad(32, "");

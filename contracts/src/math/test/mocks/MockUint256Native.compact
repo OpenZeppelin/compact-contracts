@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Do not deploy this contract in a production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { U128, U256 } from "../../Types";
+
+ledger _invocations: Counter;
+
+export circuit ZERO_U256Native(): U256 {
+  _invocations.increment(1);
+  return default<U256>;
+}
+
+export circuit ltNative(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return (((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) <
+          ((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) ||
+          (a.high == b.high &&
+           ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>) <
+           ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>)));
+}
+
+export circuit lteNative(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return !(((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) <
+           ((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) ||
+           (b.high == a.high &&
+            ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>) <
+            ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>)));
+}
+
+export circuit gtNative(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return (((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) <
+          ((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) ||
+          (b.high == a.high &&
+           ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>) <
+           ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>)));
+}
+
+export circuit gteNative(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return !(((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) <
+           ((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) ||
+           (a.high == b.high &&
+            ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>) <
+            ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>)));
+}

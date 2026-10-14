@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: MIT
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Do not deploy this contract in a production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { U128, U256 } from "../../Types";
+
+ledger _invocations: Counter;
+
+export circuit ZERO_U128Native(): U128 {
+  _invocations.increment(1);
+  return default<U128>;
+}
+
+export circuit toUint128Native(value: U128): Uint<128> {
+  _invocations.increment(1);
+  return ((value.high * 0x10000000000000000 + value.low) as Uint<128>);
+}
+
+export circuit eqNative(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return a == b;
+}
+
+export circuit eqU128Native(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return a == b;
+}
+
+export circuit ltNative(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return a < b;
+}
+
+export circuit lteNative(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return a <= b;
+}
+
+export circuit ltU128Native(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return ((a.high * 0x10000000000000000 + a.low) as Uint<128>) <
+         ((b.high * 0x10000000000000000 + b.low) as Uint<128>);
+}
+
+export circuit lteU128Native(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return ((a.high * 0x10000000000000000 + a.low) as Uint<128>) <=
+         ((b.high * 0x10000000000000000 + b.low) as Uint<128>);
+}
+
+export circuit gtNative(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return a > b;
+}
+
+export circuit gteNative(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return a >= b;
+}
+
+export circuit gtU128Native(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return ((a.high * 0x10000000000000000 + a.low) as Uint<128>) >
+         ((b.high * 0x10000000000000000 + b.low) as Uint<128>);
+}
+
+export circuit gteU128Native(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return ((a.high * 0x10000000000000000 + a.low) as Uint<128>) >=
+         ((b.high * 0x10000000000000000 + b.low) as Uint<128>);
+}
+
+export circuit isZeroNative(value: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return value == default<Uint<128>>;
+}
+
+export circuit isZeroU128Native(value: U128): Boolean {
+  _invocations.increment(1);
+  return value == default<U128>;
+}
+
+export circuit minNative(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return a <= b ? a : b;
+}
+
+export circuit minU128Native(a: U128, b: U128): U128 {
+  _invocations.increment(1);
+  return ((a.high * 0x10000000000000000 + a.low) as Uint<128>) <=
+         ((b.high * 0x10000000000000000 + b.low) as Uint<128>)
+           ? a
+           : b;
+}
+
+export circuit maxNative(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return a >= b ? a : b;
+}
+
+export circuit maxU128Native(a: U128, b: U128): U128 {
+  _invocations.increment(1);
+  return ((a.high * 0x10000000000000000 + a.low) as Uint<128>) >=
+         ((b.high * 0x10000000000000000 + b.low) as Uint<128>)
+           ? a
+           : b;
+}

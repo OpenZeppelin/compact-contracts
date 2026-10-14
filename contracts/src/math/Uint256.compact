@@ -67,6 +67,7 @@ module Uint256 {
    * @constraints k=7, rows=71 (zkir-v3)
    *
    * @returns {U256} A U256 struct representing 0.
+   * @deprecated Use `default<U256>` instead.
    */
   export pure circuit ZERO_U256(): U256 {
     return U256 { low: U128 { low: 0, high: 0 }, high: U128 { low: 0, high: 0 } };
@@ -174,6 +175,7 @@ module Uint256 {
    * @param {U256} a - The first U256 value.
    * @param {U256} b - The second U256 value.
    * @returns {Boolean} True if a < b, false otherwise.
+   * @deprecated Use `(((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) < ((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) || (a.high == b.high && ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>) < ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>)))` instead.
    */
   export pure circuit lt(a: U256, b: U256): Boolean {
     return Uint128_lt(a.high, b.high) || (Uint128_eq(a.high, b.high) && Uint128_lt(a.low, b.low));
@@ -188,6 +190,7 @@ module Uint256 {
    * @param {U256} a - The first U256 value.
    * @param {U256} b - The second U256 value.
    * @returns {Boolean} True if a <= b, false otherwise.
+   * @deprecated Use `!(((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) < ((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) || (b.high == a.high && ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>) < ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>)))` instead.
    */
   export pure circuit lte(a: U256, b: U256): Boolean {
     return !lt(b, a);
@@ -202,6 +205,7 @@ module Uint256 {
    * @param {U256} a - The first U256 value.
    * @param {U256} b - The second U256 value.
    * @returns {Boolean} True if a > b, false otherwise.
+   * @deprecated Use `(((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) < ((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) || (b.high == a.high && ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>) < ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>)))` instead.
    */
   export pure circuit gt(a: U256, b: U256): Boolean {
     return lt(b, a);
@@ -216,6 +220,7 @@ module Uint256 {
    * @param {U256} a - The first U256 value.
    * @param {U256} b - The second U256 value.
    * @returns {Boolean} True if a >= b, false otherwise.
+   * @deprecated Use `!(((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) < ((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) || (a.high == b.high && ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>) < ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>)))` instead.
    */
   export pure circuit gte(a: U256, b: U256): Boolean {
     return !lt(a, b);

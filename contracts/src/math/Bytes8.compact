@@ -49,6 +49,7 @@ module Bytes8 {
    *
    * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
    * @returns {Bytes<8>} The 8-byte array.
+   * @deprecated Use `vec as Bytes<8>` instead.
    */
   export circuit pack(vec: Vector<8, Uint<8>>): Bytes<8> {
     return Pack8_pack(vec);
