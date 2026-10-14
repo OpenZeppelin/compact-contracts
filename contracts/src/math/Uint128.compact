@@ -770,7 +770,6 @@ module Uint128 {
    * @throws {Error} "Uint128: division by zero" If b is zero.
    * @throws {Error} "Uint128: remainder error" If remainder is not less than b.
    * @throws {Error} "Uint128: division product overflow" If q*b doesn't fit in 128 bits (indicates bad witness).
-   * @throws {Error} "Uint128: division sum overflow" If (q*b) + r overflows 128 bits (indicates bad witness).
    * @throws {Error} "Uint128: division invalid" If q*b + r ≠ a.
    *
    * @returns {DivResultU128} A struct containing the quotient and remainder as U128 values.
@@ -792,6 +791,10 @@ module Uint128 {
 
     // Since q*b < a < 2¹²⁸, the product must fit in 128 bits
     assert(eq(productU256.high, ZERO_U128()), "Uint128: division product overflow");
+
+    // A quotient that is too large gives q*b > a. Reject it here with the
+    // division message, before sub can fail with its own message.
+    assert(!lt(a, productU256.low), "Uint128: division invalid");
 
     // Verify a - q*b = r (using subtraction instead of addition)
     // This is more efficient: sub returns U128, not U256

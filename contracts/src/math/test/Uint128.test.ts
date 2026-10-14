@@ -1049,6 +1049,21 @@ describe('Uint128', () => {
         );
       },
     );
+
+    testDryOnly(
+      'should fail with "division invalid" when quotient * b > a',
+      async () => {
+        // q * b = 15 fits in 128 bits and r < b, but q * b > a = 10.
+        uint128Simulator.overrideWitness('wit_divU128', (context) => [
+          context.privateState,
+          { quotient: { low: 3n, high: 0n }, remainder: { low: 0n, high: 0n } },
+        ]);
+        await expectRejection(
+          uint128Simulator.divRem(10n, 5n),
+          'failed assert: Uint128: division invalid',
+        );
+      },
+    );
   });
 
   describe('divRemU128', () => {
