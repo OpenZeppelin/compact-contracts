@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the Uint64 module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { DivResultU64 } from "../../Uint64";
+
+import "../../Uint64" prefix Uint64_;
+
+export { DivResultU64 };
+
+// Keeps every circuit below impure. Without a ledger write the compiler
+// promotes them to pure, and the artifact ships without ZKIR or proving keys,
+// leaving the circuits evaluated but never proven.
+ledger _invocations: Counter;
+
+////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////
+
+export circuit MAX_UINT8(): Uint<8> {
+  _invocations.increment(1);
+  return Uint64_MAX_UINT8();
+}
+
+export circuit MAX_UINT16(): Uint<16> {
+  _invocations.increment(1);
+  return Uint64_MAX_UINT16();
+}
+
+export circuit MAX_UINT32(): Uint<32> {
+  _invocations.increment(1);
+  return Uint64_MAX_UINT32();
+}
+
+export circuit MAX_UINT64(): Uint<64> {
+  _invocations.increment(1);
+  return Uint64_MAX_UINT64();
+}
+
+////////////////////////////////////////////////////////////////
+// Conversions
+////////////////////////////////////////////////////////////////
+
+export circuit toBytes(value: Uint<64>): Bytes<8> {
+  _invocations.increment(1);
+  return disclose(Uint64_toBytes(value));
+}
+
+export circuit toUnpackedBytes(value: Uint<64>): Vector<8, Uint<8>> {
+  _invocations.increment(1);
+  return disclose(Uint64_toUnpackedBytes(value));
+}
+
+////////////////////////////////////////////////////////////////
+// Arithmetic
+////////////////////////////////////////////////////////////////
+
+export circuit add(a: Uint<64>, b: Uint<64>): Uint<128> {
+  _invocations.increment(1);
+  return Uint64_add(a, b);
+}
+
+export circuit addChecked(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return Uint64_addChecked(a, b);
+}
+
+export circuit sub(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return Uint64_sub(a, b);
+}
+
+export circuit mul(a: Uint<64>, b: Uint<64>): Uint<128> {
+  _invocations.increment(1);
+  return Uint64_mul(a, b);
+}
+
+export circuit mulChecked(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return Uint64_mulChecked(a, b);
+}
+
+////////////////////////////////////////////////////////////////
+// Division
+////////////////////////////////////////////////////////////////
+
+export circuit div(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return disclose(Uint64_div(a, b));
+}
+
+export circuit rem(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return disclose(Uint64_rem(a, b));
+}
+
+export circuit divRem(a: Uint<64>, b: Uint<64>): DivResultU64 {
+  _invocations.increment(1);
+  return disclose(Uint64_divRem(a, b));
+}
+
+////////////////////////////////////////////////////////////////
+// Square Root
+////////////////////////////////////////////////////////////////
+
+export circuit sqrt(radical: Uint<64>): Uint<32> {
+  _invocations.increment(1);
+  return disclose(Uint64_sqrt(radical));
+}
+
+////////////////////////////////////////////////////////////////
+// Utilities
+////////////////////////////////////////////////////////////////
+
+export circuit isMultiple(value: Uint<64>, b: Uint<64>): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint64_isMultiple(value, b));
+}
+
+export circuit min(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return Uint64_min(a, b);
+}
+
+export circuit max(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return Uint64_max(a, b);
+}
