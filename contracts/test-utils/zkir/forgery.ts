@@ -1,0 +1,547 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import {
+  type CallProofData,
+  createCircuitContext,
+  createConstructorContext,
+  dummyContractAddress,
+} from '@midnight-ntwrk/compact-runtime';
+import { fieldAtoms, modField, toFields } from './fieldRepr.js';
+import {
+  checkRelation,
+  loadZkir,
+  type RelationVerdict,
+} from './relationCheck.js';
+import { evaluate, type Violation, type ZkirV2 } from './zkirV2.js';
+
+/**
+ * Coherent witness forgeries for the ZKIR v2 relation check.
+ *
+ * A forgery replaces the result of one or more witness calls. A check that
+ * changes only a witness result and keeps the honest circuit output can fail
+ * because the output no longer matches, even when the circuit has no
+ * constraint on that result. A coherent forgery avoids this:
+ *
+ *   1. A lenient copy of the generated contract runs the circuit with the
+ *      forged result. The copy records each failed assertion, cast or type
+ *      check instead of throwing, so the run continues as an honest prover
+ *      would after the forged call. Every later witness call gets the honest
+ *      result for its actual (possibly changed) arguments.
+ *   2. The ZKIR v2 evaluator computes the outputs that the relation forces
+ *      for the inputs and the forged private transcript.
+ *   3. The `zkir-v2` relation check runs on the preimage with these outputs.
+ *
+ * If the lenient run throws (for example a value at or above the field
+ * modulus reaches a runtime conversion), the forgery falls back to the honest
+ * transcript with only the forged results changed, and reports
+ * `coherent: false`.
+ */
+
+/** One witness call of a circuit run. */
+export type WitnessCall = {
+  /** Position of the call in the private transcript. */
+  index: number;
+  /** The witness name, for example `wit_divUint128`. */
+  name: string;
+  /** The arguments of the call. */
+  args: readonly unknown[];
+  /**
+   * The result of the honest witness for these arguments, or `undefined` if
+   * the honest witness throws (for example on a zero divisor).
+   */
+  result: unknown;
+};
+
+/**
+ * Returns a forged result for `call`, or `undefined` to keep the honest
+ * result. The forged result has the same shape as `call.result`. Its leaf
+ * values can be any field element, also above the declared type.
+ */
+export type ForgeryPlan = (call: WitnessCall) => unknown;
+
+/** A run of the lenient contract. */
+export type Replay = {
+  proofData: CallProofData;
+  calls: WitnessCall[];
+  /** The messages of the checks that failed and did not throw. */
+  failures: string[];
+  /** The circuit result of the generated JavaScript. */
+  result: unknown;
+};
+
+/** A forged witness result. */
+export type Deviation = {
+  /** The witness call. */
+  call: WitnessCall;
+  /** The positions of the leaf values that differ from `call.result`. */
+  leaves: number[];
+};
+
+/** The result of {@link RelationForger.forge}. */
+export type ForgeryOutcome = {
+  /** The verdict of the `zkir-v2` relation check. */
+  verdict: RelationVerdict;
+  /** The forged results. Empty if the plan forged nothing. */
+  deviations: Deviation[];
+  /** Whether the forced outputs differ from the honest outputs. */
+  outputChanged: boolean;
+  /** The constraints that the evaluator finds violated. */
+  violations: Violation[];
+  /** The checks that failed in the lenient run of the generated JavaScript. */
+  failures: string[];
+  /** Whether every later witness call got its honest result (see above). */
+  coherent: boolean;
+  /** The honest run with the same inputs. */
+  honest: Replay;
+};
+
+/** Returns the leaf values of a witness result, in declaration order. */
+export function witnessLeaves(value: unknown): bigint[] {
+  if (typeof value === 'bigint') {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(witnessLeaves);
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value).flatMap(witnessLeaves);
+  }
+  throw new Error(`unsupported witness value ${String(value)}`);
+}
+
+/**
+ * Returns a copy of `value` with leaf `leaf` (in the order of
+ * {@link witnessLeaves}) replaced by `replacement`.
+ */
+export function withLeaf(
+  value: unknown,
+  leaf: number,
+  replacement: bigint,
+): unknown {
+  let next = 0;
+  const walk = (node: unknown): unknown => {
+    if (typeof node === 'bigint') {
+      return next++ === leaf ? replacement : node;
+    }
+    if (Array.isArray(node)) {
+      return node.map(walk);
+    }
+    if (typeof node === 'object' && node !== null) {
+      return Object.fromEntries(
+        Object.entries(node).map(([key, child]) => [key, walk(child)]),
+      );
+    }
+    throw new Error(`unsupported witness value ${String(node)}`);
+  };
+  const result = walk(value);
+  if (leaf < 0 || leaf >= next) {
+    throw new Error(`witness value has no leaf ${leaf}`);
+  }
+  return result;
+}
+
+const LENIENT = Symbol.for('@openzeppelin/compact-contracts/zkir/lenient');
+const RUNTIME_IMPORT =
+  "import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';";
+
+type Recorder = {
+  failures: string[];
+  assert(condition: boolean, message: string): void;
+  typeError(name: string, ...rest: unknown[]): void;
+  fail(message: unknown): void;
+};
+
+const recorder: Recorder = {
+  failures: [],
+  assert(condition, message) {
+    if (!condition) {
+      recorder.failures.push(message);
+    }
+  },
+  typeError(name) {
+    recorder.failures.push(`type error in ${name}`);
+  },
+  fail(message) {
+    recorder.failures.push(String(message));
+  },
+};
+
+/**
+ * Rewrites the JavaScript that `compactc` generates into a lenient copy:
+ * `assert`, `typeError` and the thrown `CompactError`s of casts call a
+ * recorder instead. The runtime import points to `runtimeUrl`, so the copy
+ * can live outside the package. The copy has no source map.
+ *
+ * @throws If the source does not have the expected runtime import.
+ */
+export function lenientSource(source: string, runtimeUrl: string): string {
+  if (source.split(RUNTIME_IMPORT).length !== 2) {
+    throw new Error('lenient copy: the runtime import was not found once');
+  }
+  return source
+    .replace(
+      RUNTIME_IMPORT,
+      `import * as __compactRuntime from '${runtimeUrl}';\n` +
+        `const __lenient = globalThis[Symbol.for('${LENIENT.description}')];`,
+    )
+    .replaceAll('__compactRuntime.assert(', '__lenient.assert(')
+    .replaceAll('__compactRuntime.typeError(', '__lenient.typeError(')
+    .replaceAll('throw new __compactRuntime.CompactError(', '__lenient.fail(')
+    .replace(/^\/\/# sourceMappingURL=.*$/m, '');
+}
+
+const ARTIFACTS = new URL('../../artifacts/', import.meta.url);
+let lenientDir: string | undefined;
+
+type ContractClass = new (
+  witnesses: Record<string, unknown>,
+) => {
+  initialState(context: unknown): Promise<{
+    currentContractState: { data: unknown };
+    currentPrivateState: unknown;
+    currentZswapLocalState: unknown;
+  }>;
+  impureCircuits: Record<
+    string,
+    (
+      context: unknown,
+      ...args: unknown[]
+    ) => Promise<{
+      result: unknown;
+      context: { callProofDataTrace: CallProofData[] };
+    }>
+  >;
+};
+
+async function loadLenientContract(artifact: string): Promise<ContractClass> {
+  const contractUrl = new URL(`${artifact}/contract/index.js`, ARTIFACTS);
+  const contractPath = fileURLToPath(contractUrl);
+  const runtimePath = createRequire(contractPath).resolve(
+    '@midnight-ntwrk/compact-runtime',
+  );
+  if (lenientDir === undefined) {
+    const dir = mkdtempSync(join(tmpdir(), 'zkir-lenient-'));
+    lenientDir = dir;
+    process.once('exit', () => rmSync(dir, { recursive: true, force: true }));
+  }
+  const copy = join(lenientDir, `${artifact}.mjs`);
+  writeFileSync(
+    copy,
+    lenientSource(
+      readFileSync(contractPath, 'utf8'),
+      pathToFileURL(runtimePath).href,
+    ),
+  );
+  (globalThis as Record<symbol, unknown>)[LENIENT] = recorder;
+  const module = (await import(pathToFileURL(copy).href)) as {
+    Contract: ContractClass;
+  };
+  return module.Contract;
+}
+
+type WitnessFunction = (
+  context: { privateState: unknown },
+  ...args: unknown[]
+) => [unknown, unknown];
+
+const COIN_PUBLIC_KEY = '0'.repeat(64);
+
+/** A stable text key for circuit arguments (bigints, bytes, arrays, structs). */
+const argsKey = (value: unknown): string =>
+  JSON.stringify(value, (_key, item) =>
+    typeof item === 'bigint'
+      ? `${item}n`
+      : item instanceof Uint8Array
+        ? `0x${Buffer.from(item).toString('hex')}`
+        : item,
+  );
+
+/**
+ * Runs circuits of one compiled contract with forged witness results and
+ * checks the forged preimages against the ZKIR v2 relation.
+ */
+export class RelationForger {
+  private initial:
+    | Awaited<ReturnType<InstanceType<ContractClass>['initialState']>>
+    | undefined;
+  private lastHonest: { key: string; replay: Replay } | undefined;
+
+  private constructor(
+    private readonly artifact: string,
+    private readonly Contract: ContractClass,
+    private readonly witnesses: Readonly<Record<string, WitnessFunction>>,
+  ) {}
+
+  /**
+   * @param artifact - The compiled contract, for example `MockUint128`.
+   * @param witnesses - The honest witnesses of the contract.
+   */
+  static async create(
+    artifact: string,
+    witnesses: object,
+  ): Promise<RelationForger> {
+    const functions: Record<string, WitnessFunction> = {};
+    for (const [name, value] of Object.entries(witnesses)) {
+      if (typeof value !== 'function') {
+        throw new Error(`witness '${name}' is not a function`);
+      }
+      functions[name] = value as WitnessFunction;
+    }
+    return new RelationForger(
+      artifact,
+      await loadLenientContract(artifact),
+      functions,
+    );
+  }
+
+  /**
+   * Runs `circuit` on the lenient contract. `plan` can replace witness
+   * results. Without a plan, the run is honest. If the honest witness
+   * throws (for example on a zero divisor), the plan must give the result.
+   */
+  async replay(
+    circuit: string,
+    args: readonly unknown[],
+    plan?: ForgeryPlan,
+  ): Promise<Replay> {
+    const calls: WitnessCall[] = [];
+    const witnesses = Object.fromEntries(
+      Object.entries(this.witnesses).map(([name, honest]) => [
+        name,
+        (context: { privateState: unknown }, ...callArgs: unknown[]) => {
+          let privateState: unknown = context.privateState;
+          let result: unknown;
+          let thrown: unknown;
+          try {
+            [privateState, result] = honest(context, ...callArgs);
+          } catch (error) {
+            thrown = error;
+          }
+          const call: WitnessCall = {
+            index: calls.length,
+            name,
+            args: callArgs,
+            result,
+          };
+          calls.push(call);
+          const forged = plan?.(call);
+          if (forged !== undefined) {
+            return [privateState, forged];
+          }
+          if (thrown !== undefined) {
+            throw thrown;
+          }
+          return [privateState, result];
+        },
+      ]),
+    );
+    const contract = new this.Contract(witnesses);
+    this.initial ??= await contract.initialState(
+      createConstructorContext({}, COIN_PUBLIC_KEY),
+    );
+    const context = createCircuitContext(
+      circuit,
+      dummyContractAddress(),
+      COIN_PUBLIC_KEY,
+      this.initial.currentContractState as never,
+      this.initial.currentPrivateState,
+    );
+    const circuitFn = contract.impureCircuits[circuit];
+    if (circuitFn === undefined) {
+      throw new Error(`${this.artifact} has no impure circuit '${circuit}'`);
+    }
+    recorder.failures = [];
+    const { result, context: after } = await circuitFn(context, ...args);
+    const proofData = after.callProofDataTrace.at(-1);
+    if (proofData === undefined || proofData.circuitId !== circuit) {
+      throw new Error(`no proof data for '${circuit}' in the call trace`);
+    }
+    return { proofData, calls, failures: [...recorder.failures], result };
+  }
+
+  /** The honest run of `circuit` on `args`, cached for the last inputs. */
+  private async honestReplay(
+    circuit: string,
+    args: readonly unknown[],
+  ): Promise<Replay> {
+    const key = `${circuit}(${argsKey(args)})`;
+    if (this.lastHonest?.key !== key) {
+      this.lastHonest = { key, replay: await this.replay(circuit, args) };
+    }
+    return this.lastHonest.replay;
+  }
+
+  /**
+   * Checks the coherent preimage of one lenient run, without an honest
+   * reference. Use it for inputs that the circuit must reject, for example
+   * an overflow, a zero divisor or an argument above its declared type:
+   * every preimage must fail.
+   */
+  async attempt(
+    circuit: string,
+    args: readonly unknown[],
+    options: {
+      /** Replaces witness results, as for {@link forge}. */
+      plan?: ForgeryPlan;
+      /** The circuit to check. The default is the compiled circuit. */
+      zkir?: ZkirV2;
+      /**
+       * Gives the result of a call whose honest witness throws, for the
+       * field-level fallback. The default is `plan`.
+       */
+      fill?: ForgeryPlan;
+    } = {},
+  ): Promise<{
+    verdict: RelationVerdict;
+    violations: Violation[];
+    failures: string[];
+    coherent: boolean;
+  }> {
+    const { plan, zkir = loadZkir(this.artifact, circuit) } = options;
+    const fill = options.fill ?? plan;
+    let run: Replay;
+    let entries: bigint[][];
+    let coherent = true;
+    try {
+      run = await this.replay(circuit, args, plan);
+      entries = run.proofData.privateTranscriptOutputs.map(toFields);
+    } catch (error) {
+      if (plan === undefined) {
+        throw error;
+      }
+      // Field-level fallback, as in `forge`: `fill` gives the calls whose
+      // honest witness throws, then the plan results replace the others.
+      coherent = false;
+      const base = await this.replay(circuit, args, (call) =>
+        call.result === undefined ? fill?.(call) : undefined,
+      );
+      const baseEntries = base.proofData.privateTranscriptOutputs.map(toFields);
+      entries = base.calls.map((call, index) => {
+        const forged = plan(call);
+        return forged === undefined
+          ? baseEntries[index]
+          : witnessLeaves(forged).map(modField);
+      });
+      run = { ...base, failures: [] };
+    }
+    const inputs = toFields(run.proofData.input);
+    const evaluation = evaluate(zkir, inputs, entries.flat());
+    const verdict = await checkRelation(zkir, circuit, {
+      // Field atoms also carry an argument above its declared type.
+      input: fieldAtoms(inputs),
+      output: fieldAtoms(evaluation.outputs),
+      publicTranscript: run.proofData.publicTranscript,
+      privateTranscriptOutputs: entries.map(fieldAtoms),
+    });
+    return {
+      verdict,
+      violations: evaluation.violations,
+      failures: run.failures,
+      coherent,
+    };
+  }
+
+  /**
+   * Forges witness results with `plan` and checks the coherent preimage.
+   *
+   * @param zkir - The circuit to check. The default is the compiled circuit.
+   * A test can pass a changed copy to show that the forgery detects a
+   * missing constraint.
+   */
+  async forge(
+    circuit: string,
+    args: readonly unknown[],
+    plan: ForgeryPlan,
+    zkir: ZkirV2 = loadZkir(this.artifact, circuit),
+  ): Promise<ForgeryOutcome> {
+    const honest = await this.honestReplay(circuit, args);
+    const honestEntries =
+      honest.proofData.privateTranscriptOutputs.map(toFields);
+    honest.calls.forEach((call, index) => {
+      const leaves = witnessLeaves(call.result);
+      const fields = honestEntries[index];
+      if (
+        fields === undefined ||
+        leaves.length !== fields.length ||
+        leaves.some((leaf, i) => modField(leaf) !== fields[i])
+      ) {
+        throw new Error(
+          `witness call ${index} (${call.name}) does not match its transcript entry`,
+        );
+      }
+    });
+
+    const deviations: Deviation[] = [];
+    const recordDeviation = (call: WitnessCall, forged: unknown) => {
+      const before = witnessLeaves(call.result);
+      const after = witnessLeaves(forged);
+      if (before.length !== after.length) {
+        throw new Error(
+          `forged result of ${call.name} has ${after.length} leaves, not ${before.length}`,
+        );
+      }
+      const leaves = after.flatMap((value, i) =>
+        modField(value) === modField(before[i]) ? [] : [i],
+      );
+      if (leaves.length > 0) {
+        deviations.push({ call, leaves });
+      }
+    };
+
+    let entries: bigint[][];
+    let publicTranscript = honest.proofData.publicTranscript;
+    let failures: string[];
+    let coherent = true;
+    try {
+      const forged = await this.replay(circuit, args, (call) => {
+        const result = plan(call);
+        if (result !== undefined) {
+          recordDeviation(call, result);
+        }
+        return result;
+      });
+      entries = forged.proofData.privateTranscriptOutputs.map(toFields);
+      publicTranscript = forged.proofData.publicTranscript;
+      failures = forged.failures;
+    } catch {
+      // Field-level fallback: change only the forged results.
+      coherent = false;
+      deviations.length = 0;
+      failures = [];
+      entries = honest.calls.map((call, index) => {
+        const result = plan(call);
+        if (result === undefined) {
+          return honestEntries[index];
+        }
+        recordDeviation(call, result);
+        return witnessLeaves(result).map(modField);
+      });
+    }
+
+    const inputs = toFields(honest.proofData.input);
+    const evaluation = evaluate(zkir, inputs, entries.flat());
+    const honestOutputs = toFields(honest.proofData.output);
+    const outputChanged =
+      evaluation.outputs.length !== honestOutputs.length ||
+      evaluation.outputs.some((value, i) => value !== honestOutputs[i]);
+
+    const verdict = await checkRelation(zkir, circuit, {
+      input: honest.proofData.input,
+      output: fieldAtoms(evaluation.outputs),
+      publicTranscript,
+      privateTranscriptOutputs: entries.map(fieldAtoms),
+    });
+    return {
+      verdict,
+      deviations,
+      outputChanged,
+      violations: evaluation.violations,
+      failures,
+      coherent,
+      honest,
+    };
+  }
+}
