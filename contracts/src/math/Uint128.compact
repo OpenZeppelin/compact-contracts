@@ -221,7 +221,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    *
-   * @returns {Boolean} True if a is equal than b, false otherwise.
+   * @returns {Boolean} True if a is equal to b, false otherwise.
    */
   export pure circuit eq(a: Uint<128>, b: Uint<128>): Boolean {
     return a == b;
@@ -778,13 +778,13 @@ module Uint128 {
     // Step 1: Verify divisor is non-zero
     assert(!isZero(b), "Uint128: division by zero");
 
-    // Step 3: General case - get witness for quotient and remainder
+    // Step 2: General case - get witness for quotient and remainder
     const result = wit_divU128(a, b);
 
-    // Step 4: Verify remainder bounds (0 ≤ r < b)
+    // Step 3: Verify remainder bounds (0 ≤ r < b)
     assert(lt(result.remainder, b), "Uint128: remainder error");
 
-    // Step 5: Verify correctness (a - q*b = r)
+    // Step 4: Verify correctness (a - q*b = r)
 
     // Compute q * b
     const productU256 = _mul(result.quotient, b);
@@ -970,7 +970,7 @@ module Uint128 {
   *
   * Mathematical Steps:
   * 1. Witness Generation:
-  *    Compute R = ⌊√N⌋ off-chain using wit_sqrtU128Locally, where R ∈ [0, 2⁶⁴ - 1].
+  *    Compute R = ⌊√N⌋ off-chain using wit_sqrtU128, where R ∈ [0, 2⁶⁴ - 1].
   *
   * 2. Lower Bound Verification (R² ≤ N):
   *    - Represent R as U128: R_u128 = {low: R, high: 0}
