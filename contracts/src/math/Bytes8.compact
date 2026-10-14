@@ -76,7 +76,7 @@ module Bytes8 {
   }
 
   /**
-   * @title _vector8ToUint64 internal circuit
+   * @title _toUint64 internal circuit
    * @description Converts a Vector<8, Uint<8>> to a Uint<64> using pure arithmetic.
    *
    * @remarks
