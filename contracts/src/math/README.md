@@ -1,6 +1,44 @@
 # Math
 
-Use the math circuits with the witnesses required by the generated consumer interface.
+Use the math circuits with a typed consumer and its witnesses.
+
+## Compile a consumer
+
+Install `@openzeppelin/compact-contracts` and pin compiler 0.34.0 with runtime 0.19.0 in the consumer project.
+The package path is `./node_modules/@openzeppelin/compact-contracts/math/<Module>`.
+Use `import { sqrt } from "./node_modules/@openzeppelin/compact-contracts/math/Uint128" prefix Uint128_;` in a consumer at the project root.
+
+The following complete example uses a relative import so it also compiles beside this guide.
+Save it as `Pool.compact` in this directory for the command below.
+For a separate project, use the package import path above.
+The example publishes the integer square root of the reserve product.
+Both reserves have type `Uint<64>`, so their product fits in `Uint<128>`.
+The example discloses `root` for the public ledger cell and the exported return.
+It provides an arithmetic example only. A production pool also needs its own authorization and accounting rules.
+
+```compact
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { sqrt } from "./Uint128" prefix Uint128_;
+
+export ledger liquidity: Uint<64>;
+
+export circuit update(reserve0: Uint<64>, reserve1: Uint<64>): Uint<64> {
+  const root = Uint128_sqrt(reserve0 * reserve1);
+  liquidity = disclose(root);
+  return disclose(root);
+}
+```
+
+```sh
+compact compile +0.34.0 --skip-zk Pool.compact managed/Pool
+```
+
+Omit `--skip-zk` when generating proving and verification keys.
+Use a proof server on the user's machine when the witness values must remain on that machine.
+A remote proof server receives the private proof inputs.
 
 ## Supply the witnesses
 
