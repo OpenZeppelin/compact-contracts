@@ -121,6 +121,13 @@ describe('EcdhMask', () => {
         'zero ephemeral',
       );
     });
+
+    it('rejects an identity ephemeral on decrypt', () => {
+      const placeholder = { ephemeralPk: ecMulGenerator(0n), ct: 0n };
+      expect(() => pureCircuits.decrypt(placeholder, EK, DOMAIN)).toThrow(
+        'EcdhMask: identity ephemeral',
+      );
+    });
   });
 
   describe('confidentiality / correctness properties', () => {
