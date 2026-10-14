@@ -11,7 +11,7 @@ import { OUTPUTS, type ZkirV2 } from '#test-utils/zkir/zkirV2.js';
 import { PackSimulator } from './simulators/PackSimulator.js';
 import { Uint64Simulator } from './simulators/Uint64Simulator.js';
 import { Uint128Simulator } from './simulators/Uint128Simulator.js';
-import { undetectedRemovals } from './utils/forgeries.js';
+import { findUnsoundForgery, undetectedRemovals } from './utils/forgeries.js';
 import { toU128 } from './utils/oracles.js';
 import { PackWitnesses } from './witnesses/PackWitnesses.js';
 import { Uint64Witnesses } from './witnesses/Uint64Witnesses.js';
@@ -182,6 +182,37 @@ describe.skipIf(isLiveBackend())(
         expect(original.failures).toEqual(['Uint64: division invalid']);
       });
     });
+
+    test('a removed overflow assertion shows only on an input that the circuit must reject', async () => {
+      // With a non-overflowing input, the forgeries cannot reach the overflow
+      // check. 2^64 * 2^64 overflows: without the check, the relation accepts
+      // the wrapped product.
+      const forger = await RelationForger.create(
+        'MockUint128',
+        Uint128Witnesses(),
+      );
+      const zkir = loadZkir('MockUint128', 'mulCheckedU128');
+      const mutant = structuredClone(zkir);
+      mutant.instructions.splice(
+        mutant.instructions.findLastIndex((ins) => ins.op === 'assert'),
+        1,
+      );
+      const args = [toU128(2n ** 63n + 5n), toU128(2n ** 63n + 0x7fffn)];
+      const overflow = [toU128(2n ** 64n), toU128(2n ** 64n)];
+      expect(
+        await findUnsoundForgery(forger, 'mulCheckedU128', args, mutant),
+      ).toBeUndefined();
+      expect(
+        await findUnsoundForgery(forger, 'mulCheckedU128', args, mutant, [
+          overflow,
+        ]),
+      ).toBe('must-reject input 0: honest witness results');
+      expect(
+        await findUnsoundForgery(forger, 'mulCheckedU128', args, zkir, [
+          overflow,
+        ]),
+      ).toBeUndefined();
+    }, 120_000);
 
     // Each removed constraint is detected by a forgery, except the listed
     // constraints, which other constraints imply. The full list for every
