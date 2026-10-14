@@ -535,7 +535,7 @@ module Uint128 {
    * 1. Underflow Check: Assert a ≥ b
    * 2. Borrow: borrow = 1 if a_l < b_l, else 0
    * 3. High Part: high_diff = a_h - (b_h + borrow)
-   * 4. Low Part: low_diff = a_l - b_l (if no borrow), else a_l + 2⁶⁴ - b_l
+   * 4. Low Part: low_diff = a_l + borrow · 2⁶⁴ - b_l (no branch)
    * 5. Return U128 {low: low_diff, high: high_diff}
    *
    * @circuitInfo k=10, rows=561
@@ -555,13 +555,13 @@ module Uint128 {
     const highWithBorrow = b.high + borrow;
     const highDiff = a.high - highWithBorrow;
 
-    if (borrow == 0) {
-      const lowDiff = a.low - b.low;
-      return U128 { low: lowDiff, high: highDiff };
-    } else {
-      const lowDiff = a.low + MODULUS() - b.low;
-      return U128 { low: lowDiff as Uint<64>, high: highDiff };
-    }
+    // Branchless low limb. A circuit contains both branches of an `if`, and
+    // compilers before 0.31.1 range-check a downcast in the branch that is
+    // not taken, so a branch with `as Uint<64>` made valid inputs unprovable.
+    // borrow = 0: lowDiff = a.low - b.low (below 2^64, since a.low >= b.low).
+    // borrow = 1: lowDiff = a.low + 2^64 - b.low (below 2^64, since a.low < b.low).
+    const lowDiff = a.low + borrow * MODULUS() - b.low;
+    return U128 { low: lowDiff as Uint<64>, high: highDiff };
   }
 
   /**
