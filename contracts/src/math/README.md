@@ -339,7 +339,7 @@ Mock names with a `U128` suffix select the struct overload.
 | Uint128.mulU128 | 12 | 2235 | 10 | 710 |
 | Uint128.rem | 10 | 843 | 9 | 285 |
 | Uint128.remU128 | 12 | 2739 | 10 | 886 |
-| Uint128.sqrt | 13 | 4125 | 11 | 1206 |
+| Uint128.sqrt | 10 | 596 | 9 | 213 |
 | Uint128.sqrtU128 | 12 | 3861 | 11 | 1135 |
 | Uint128.sub | 9 | 362 | 9 | 141 |
 | Uint128.subU128 | 10 | 550 | 9 | 246 |
