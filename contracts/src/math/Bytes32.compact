@@ -5,7 +5,7 @@ pragma language_version >= 0.26.0;
 
 /**
  * @title Bytes32 module
- * @description A utility module providing mathematical operations and conversions for 32-byte arrays
+ * @description A utility module providing conversions and comparisons for 32-byte arrays
  * using little-endian (LE) byte ordering.
  *
  * @remarks

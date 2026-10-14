@@ -6,8 +6,8 @@ pragma language_version >= 0.26.0;
 /**
  * @title Uint256 module
  *
- * @description A utility module providing mathematical operations and conversions for 256-bit
- * unsigned integers using the U256 struct. The U256 type represents numbers as
+ * @description A utility module providing constants, byte conversions and comparisons for 256-bit
+ * unsigned integers using the U256 struct. It has no arithmetic yet (see the TODO list below). The U256 type represents numbers as
  * `high * 2^128 + low`, where high and low are U128 structs (each containing two Uint<64> limbs).
  *
  * @remarks

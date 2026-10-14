@@ -5,12 +5,14 @@ pragma language_version >= 0.26.0;
 
 /**
  * @title Field255
- * @description A utility module providing mathematical operations for BLS12-381 scalar Field elements
- * using Bytes<32> as the intermediate representation.
+ * @description A utility module providing conversions and comparisons for BLS12-381 scalar Field
+ * elements using Bytes<32> as the intermediate representation.
  *
  * @remarks
  * CONVERSION CHAIN:
- *   Field → Bytes<32> (native cast) → U256 (via Bytes32) → arithmetic → U256 → Bytes<32> → Field
+ *   Field → Bytes<32> (native cast) → U256 (via Bytes32)
+ *   The comparisons compare the canonical integer values in this form. The reverse conversion
+ *   (U256 to Field) and Field arithmetic do not exist yet (see the TODO list below).
  *
  * BLS12-381 Scalar Field:
  *   Modulus (r) = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
