@@ -265,12 +265,6 @@ describe.skipIf(isLiveBackend())(
     });
 
     test.each([
-      ['addChecked', [MAX_UINT128, 1n], 'Uint128: addition overflow'],
-      [
-        'addCheckedU128',
-        [toU128(MAX_UINT128), toU128(1n)],
-        'Uint128: addition overflow',
-      ],
       [
         'mulChecked',
         [2n ** 64n, 2n ** 64n],
@@ -380,6 +374,18 @@ describe.skipIf(isLiveBackend())(
         ]);
       }
     });
+
+    test.each([
+      ['addChecked', [MAX_UINT128, 1n]],
+      ['addCheckedU128', [toU128(MAX_UINT128), toU128(1n)]],
+    ] as [string, unknown[]][])(
+      '%s rejects an overflow with "Uint128: addition overflow"',
+      async (circuit, args) => {
+        const outcome = await forger.attempt(circuit, args);
+        expect(outcome.verdict.accepted).toBe(false);
+        expect(outcome.failures).toContain('Uint128: addition overflow');
+      },
+    );
 
     test.each([
       ['addChecked', [1n, 2n]],
