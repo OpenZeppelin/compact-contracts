@@ -167,7 +167,8 @@ const rangeIsolations = (
     }
     const sign = down !== undefined ? 1n : -1n;
     const shift =
-      (weights[k] * modInverse(weights[i]) * sign + FIELD_MODULUS) %
+      (((weights[k] * modInverse(weights[i]) * sign) % FIELD_MODULUS) +
+        FIELD_MODULUS) %
       FIELD_MODULUS;
     const next = [...limbs];
     next[k] = limbs[k] - sign;
@@ -411,6 +412,150 @@ export function jointForgeries(call: WitnessCall): Forgery[] {
   }
 }
 
+/** A forgery that changes the results of more than one witness call. */
+export type CoordinatedForgery = {
+  /** A short description, used in failure messages. */
+  label: string;
+  /** Gives the forged result of each call that the forgery changes. */
+  plan: ForgeryPlan;
+  /** The internal split that the forgery attacks (see {@link internalSplits}). */
+  split: number;
+  /** The assertion that the forgery attacks. */
+  attacks: string;
+  /** Whether an outcome changed the split, so that it attacks the check. */
+  attackedWhen: (outcome: ForgeryOutcome) => boolean;
+};
+
+/** Whether an outcome changed a `toU128` split result. */
+const splitChanged = (outcome: ForgeryOutcome): boolean =>
+  outcome.deviations.some(({ call }) => call.name === 'wit_divUint128');
+
+/** Names of the internal splits after each outer witness, in call order. */
+export const INTERNAL_SPLITS: Readonly<Record<string, readonly string[]>> = {
+  wit_divU128: ['ll', 'hl', 'lh', 'hh', 'offset 1', 'offset 2', 'offset 3'],
+  wit_sqrtU128: [
+    'll',
+    'hl',
+    'lh',
+    'hh',
+    'offset 1',
+    'offset 2',
+    'offset 3',
+    '2 * root, low',
+    '2 * root, high',
+    'square + 2 * root, low',
+    'square + 2 * root, high',
+    'next square, low',
+    'next square, high',
+  ],
+};
+
+/**
+ * The outer witness call of a run (`wit_divU128` of `Uint128._div`, or
+ * `wit_sqrtU128` of `Uint128._sqrt`) and the `toU128` splits that run after
+ * it (`wit_divUint128` calls of `_mul` and `_add`), or `undefined`.
+ */
+export function internalSplits(
+  run: Replay,
+): { outer: WitnessCall; splits: WitnessCall[] } | undefined {
+  const outer = run.calls.find(
+    (call) => INTERNAL_SPLITS[call.name] !== undefined,
+  );
+  if (outer === undefined || outer.result === undefined) return undefined;
+  const splits = run.calls.filter(
+    (call) => call.index > outer.index && call.name === 'wit_divUint128',
+  );
+  return { outer, splits };
+}
+
+/** The value that a `toU128` split result stands for. */
+const splitValue = (result: unknown): bigint => {
+  const { quotient, remainder } = result as DivResultU128;
+  return big(quotient) * TWO_64 + big(remainder);
+};
+
+/** The canonical `toU128` split result of `value`. */
+const splitOf = (value: bigint): DivResultU128 => ({
+  quotient: toU128(value / TWO_64),
+  remainder: toU128(value % TWO_64),
+});
+
+/**
+ * Coordinated forgeries: each one changes the outer witness result and one
+ * internal split together, so that every later check passes except the
+ * conversion check of that split. A forgery that changes one call cannot do
+ * this: with the honest quotient (or root), every changed split makes the
+ * final equation (or a square bound) fail too.
+ *
+ *   - `_div`: the quotient `q + d` and the split as in the honest run. The
+ *     product words then equal the honest ones, so `a - q * b == r` holds.
+ *     The step `d` is 1 or 2^64 (one limb of the quotient), or 2^64 times
+ *     2^64 / 2^v(b.high) for the last split. The split differs from its
+ *     arguments only when no other product word changes, so the useful
+ *     inputs have `b.high = 0` (`ll`, `hl`, offset 1) or `b.low = 0` (`lh`,
+ *     `hh`, offset 2, and offset 3 for `b.high` a power of two).
+ *   - `_sqrt`: the root `root - 1` and the split value raised by
+ *     `n - root^2 + 1` (low word) or by that amount in units of 2^64 (high
+ *     word), so that the next square exceeds `n` while the square stays at
+ *     most `n`. The splits `hh`, offset 2 and offset 3 reach only the high
+ *     half of the square, which `_sqrt` does not check, so no forgery with
+ *     another root passes; the single-call forgeries attack them.
+ *
+ * Every forgery is a sound test: the relation must reject it, and a test can
+ * require that one forgery per split leaves only that split's check failed.
+ */
+export function coordinatedForgeries(run: Replay): CoordinatedForgery[] {
+  const found = internalSplits(run);
+  if (found === undefined) return [];
+  const { outer, splits } = found;
+  const names = INTERNAL_SPLITS[outer.name];
+  const attacks = 'Uint128: conversion invalid';
+  if (outer.name === 'wit_divU128') {
+    const b = (outer.args as [U128, U128])[1];
+    const { quotient, remainder } = outer.result as DivResultU128;
+    const q = big(quotient);
+    const steps = [1n, -1n, TWO_64, -TWO_64];
+    if (b.low === 0n && b.high > 0n) {
+      steps.push(TWO_64 * (TWO_64 / (b.high & -b.high)));
+    }
+    return steps
+      .filter((d) => q + d >= 0n && q + d <= MAX_UINT128)
+      .flatMap((d) =>
+        splits.map((split, ordinal) => ({
+          label: `wit_divU128: q ${d < 0n ? '-' : '+'} ${d < 0n ? -d : d}, split ${names[ordinal]} as in the honest run`,
+          plan: (c: WitnessCall) =>
+            c.index === outer.index
+              ? { quotient: toU128(q + d), remainder }
+              : c.index === split.index
+                ? split.result
+                : undefined,
+          split: ordinal,
+          attacks,
+          attackedWhen: splitChanged,
+        })),
+      );
+  }
+  const n = big((outer.args as [U128])[0]);
+  const root = outer.result as bigint;
+  if (root === 0n) return [];
+  const lift = n - root * root + 1n;
+  const lifts = [lift, (lift + TWO_64 - 1n) / TWO_64];
+  return lifts.flatMap((raise) =>
+    splits.map((split, ordinal) => ({
+      label: `wit_sqrtU128: root - 1, split ${names[ordinal]} + ${raise}`,
+      plan: (c: WitnessCall) => {
+        if (c.index === outer.index) return root - 1n;
+        if (c.index !== split.index || c.result === undefined) return undefined;
+        const value = splitValue(c.result) + raise;
+        return value <= MAX_UINT128 ? splitOf(value) : undefined;
+      },
+      split: ordinal,
+      attacks,
+      attackedWhen: splitChanged,
+    })),
+  );
+}
+
 /**
  * Circuit arguments with one bigint leaf set to `2^bits + 1`, a value above
  * its declared type. (`2^bits` itself splits to a zero `U128` divisor in
@@ -470,44 +615,66 @@ export type ForgeryTally = {
   forgeries: number;
   rejected: number;
   acceptedFree: number;
+  /** Outcomes of the field-level fallback (each one has `outOfType`). */
   incoherent: number;
+  /** Outcomes with a forged value outside its declared width. */
+  outOfType: number;
+};
+
+/** One forgery of a run: the calls it changes and the check it attacks. */
+export type Attack = {
+  label: string;
+  plan: ForgeryPlan;
+  /** The assertion that the lenient run must record, if any. */
+  attacks?: string;
+  /** Limits `attacks` to the outcomes for which this returns true. */
+  attackedWhen?: (outcome: ForgeryOutcome) => boolean;
 };
 
 /**
- * Asserts that `outcome` is sound for `forgery`, which forges one call:
+ * Asserts that `outcome` is sound for `attack`:
  *
  *   - The evaluator and the relation check agree.
  *   - If only free leaves change and they stay in range, the relation accepts
  *     and the output does not change. Otherwise the relation rejects.
  *   - The relation never accepts a changed output.
- *   - A joint forgery records the assertion that it attacks.
+ *   - The lenient run is coherent, unless a forged value is outside its
+ *     declared width (the field-level fallback of `RelationForger.forge`).
+ *   - A coherent run records the assertion that the attack names.
  */
 export function expectSound(
   outcome: ForgeryOutcome,
-  forgery: Forgery,
+  attack: Attack,
   tally?: ForgeryTally,
 ): void {
-  const where = `${forgery.label}: ${JSON.stringify(outcome.verdict)}`;
+  const where = `${attack.label}: ${JSON.stringify(outcome.verdict)}`;
   expect(outcome.violations.length === 0, where).toBe(outcome.verdict.accepted);
   expect(outcome.verdict.accepted && outcome.outputChanged, where).toBe(false);
   const freeInRange =
     outcome.deviations.length > 0 &&
-    outcome.deviations.every(({ call, leaves }) =>
+    outcome.deviations.every(({ call, value, leaves }) =>
       leaves.every(
         (leaf) =>
-          isFreeLeaf(call, leaf) &&
-          witnessLeaves(forgery.value)[leaf] <= MAX_UINT64,
+          isFreeLeaf(call, leaf) && witnessLeaves(value)[leaf] <= MAX_UINT64,
       ),
     );
   expect(outcome.verdict.accepted, where).toBe(freeInRange);
-  if (forgery.attacks !== undefined && outcome.coherent) {
-    expect(outcome.failures, where).toContain(forgery.attacks);
+  expect(outcome.coherent || outcome.outOfType, `${where}: incoherent`).toBe(
+    true,
+  );
+  if (
+    attack.attacks !== undefined &&
+    outcome.coherent &&
+    (attack.attackedWhen?.(outcome) ?? true)
+  ) {
+    expect(outcome.failures, where).toContain(attack.attacks);
   }
   if (tally !== undefined) {
     tally.forgeries++;
     if (outcome.verdict.accepted) tally.acceptedFree++;
     else tally.rejected++;
     if (!outcome.coherent) tally.incoherent++;
+    if (outcome.outOfType) tally.outOfType++;
   }
 }
 
@@ -534,9 +701,22 @@ function callForgeries(run: Replay): CallForgery[] {
   });
 }
 
+/** The single-call and the coordinated forgeries of `run`. */
+export function attacksOf(run: Replay): Attack[] {
+  return [
+    ...callForgeries(run).map(({ call, forgery }) => ({
+      label: forgery.label,
+      plan: (c: WitnessCall) =>
+        c.index === call.index ? forgery.value : undefined,
+      attacks: forgery.attacks,
+    })),
+    ...coordinatedForgeries(run),
+  ];
+}
+
 /**
- * Forges every witness call of one honest run of `circuit` with the leaf and
- * joint forgeries, and asserts that each outcome is sound.
+ * Forges the witness calls of one honest run of `circuit` with the leaf,
+ * joint and coordinated forgeries, and asserts that each outcome is sound.
  */
 export async function expectForgeriesRejected(
   forger: RelationForger,
@@ -548,16 +728,59 @@ export async function expectForgeriesRejected(
     rejected: 0,
     acceptedFree: 0,
     incoherent: 0,
+    outOfType: 0,
   };
   const honest = await forger.replay(circuit, args);
   expect(honest.failures, `honest ${circuit}`).toEqual([]);
+  for (const attack of attacksOf(honest)) {
+    const outcome = await forger.forge(
+      circuit,
+      args,
+      attack.plan,
+      undefined,
+      mustRejectPlan,
+    );
+    expectSound(outcome, attack, tally);
+  }
+  return tally;
+}
+
+/**
+ * The internal splits (see {@link internalSplits}) that a forgery isolates
+ * for one input: the relation rejects the forgery, the evaluator finds
+ * exactly one violated constraint, and the coherent lenient run records only
+ * the conversion failure of that split. Without that one constraint, the
+ * relation accepts the forgery.
+ */
+export async function isolatedSplits(
+  forger: RelationForger,
+  circuit: string,
+  args: readonly unknown[],
+): Promise<{ coordinated: Set<number>; single: Set<number> }> {
+  const honest = await forger.replay(circuit, args);
+  const found = internalSplits(honest);
+  const coordinated = new Set<number>();
+  const single = new Set<number>();
+  if (found === undefined) return { coordinated, single };
+  const isolates = (outcome: ForgeryOutcome, attacks: string) =>
+    !outcome.verdict.accepted &&
+    outcome.coherent &&
+    outcome.violations.length === 1 &&
+    outcome.failures.length === 1 &&
+    outcome.failures[0] === attacks;
+  for (const forgery of coordinatedForgeries(honest)) {
+    const outcome = await forger.forge(circuit, args, forgery.plan);
+    if (isolates(outcome, forgery.attacks)) coordinated.add(forgery.split);
+  }
   for (const { call, forgery } of callForgeries(honest)) {
+    const ordinal = found.splits.indexOf(call);
+    if (ordinal < 0 || forgery.attacks === undefined) continue;
     const outcome = await forger.forge(circuit, args, (c) =>
       c.index === call.index ? forgery.value : undefined,
     );
-    expectSound(outcome, forgery, tally);
+    if (isolates(outcome, forgery.attacks)) single.add(ordinal);
   }
-  return tally;
+  return { coordinated, single };
 }
 
 /**
@@ -585,6 +808,9 @@ export async function expectMustRejectInput(
       outcome.verdict.accepted,
     );
     expect(outcome.verdict.accepted, label).toBe(false);
+    expect(outcome.coherent || outcome.outOfType, `${label}: incoherent`).toBe(
+      true,
+    );
     count++;
   }
   return count;
@@ -671,6 +897,12 @@ export type RelationCase<
   forgeries: A[];
   /** Inputs that the circuit must reject, for example an overflow. */
   rejects?: A[];
+  /**
+   * The internal splits after the outer witness (positions in
+   * {@link INTERNAL_SPLITS}) that a coordinated forgery isolates, and those
+   * that only a single-call forgery isolates, over the `forgeries` inputs.
+   */
+  isolates?: { coordinated: number[]; single?: number[] };
 };
 
 /** Erases the argument type of a case, so that one list holds all cases. */
@@ -690,6 +922,9 @@ export const relationCase = <S, A extends readonly unknown[]>(
  *      must reject (`rejects`), with honest and with forged witness results.
  *   5. Every witness result has its range check, and only the documented
  *      free leaves reach no assertion and no output.
+ *   6. For `isolates`: each listed internal split of the outer witness is the
+ *      only failed check of some forgery ({@link isolatedSplits}), so a
+ *      relation without that check accepts the forgery.
  *
  * The tests run on the dry backend only: they read the dry call trace and
  * use forged witness results.
@@ -736,6 +971,9 @@ export function describeRelation<S>(
             args,
           );
           expect(tally.forgeries).toBeGreaterThan(0);
+          // The field-level fallback runs only for a forged value outside
+          // its declared width.
+          expect(tally.incoherent).toBeLessThanOrEqual(tally.outOfType);
         }
       }, 120_000);
 
@@ -766,6 +1004,27 @@ export function describeRelation<S>(
         }, 120_000);
       }
 
+      const isolates = entry.isolates;
+      if (isolates !== undefined) {
+        test('isolates each internal split check of the outer witness', async () => {
+          const coordinated = new Set<number>();
+          const single = new Set<number>();
+          for (const args of entry.forgeries) {
+            const found = await isolatedSplits(forger, entry.circuit, args);
+            for (const split of found.coordinated) coordinated.add(split);
+            for (const split of found.single) single.add(split);
+          }
+          expect(
+            isolates.coordinated.filter((split) => !coordinated.has(split)),
+            'splits without an isolating coordinated forgery',
+          ).toEqual([]);
+          expect(
+            (isolates.single ?? []).filter((split) => !single.has(split)),
+            'splits without an isolating single-call forgery',
+          ).toEqual([]);
+        }, 120_000);
+      }
+
       test('range-checks every witness result and leaves only the documented leaves free', async () => {
         await expectCoverage(
           forger,
@@ -779,7 +1038,8 @@ export function describeRelation<S>(
 }
 
 /**
- * Runs every forgery of {@link expectForgeriesRejected}, every argument
+ * Runs every forgery of {@link expectForgeriesRejected} (single-call and
+ * coordinated), every argument
  * forgery and every input in `rejects` against `zkir`, and returns the label
  * of the first one that the relation accepts although it is not sound, or
  * `undefined`.
@@ -795,19 +1055,22 @@ export async function findUnsoundForgery(
   rejects: readonly (readonly unknown[])[] = [],
 ): Promise<string | undefined> {
   const honest = await forger.replay(circuit, args);
-  for (const { call, forgery } of callForgeries(honest)) {
+  for (const attack of attacksOf(honest)) {
     const outcome = await forger.forge(
       circuit,
       args,
-      (c) => (c.index === call.index ? forgery.value : undefined),
+      attack.plan,
       zkir,
+      mustRejectPlan,
     );
     if (!outcome.verdict.accepted) continue;
-    const values = witnessLeaves(forgery.value);
-    const free = outcome.deviations.every(({ call: c, leaves }) =>
-      leaves.every((leaf) => isFreeLeaf(c, leaf) && values[leaf] <= MAX_UINT64),
+    const free = outcome.deviations.every(({ call: c, value, leaves }) =>
+      leaves.every(
+        (leaf) =>
+          isFreeLeaf(c, leaf) && witnessLeaves(value)[leaf] <= MAX_UINT64,
+      ),
     );
-    if (outcome.outputChanged || !free) return forgery.label;
+    if (outcome.outputChanged || !free) return attack.label;
   }
   for (const forged of inputForgeries(
     args,

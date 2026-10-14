@@ -32,6 +32,20 @@ const ECHO: ZkirV2 = {
   ],
 };
 
+/** Output = the witness result, bound to the input with `constrain_eq`. */
+const EQUAL: ZkirV2 = {
+  version: { major: 2, minor: 0 },
+  do_communications_commitment: true,
+  num_inputs: 1,
+  instructions: [
+    { op: 'constrain_bits', var: 0, bits: 8 },
+    { op: 'private_input', guard: null },
+    { op: 'constrain_bits', var: 1, bits: 8 },
+    { op: 'constrain_eq', a: 1, b: 0 },
+    { op: 'output', var: 1 },
+  ],
+};
+
 const proofData = (input: number, output: number, witness: number[]) => ({
   input: byte(input),
   output: byte(output),
@@ -51,6 +65,17 @@ describe('checkRelation', () => {
       accepted: false,
       reason: 'Failed direct assertion',
     });
+  });
+
+  it('rejects a failed equality constraint', async () => {
+    expect(await checkRelation(EQUAL, 'equal', proofData(5, 5, [5]))).toEqual({
+      accepted: true,
+    });
+    const verdict = await checkRelation(EQUAL, 'equal', proofData(5, 6, [6]));
+    expect(verdict.accepted).toBe(false);
+    expect(verdict.accepted ? '' : verdict.reason).toContain(
+      'Failed equality constraint',
+    );
   });
 
   it('rejects an output that the circuit does not compute', async () => {

@@ -50,10 +50,17 @@ const divisionBoundary: [bigint, bigint][] = [
   [10n, 5n],
 ];
 // An even divisor allows the wrapped-product forgery, an odd one does not.
+// The coordinated forgeries need a divisor with b.high = 0 (splits ll, hl
+// and offset 1), with b.low = 0 (lh, hh and offset 2) and b.high a power of
+// two (offset 3).
 const divisionForgeries: [bigint, bigint][] = [
   [A, 2n ** 65n + 2n],
   [A, 12345n],
+  [A, 12345n << 64n],
+  [A, 1n << 127n],
 ];
+// The coordinated forgeries isolate every split of _mul(quotient, b).
+const divisionIsolates = { coordinated: [0, 1, 2, 3, 4, 5, 6] };
 
 const asU128 = <T extends readonly bigint[]>(values: T) =>
   values.map((v) => toU128(v)) as { [K in keyof T]: U128Limbs };
@@ -72,6 +79,7 @@ const both = <A extends readonly bigint[]>(entry: {
   random: fc.Arbitrary<A>;
   forgeries: A[];
   rejects?: A[];
+  isolates?: { coordinated: number[]; single?: number[] };
   toResult?: (result: unknown) => unknown;
 }) => {
   const toResult = entry.toResult ?? ((result: unknown) => result);
@@ -90,6 +98,7 @@ const both = <A extends readonly bigint[]>(entry: {
       random: entry.random.map(asU128),
       forgeries: entry.forgeries.map(asU128),
       rejects: entry.rejects?.map(asU128),
+      isolates: entry.isolates,
     }),
   ];
 };
@@ -189,6 +198,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
+      isolates: divisionIsolates,
       toResult: (result) => toU128(result as bigint),
     }),
     ...both<[bigint, bigint]>({
@@ -200,6 +210,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
+      isolates: divisionIsolates,
       toResult: (result) => toU128(result as bigint),
     }),
     ...both<[bigint, bigint]>({
@@ -211,6 +222,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
+      isolates: divisionIsolates,
     }),
     ...both<[bigint, bigint]>({
       circuit: 'isMultiple',
@@ -221,6 +233,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
+      isolates: divisionIsolates,
     }),
     ...both<[bigint]>({
       circuit: 'sqrt',
@@ -237,6 +250,12 @@ describeRelation('MockUint128', {
       ],
       random: fc.tuple(u128),
       forgeries: [[A], [MAX_UINT128]],
+      // hh, offset 2 and offset 3 reach only the high half of the square,
+      // which _sqrt does not check: no forgery with another root passes.
+      isolates: {
+        coordinated: [0, 1, 2, 4, 7, 8, 9, 10, 11, 12],
+        single: [3, 5, 6],
+      },
     }),
   ],
 });

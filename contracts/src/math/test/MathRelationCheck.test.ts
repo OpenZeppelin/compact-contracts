@@ -1,7 +1,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { toFields } from '#test-utils/zkir/fieldRepr.js';
-import { RelationForger } from '#test-utils/zkir/forgery.js';
+import { FIELD_MODULUS, toFields } from '#test-utils/zkir/fieldRepr.js';
+import { RelationForger, type WitnessCall } from '#test-utils/zkir/forgery.js';
 import {
   checkRelation,
   loadZkir,
@@ -16,7 +16,7 @@ import {
   findUnsoundForgery,
   undetectedRemovals,
 } from './utils/forgeries.js';
-import { toU128 } from './utils/oracles.js';
+import { toU128, type U128Limbs } from './utils/oracles.js';
 import { PackWitnesses } from './witnesses/PackWitnesses.js';
 import { Uint64Witnesses } from './witnesses/Uint64Witnesses.js';
 import { Uint128Witnesses } from './witnesses/Uint128Witnesses.js';
@@ -32,6 +32,10 @@ import { Uint128Witnesses } from './witnesses/Uint128Witnesses.js';
  *     the honest output does not detect (MM-03, AM9).
  *   - For a set of circuits, each removed constraint is either detected by
  *     the forgeries or listed with the reason why no forgery can detect it.
+ *   - A removed split check inside `_div` needs a coordinated forgery (the
+ *     quotient and one split together).
+ *   - The lenient replay falls back to a field-level preimage only for a
+ *     forged value outside its declared type; every other error propagates.
  */
 
 const json = (value: unknown) =>
@@ -195,6 +199,133 @@ describe.skipIf(isLiveBackend())(
         ]),
       ).toBeUndefined();
     }, 120_000);
+
+    describe('a removed split check inside _div (A2)', () => {
+      test('only a coordinated forgery detects it', async () => {
+        const forger = await RelationForger.create(
+          'MockUint128',
+          Uint128Witnesses(),
+        );
+        const zkir = loadZkir('MockUint128', 'divU128');
+        const index = zkir.instructions.findIndex(
+          (ins, i) =>
+            ins.op === 'assert' &&
+            zkir.instructions
+              .slice(0, i)
+              .filter((other) => other.op === 'assert').length === 2,
+        );
+        const mutant = structuredClone(zkir);
+        mutant.instructions.splice(index, 1);
+        // b.high = 0: q + 1 changes only the split ll = quotient.low * b.low.
+        const args = [toU128(2n ** 127n + 0x1234567890abcdefn), toU128(12345n)];
+        expect(await findUnsoundForgery(forger, 'divU128', args, mutant)).toBe(
+          'wit_divU128: q + 1, split ll as in the honest run',
+        );
+        expect(
+          await findUnsoundForgery(forger, 'divU128', args, zkir),
+        ).toBeUndefined();
+      }, 120_000);
+    });
+
+    describe('the field-level fallback of the lenient replay (A2)', () => {
+      const split = (value: bigint) => ({
+        quotient: toU128(value >> 64n),
+        remainder: toU128(value & (2n ** 64n - 1n)),
+      });
+      const wrongQuotient = (call: WitnessCall) =>
+        call.name === 'wit_divU128'
+          ? { quotient: toU128(4n), remainder: toU128(1n) }
+          : undefined;
+      /** Uint128 witnesses whose split witness answers `12` with `answer`. */
+      const witnessesWith = (answer: () => unknown) => {
+        const honest = Uint128Witnesses();
+        return {
+          ...honest,
+          wit_divUint128: (
+            context: Parameters<typeof honest.wit_divUint128>[0],
+            a: bigint,
+            b: bigint,
+          ) =>
+            a === 12n
+              ? [context.privateState, answer()]
+              : honest.wit_divUint128(context, a, b),
+        };
+      };
+
+      test('an unexpected error of a later witness call propagates', async () => {
+        const forger = await RelationForger.create(
+          'MockUint128',
+          witnessesWith(() => {
+            throw new Error('injected replay error');
+          }),
+        );
+        await expect(
+          forger.forge('div', [10n, 3n], wrongQuotient),
+        ).rejects.toThrow('injected replay error');
+      });
+
+      test('an encoding error with every forged value in range propagates', async () => {
+        // The later split of 12 returns a limb above the field modulus, which
+        // the runtime cannot encode. The forged quotient 4 is in range, so
+        // the replay does not fall back.
+        const forger = await RelationForger.create(
+          'MockUint128',
+          witnessesWith(() => ({
+            quotient: { low: FIELD_MODULUS + 12n, high: 0n },
+            remainder: toU128(0n),
+          })),
+        );
+        await expect(
+          forger.forge('div', [10n, 3n], wrongQuotient),
+        ).rejects.toThrow('out of bounds for prime field');
+      });
+
+      test('a forged value outside its type falls back and fails its range check', async () => {
+        const forger = await RelationForger.create(
+          'MockUint128',
+          Uint128Witnesses(),
+        );
+        const args: U128Limbs[] = [toU128(2n ** 127n + 0x1234567890abcdefn)];
+        const honest = await forger.replay('sqrtU128', args);
+        const root = honest.calls[0].result as bigint;
+        const outcome = await forger.forge('sqrtU128', args, (call) =>
+          call.index === 0 ? FIELD_MODULUS - root : undefined,
+        );
+        expect(outcome.coherent).toBe(false);
+        expect(outcome.outOfType).toBe(true);
+        expect(outcome.verdict.accepted).toBe(false);
+        expect(outcome.verdict.accepted ? '' : outcome.verdict.reason).toMatch(
+          /^Bit bound failed: [0-9a-f]+ is not 64-bit$/,
+        );
+      });
+
+      test('a later call without an honest result gets the fill result and stays coherent', async () => {
+        // A split of b forged to 0 makes the honest division witness throw
+        // (zero divisor). The fill plan answers it, so the run continues.
+        const forger = await RelationForger.create(
+          'MockUint128',
+          Uint128Witnesses(),
+        );
+        const plan = (call: WitnessCall) =>
+          call.index === 1 ? split(0n) : undefined;
+        await expect(forger.forge('div', [10n, 3n], plan)).rejects.toThrow(
+          'witness call 2 (wit_divU128) has no result',
+        );
+        const outcome = await forger.forge(
+          'div',
+          [10n, 3n],
+          plan,
+          undefined,
+          (call) =>
+            call.name === 'wit_divU128'
+              ? { quotient: toU128(0n), remainder: toU128(10n) }
+              : undefined,
+        );
+        expect(outcome.coherent).toBe(true);
+        expect(outcome.verdict.accepted).toBe(false);
+        expect(outcome.failures).toContain('Uint128: conversion invalid');
+      });
+    });
 
     // Each removed constraint is detected by a forgery, except the listed
     // constraints, which other constraints imply for the zkir-v2 relation

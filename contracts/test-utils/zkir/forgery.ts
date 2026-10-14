@@ -9,7 +9,13 @@ import {
   createConstructorContext,
   dummyContractAddress,
 } from '@midnight-ntwrk/compact-runtime';
-import { fieldAtoms, modField, toFields } from './fieldRepr.js';
+import {
+  FIELD_MODULUS,
+  fieldAtoms,
+  fieldWidths,
+  modField,
+  toFields,
+} from './fieldRepr.js';
 import {
   checkRelation,
   loadZkir,
@@ -40,11 +46,42 @@ import {
  *      for the inputs and the forged private transcript.
  *   3. The `zkir-v2` relation check runs on the preimage with these outputs.
  *
- * If the lenient run throws (for example a value at or above the field
- * modulus reaches a runtime conversion), the forgery falls back to the honest
- * transcript with only the forged results changed, and reports
- * `coherent: false`.
+ * A later witness call whose honest witness has no result for its changed
+ * arguments (for example a zero divisor) gets its result from a fill plan.
+ *
+ * The runtime cannot encode a value at or above the field modulus. If a
+ * forged result has a value outside its declared width and the lenient run
+ * stops with such an encoding error ({@link REPRESENTATION_ERRORS}), the
+ * forgery falls back to the honest transcript with only the forged results
+ * changed, and reports `coherent: false`. Every other error of the lenient
+ * run propagates.
  */
+
+/**
+ * Messages of the runtime errors for a value that the runtime cannot encode
+ * (a value at or above the field modulus). Only these errors allow the
+ * field-level fallback, and only for a forged value outside its declared
+ * width.
+ */
+export const REPRESENTATION_ERRORS: readonly RegExp[] = [
+  /^out of bounds for prime field$/,
+];
+
+/**
+ * A witness call that the honest witness cannot answer for its arguments
+ * and that no plan answers.
+ */
+export class UnansweredWitnessCall extends Error {
+  constructor(
+    readonly call: WitnessCall,
+    readonly reason: unknown,
+  ) {
+    super(
+      `witness call ${call.index} (${call.name}) has no result: ${reason instanceof Error ? reason.message : String(reason)}`,
+    );
+    this.name = 'UnansweredWitnessCall';
+  }
+}
 
 /** One witness call of a circuit run. */
 export type WitnessCall = {
@@ -82,6 +119,8 @@ export type Replay = {
 export type Deviation = {
   /** The witness call. */
   call: WitnessCall;
+  /** The forged result. */
+  value: unknown;
   /** The positions of the leaf values that differ from `call.result`. */
   leaves: number[];
 };
@@ -100,9 +139,36 @@ export type ForgeryOutcome = {
   failures: string[];
   /** Whether every later witness call got its honest result (see above). */
   coherent: boolean;
+  /** Whether a forged result has a value outside its declared width. */
+  outOfType: boolean;
   /** The honest run with the same inputs. */
   honest: Replay;
 };
+
+/** Whether `value` has a leaf outside the width of its transcript entry. */
+function outsideType(run: Replay, call: WitnessCall, value: unknown): boolean {
+  const entry = run.proofData.privateTranscriptOutputs[call.index];
+  if (entry === undefined) {
+    throw new Error(`no transcript entry for witness call ${call.index}`);
+  }
+  const widths = fieldWidths(entry.alignment);
+  return witnessLeaves(value).some((leaf, i) => {
+    const width = widths[i];
+    return (
+      leaf < 0n ||
+      leaf >= FIELD_MODULUS ||
+      (width !== undefined && leaf >= 1n << BigInt(width))
+    );
+  });
+}
+
+/** Whether `error` is a runtime encoding error (see {@link REPRESENTATION_ERRORS}). */
+function representationError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    REPRESENTATION_ERRORS.some((pattern) => pattern.test(error.message))
+  );
+}
 
 /** Returns the leaf values of a witness result, in declaration order. */
 export function witnessLeaves(value: unknown): bigint[] {
@@ -307,6 +373,9 @@ export class RelationForger {
    * Runs `circuit` on the lenient contract. `plan` can replace witness
    * results. Without a plan, the run is honest. If the honest witness
    * throws (for example on a zero divisor), the plan must give the result.
+   *
+   * @throws {@link UnansweredWitnessCall} for a call that the honest witness
+   * and the plan do not answer.
    */
   async replay(
     circuit: string,
@@ -338,7 +407,7 @@ export class RelationForger {
             return [privateState, forged];
           }
           if (thrown !== undefined) {
-            throw thrown;
+            throw new UnansweredWitnessCall(call, thrown);
           }
           return [privateState, result];
         },
@@ -395,8 +464,8 @@ export class RelationForger {
       /** The circuit to check. The default is the compiled circuit. */
       zkir?: ZkirV2;
       /**
-       * Gives the result of a call whose honest witness throws, for the
-       * field-level fallback. The default is `plan`.
+       * Gives the result of a call whose honest witness throws. The default
+       * is `plan`.
        */
       fill?: ForgeryPlan;
     } = {},
@@ -405,25 +474,36 @@ export class RelationForger {
     violations: Violation[];
     failures: string[];
     coherent: boolean;
+    outOfType: boolean;
   }> {
     const { plan, zkir = loadZkir(this.artifact, circuit) } = options;
     const fill = options.fill ?? plan;
+    const answer: ForgeryPlan = (call) =>
+      plan?.(call) ?? (call.result === undefined ? fill?.(call) : undefined);
     let run: Replay;
     let entries: bigint[][];
     let coherent = true;
+    let outOfType = false;
     try {
-      run = await this.replay(circuit, args, plan);
+      run = await this.replay(circuit, args, answer);
       entries = run.proofData.privateTranscriptOutputs.map(toFields);
     } catch (error) {
-      if (plan === undefined) {
+      if (plan === undefined || !representationError(error)) {
         throw error;
       }
       // Field-level fallback, as in `forge`: `fill` gives the calls whose
       // honest witness throws, then the plan results replace the others.
-      coherent = false;
       const base = await this.replay(circuit, args, (call) =>
         call.result === undefined ? fill?.(call) : undefined,
       );
+      outOfType = base.calls.some((call) => {
+        const forged = plan(call);
+        return forged !== undefined && outsideType(base, call, forged);
+      });
+      if (!outOfType) {
+        throw error;
+      }
+      coherent = false;
       const baseEntries = base.proofData.privateTranscriptOutputs.map(toFields);
       entries = base.calls.map((call, index) => {
         const forged = plan(call);
@@ -447,6 +527,7 @@ export class RelationForger {
       violations: evaluation.violations,
       failures: run.failures,
       coherent,
+      outOfType,
     };
   }
 
@@ -503,12 +584,17 @@ export class RelationForger {
    * @param zkir - The circuit to check. The default is the compiled circuit.
    * A test can pass a changed copy to show that the forgery detects a
    * missing constraint.
+   * @param fill - Gives the result of a later call whose honest witness has
+   * no result for its changed arguments. Its results are not deviations.
+   * @throws Every error of the lenient run, except a runtime encoding error
+   * for a forged value outside its declared width (field-level fallback).
    */
   async forge(
     circuit: string,
     args: readonly unknown[],
     plan: ForgeryPlan,
     zkir: ZkirV2 = loadZkir(this.artifact, circuit),
+    fill?: ForgeryPlan,
   ): Promise<ForgeryOutcome> {
     const honest = await this.honestReplay(circuit, args);
     const honestEntries =
@@ -540,7 +626,7 @@ export class RelationForger {
         modField(value) === modField(before[i]) ? [] : [i],
       );
       if (leaves.length > 0) {
-        deviations.push({ call, leaves });
+        deviations.push({ call, value: forged, leaves });
       }
     };
 
@@ -553,14 +639,23 @@ export class RelationForger {
         const result = plan(call);
         if (result !== undefined) {
           recordDeviation(call, result);
+          return result;
         }
-        return result;
+        return call.result === undefined ? fill?.(call) : undefined;
       });
       entries = forged.proofData.privateTranscriptOutputs.map(toFields);
       publicTranscript = forged.proofData.publicTranscript;
       failures = forged.failures;
-    } catch {
-      // Field-level fallback: change only the forged results.
+    } catch (error) {
+      // Field-level fallback: change only the forged results. Only for a
+      // runtime encoding error and a forged value outside its type.
+      const outside = honest.calls.some((call) => {
+        const result = plan(call);
+        return result !== undefined && outsideType(honest, call, result);
+      });
+      if (!representationError(error) || !outside) {
+        throw error;
+      }
       coherent = false;
       deviations.length = 0;
       failures = [];
@@ -594,6 +689,9 @@ export class RelationForger {
       violations: evaluation.violations,
       failures,
       coherent,
+      outOfType: deviations.some(({ call, value }) =>
+        outsideType(honest, call, value),
+      ),
       honest,
     };
   }

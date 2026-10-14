@@ -112,6 +112,7 @@ export type RelationVerdict =
 export const RELATION_FAILURES: readonly string[] = [
   'Failed direct assertion',
   'Bit bound failed',
+  'Failed equality constraint',
   'Communications commitment mismatch',
 ];
 
