@@ -770,7 +770,7 @@ module Uint128 {
    * @throws {Error} "Uint128: division by zero" If b is zero.
    * @throws {Error} "Uint128: remainder error" If remainder is not less than b.
    * @throws {Error} "Uint128: division product overflow" If q*b doesn't fit in 128 bits (indicates bad witness).
-   * @throws {Error} "Uint128: division invalid" If q*b + r ≠ a.
+   * @throws {Error} "Uint128: division invalid" If q*b > a or q*b + r ≠ a.
    *
    * @returns {DivResultU128} A struct containing the quotient and remainder as U128 values.
    */
@@ -820,6 +820,7 @@ module Uint128 {
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
    * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
    * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {Uint<128>} The quotient of the division.
@@ -847,6 +848,7 @@ module Uint128 {
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
    * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
    * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {U128} The quotient of the division.
@@ -871,6 +873,7 @@ module Uint128 {
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
    * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
    * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {Uint<128>} The remainder of the division.
@@ -898,6 +901,7 @@ module Uint128 {
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
    * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
    * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {U128} The remainder of the division.
@@ -922,6 +926,7 @@ module Uint128 {
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
    * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
    * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {DivResultU128} A struct containing the quotient and remainder.
@@ -948,6 +953,7 @@ module Uint128 {
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
    * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
    * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {DivResultU128} A struct containing the quotient and remainder.
@@ -1160,6 +1166,11 @@ module Uint128 {
    * @param {U128} a - The U128 value to check.
    * @param {U128} b - The U128 value to test against.
    *
+   * @throws {Error} "Uint128: division by zero" if b is zero.
+   * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
+   * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
+   *
    * @returns {Boolean} True if a is a multiple of b, false otherwise.
    */
   circuit _isMultiple(a: U128, b: U128): Boolean {
@@ -1182,6 +1193,9 @@ module Uint128 {
    * @param {Uint<128>} b - The Uint<128> b to test against.
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
+   * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
+   * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {Boolean} True if value is a multiple of b, false otherwise.
    */
@@ -1206,6 +1220,9 @@ module Uint128 {
    * @param {U128} b - The U128 b to test against.
    *
    * @throws {Error} "Uint128: division by zero" if b is zero.
+   * @throws {Error} "Uint128: remainder error" if remainder is not less than b.
+   * @throws {Error} "Uint128: division product overflow" if quotient * b does not fit in 128 bits.
+   * @throws {Error} "Uint128: division invalid" if quotient * b + remainder does not equal a.
    *
    * @returns {Boolean} True if value is a multiple of b, false otherwise.
    */
