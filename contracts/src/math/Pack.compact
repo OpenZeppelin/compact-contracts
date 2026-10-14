@@ -4,12 +4,11 @@
 pragma language_version >= 0.26.0;
 
 /**
- * @title Pack module
+ * @module Pack
  * @description Generic module for packing and unpacking between Vector<N, Uint<8>> and Bytes<N>
  * for any byte length N. Uses little-endian byte ordering (element 0 is the LSB).
  *
- * @remarks
- * This module has no dependencies and exists so that BytesN and UintN modules can import
+ * @dev This module has no dependencies and exists so that BytesN and UintN modules can import
  * pack/unpack without creating cyclic dependencies (e.g. Bytes32 needs Uint256_lt for
  * comparisons while Uint256 needs pack for toBytes).
  *
@@ -21,50 +20,49 @@ pragma language_version >= 0.26.0;
  */
 module Pack<#N> {
   /**
-   * @title wit_unpackBytes witness
    * @description Unpacks Bytes<N> into Vector<N, Uint<8>> off-chain. Implementation is supplied
    * in TypeScript; the unpack circuit verifies the result by re-packing and asserting equality.
    *
-   * @param bytes - The byte array to unpack.
-   * @returns A vector of N bytes where element 0 is the LSB.
+   * @param {Bytes<N>} bytes - The byte array to unpack.
+   * @returns {Vector<N, Uint<8>>} A vector of N bytes where element 0 is the LSB.
    */
   witness wit_unpackBytes(bytes: Bytes<N>): Vector<N, Uint<8>>;
 
   /**
-   * @title pack circuit
    * @description Packs a Vector<N, Uint<8>> into Bytes<N>.
    *
-   * @remarks
-   * This pure circuit converts an N-element vector of bytes to an N-byte array
+   * @dev This pure circuit converts an N-element vector of bytes to an N-byte array
    * using little-endian byte ordering.
    *
-   * @circuitInfo depends on N:
-   * - Pack<8>: k=12, rows=2412
-   * - Pack<16>: k=13, rows=5118
-   * - Pack<32>: k=14, rows=10231
+   * @constraints depends on N:
+   * - Pack<8>: k=12, rows=2410 (zkir-v2), k=9, rows=220 (zkir-v3)
+   * - Pack<16>: k=13, rows=5116 (zkir-v2), k=9, rows=420 (zkir-v3)
+   * - Pack<32>: k=14, rows=10229 (zkir-v2), k=10, rows=800 (zkir-v3)
    *
-   * @param vec - The vector of N bytes to convert.
-   * @returns The byte array of length N.
+   * @param {Vector<N, Uint<8>>} vec - The vector of N bytes to convert.
+   * @returns {Bytes<N>} The byte array of length N.
    */
   export pure circuit pack(vec: Vector<N, Uint<8>>): Bytes<N> {
     return Bytes[...vec];
   }
 
   /**
-   * @title unpack circuit
    * @description Unpacks Bytes<N> into a Vector<N, Uint<8>>.
    *
-   * @remarks
-   * Calls the wit_unpackBytes witness off-chain, then verifies in-circuit that
+   * @dev Calls the wit_unpackBytes witness off-chain, then verifies in-circuit that
    * pack(vec) equals the input bytes.
    *
-   * @circuitInfo depends on N:
-   * - Pack<8>: k=12, rows=2486
-   * - Pack<16>: k=13, rows=5262
-   * - Pack<32>: k=14, rows=10521
+   * @constraints depends on N:
+   * - Pack<8>: k=12, rows=2484 (zkir-v2), k=9, rows=240 (zkir-v3)
+   * - Pack<16>: k=13, rows=5260 (zkir-v2), k=9, rows=456 (zkir-v3)
+   * - Pack<32>: k=14, rows=10519 (zkir-v2), k=10, rows=872 (zkir-v3)
    *
-   * @param bytes - The byte array to unpack.
-   * @returns The vector of N bytes (element 0 is the LSB).
+   * Requirements:
+   *
+   * - The witness result must pack to `bytes`. Fails with "Pack: unpack verification failed".
+   *
+   * @param {Bytes<N>} bytes - The byte array to unpack.
+   * @returns {Vector<N, Uint<8>>} The vector of N bytes (element 0 is the LSB).
    */
   export circuit unpack(bytes: Bytes<N>): Vector<N, Uint<8>> {
     const vec = wit_unpackBytes(bytes);

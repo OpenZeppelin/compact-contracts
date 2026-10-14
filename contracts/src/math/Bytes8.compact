@@ -4,12 +4,11 @@
 pragma language_version >= 0.26.0;
 
 /**
- * @title Bytes8 module
+ * @module Bytes8
  * @description Canonical implementation for converting 8 bytes (as Vector or Bytes) to Uint<64>
  * using little-endian (LE) byte ordering.
  *
- * @remarks
- * Byte ordering convention (little-endian):
+ * @dev Byte ordering convention (little-endian):
  * - Element 0 is the least significant byte, element 7 is the most significant.
  * - Works with Vector<8, Uint<8>> (e.g. from Uint64.toUnpackedBytes, or slices of Bytes32).
  *
@@ -40,54 +39,52 @@ module Bytes8 {
   ////////////////////////////////////////////////////////////////
 
   /**
-   * @title pack circuit
    * @description Packs a Vector<8, Uint<8>> into a Bytes<8>.
    *
-   * @remarks
-   * This circuit converts an 8-element vector of bytes to an 8-byte array
+   * @dev This circuit converts an 8-element vector of bytes to an 8-byte array
    * using little-endian byte ordering.
    *
-   * @circuitInfo k=12, rows=2412
+   * @constraints k=12, rows=2410 (zkir-v2)
+   * @constraints k=9, rows=220 (zkir-v3)
    *
    * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
-   *
-   * @returns {Bytes<8>} - The 8-byte array.
+   * @returns {Bytes<8>} The 8-byte array.
    */
   export circuit pack(vec: Vector<8, Uint<8>>): Bytes<8> {
     return Pack8_pack(vec);
   }
 
   /**
-   * @title unpack circuit
    * @description Unpacks a Bytes<8> into a Vector<8, Uint<8>>.
    *
-   * @remarks
-   * This circuit converts an 8-byte array to an 8-element vector of bytes
+   * @dev This circuit converts an 8-byte array to an 8-element vector of bytes
    * using little-endian byte ordering.
    *
-   * @circuitInfo k=12, rows=2486
+   * @constraints k=12, rows=2484 (zkir-v2)
+   * @constraints k=9, rows=240 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to `bytes`. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<8>} bytes - The 8-byte array to convert.
-   *
-   * @returns {Vector<8, Uint<8>>} - The 8-element vector of bytes.
+   * @returns {Vector<8, Uint<8>>} The 8-element vector of bytes.
    */
   export circuit unpack(bytes: Bytes<8>): Vector<8, Uint<8>> {
     return Pack8_unpack(bytes);
   }
 
   /**
-   * @title _toUint64 internal circuit
    * @description Converts a Vector<8, Uint<8>> to a Uint<64> using pure arithmetic.
    *
-   * @remarks
-   * This circuit converts an 8-element vector of bytes to a 64-bit unsigned integer
+   * @dev This internal circuit converts an 8-element vector of bytes to a 64-bit unsigned integer
    * using little-endian byte ordering (element 0 is the LSB, element 7 is the MSB).
    *
-   * @circuitInfo k=8, rows=193
+   * @constraints k=8, rows=191 (zkir-v2)
+   * @constraints k=8, rows=157 (zkir-v3)
    *
    * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
-   *
-   * @returns {Uint<64>} - The 64-bit unsigned integer.
+   * @returns {Uint<64>} The 64-bit unsigned integer.
    */
   pure circuit _toUint64(vec: Vector<8, Uint<8>>): Uint<64> {
     return vec[0] +
@@ -101,37 +98,37 @@ module Bytes8 {
   }
 
   /**
-   * @title toUint64 circuit (from Vector)
    * @description Converts a Vector<8, Uint<8>> to a Uint<64> using pure arithmetic.
    *
-   * @remarks
-   * This circuit converts an 8-element vector of bytes to a 64-bit unsigned integer
+   * @dev This circuit converts an 8-element vector of bytes to a 64-bit unsigned integer
    * using little-endian byte ordering (element 0 is the LSB, element 7 is the MSB).
    *
-   * @circuitInfo k=8, rows=193
+   * @constraints k=8, rows=191 (zkir-v2)
+   * @constraints k=8, rows=157 (zkir-v3)
    *
    * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
-   *
-   * @returns {Uint<64>} - The 64-bit unsigned integer.
+   * @returns {Uint<64>} The 64-bit unsigned integer.
    */
   export pure circuit toUint64(vec: Vector<8, Uint<8>>): Uint<64> {
     return _toUint64(vec);
   }
 
   /**
-   * @title toUint64 circuit (from Bytes)
    * @description Converts a Bytes<8> to a Uint<64>.
    *
-   * @remarks
-   * This circuit converts an 8-byte array to a 64-bit unsigned integer.
+   * @dev This circuit converts an 8-byte array to a 64-bit unsigned integer.
    * The conversion is done by first unpacking to a vector via `unpack`,
    * then converting to Uint<64>.
    *
-   * @circuitInfo k=12, rows=2433
+   * @constraints k=12, rows=2431 (zkir-v2)
+   * @constraints k=9, rows=187 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to `bytes`. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<8>} bytes - The 8-byte array to convert.
-   *
-   * @returns {Uint<64>} - The 64-bit unsigned integer.
+   * @returns {Uint<64>} The 64-bit unsigned integer.
    */
   export circuit toUint64(bytes: Bytes<8>): Uint<64> {
     return _toUint64(unpack(bytes));
