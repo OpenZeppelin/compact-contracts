@@ -183,15 +183,15 @@ Both `Uint128.addChecked` overloads use native addition and call no witness, so 
 | `Uint128.mul(a: U128, b: U128): U256` | `wit_divUint128` | yes |
 | `Uint128.mulChecked(a: Uint<128>, b: Uint<128>): Uint<128>` | `wit_divUint128` | yes |
 | `Uint128.mulChecked(a: U128, b: U128): Uint<128>` | `wit_divUint128` | yes |
-| `Uint128.div(a: Uint<128>, b: Uint<128>): Uint<128>` | `wit_divU128`, `wit_divUint128` | yes |
+| `Uint128.div(a: Uint<128>, b: Uint<128>): Uint<128>` | `wit_divUint128` | yes |
 | `Uint128.div(a: U128, b: U128): U128` | `wit_divU128`, `wit_divUint128` | yes |
-| `Uint128.rem(a: Uint<128>, b: Uint<128>): Uint<128>` | `wit_divU128`, `wit_divUint128` | yes |
+| `Uint128.rem(a: Uint<128>, b: Uint<128>): Uint<128>` | `wit_divUint128` | yes |
 | `Uint128.rem(a: U128, b: U128): U128` | `wit_divU128`, `wit_divUint128` | yes |
-| `Uint128.divRem(a: Uint<128>, b: Uint<128>): DivResultU128` | `wit_divU128`, `wit_divUint128` | yes |
+| `Uint128.divRem(a: Uint<128>, b: Uint<128>): DivResultU128` | `wit_divUint128` | yes |
 | `Uint128.divRem(a: U128, b: U128): DivResultU128` | `wit_divU128`, `wit_divUint128` | yes |
 | `Uint128.sqrt(radicand: Uint<128>): Uint<64>` | `wit_divUint128`, `wit_sqrtU128` | yes |
 | `Uint128.sqrt(radicand: U128): Uint<64>` | `wit_divUint128`, `wit_sqrtU128` | yes |
-| `Uint128.isMultiple(a: Uint<128>, b: Uint<128>): Boolean` | `wit_divU128`, `wit_divUint128` | yes |
+| `Uint128.isMultiple(a: Uint<128>, b: Uint<128>): Boolean` | `wit_divUint128` | yes |
 | `Uint128.isMultiple(a: U128, b: U128): Boolean` | `wit_divU128`, `wit_divUint128` | yes |
 | `Uint256.toBytes(value: U256): Bytes<32>` | `wit_uint64ToUnpackedBytes` | yes |
 | `Uint256.toUnpackedBytes(value: U256): Vector<32, Uint<8>>` | `wit_uint64ToUnpackedBytes` | yes |
@@ -308,8 +308,8 @@ Mock names with a `U128` suffix select the struct overload.
 | Uint128.addChecked | 9 | 491 | 9 | 174 |
 | Uint128.addCheckedU128 | 10 | 767 | 9 | 266 |
 | Uint128.addU128 | 10 | 899 | 9 | 334 |
-| Uint128.div | 12 | 3356 | 11 | 1017 |
-| Uint128.divRem | 12 | 3269 | 11 | 1026 |
+| Uint128.div | 10 | 845 | 9 | 287 |
+| Uint128.divRem | 10 | 886 | 9 | 328 |
 | Uint128.divRemU128 | 12 | 2761 | 10 | 908 |
 | Uint128.divU128 | 12 | 2739 | 10 | 886 |
 | Uint128.eq | 9 | 304 | 7 | 121 |
@@ -318,7 +318,7 @@ Mock names with a `U128` suffix select the struct overload.
 | Uint128.gtU128 | 9 | 390 | 9 | 169 |
 | Uint128.gte | 9 | 358 | 9 | 137 |
 | Uint128.gteU128 | 9 | 393 | 9 | 171 |
-| Uint128.isMultiple | 12 | 3233 | 10 | 992 |
+| Uint128.isMultiple | 10 | 850 | 9 | 290 |
 | Uint128.isMultipleU128 | 12 | 2725 | 10 | 870 |
 | Uint128.isZero | 8 | 175 | 7 | 87 |
 | Uint128.isZeroU128 | 8 | 181 | 7 | 92 |
@@ -334,7 +334,7 @@ Mock names with a `U128` suffix select the struct overload.
 | Uint128.mulChecked | 12 | 2838 | 10 | 829 |
 | Uint128.mulCheckedU128 | 12 | 2330 | 10 | 707 |
 | Uint128.mulU128 | 12 | 2235 | 10 | 710 |
-| Uint128.rem | 12 | 3356 | 11 | 1017 |
+| Uint128.rem | 10 | 843 | 9 | 285 |
 | Uint128.remU128 | 12 | 2739 | 10 | 886 |
 | Uint128.sqrt | 13 | 4125 | 11 | 1206 |
 | Uint128.sqrtU128 | 12 | 3861 | 11 | 1135 |

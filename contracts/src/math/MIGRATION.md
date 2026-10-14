@@ -3,7 +3,7 @@
 Move math imports from `midnight-apps/contracts/src/math` to the `@openzeppelin/compact-contracts/math` package directory.
 All 94 exported circuit declarations, four structs, and seven witness declarations remain available.
 Overloads keep their input and result types. The `U128` and `U256` structs remain public.
-The fixes and the native-addition notes below list every behavior change.
+The fixes and the native-arithmetic notes below list every behavior change.
 
 ## Source and target paths
 
@@ -186,6 +186,15 @@ An empty generated witness type is `{}`. That type permits extra keys.
 After a witness-set reduction, remove unused keys from the object even when TypeScript accepts them.
 Destructure the required functions and use `satisfies Witnesses<PrivateState>`, as in the consumer example.
 Do not change the witness names that remain reachable.
+
+### Native division
+
+The `Uint<128>` forms of `div`, `rem`, `divRem` and `isMultiple` call `wit_divUint128(a, b)` once and check its result with native arithmetic.
+For every honest input, the result and the failure message do not change.
+The forms no longer call `wit_divU128` and split nothing, so a wrong split cannot make them fail with `Uint128: conversion invalid`.
+For a forged quotient and remainder, the first failing message is the message of the `U128` form.
+A consumer that uses only these forms has the generated `Witnesses` type `{ wit_divUint128 }`; remove `wit_divU128` from a directly typed object literal.
+The results stay witness-tainted.
 
 ## Deprecated circuits
 
