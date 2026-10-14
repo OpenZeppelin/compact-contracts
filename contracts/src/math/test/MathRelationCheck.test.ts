@@ -14,6 +14,7 @@ import { Uint128Simulator } from './simulators/Uint128Simulator.js';
 import {
   describeConstraint,
   findUnsoundForgery,
+  productForgeries,
   undetectedRemovals,
 } from './utils/forgeries.js';
 import { toU128, type U128Limbs } from './utils/oracles.js';
@@ -334,16 +335,21 @@ describe.skipIf(isLiveBackend())(
 
     // Each removed constraint is detected by a forgery, except the listed
     // constraints, which other constraints imply for the zkir-v2 relation
-    // check. The full list for every witness circuit is in the PR 5 evidence
-    // (mutation sweep). MathRelationCounterexamples.test.ts covers the
-    // listed constraints that the circuit needs.
+    // check. A removal counts as detected when a forgery of any input (args
+    // and moreArgs) detects it. The full list for every witness circuit is in
+    // the PR 5 evidence (mutation sweep). MathRelationCounterexamples.test.ts
+    // covers the listed constraints that the circuit needs.
     describe('constraint removal', () => {
       const cases: {
         artifact: string;
         witnesses: () => object;
         circuit: string;
         args: unknown[];
+        moreArgs?: unknown[][];
         rejects?: unknown[][];
+        argumentForgeries?: (
+          args: readonly unknown[],
+        ) => { label: string; args: unknown[] }[];
         implied: Record<string, string>;
       }[] = [
         {
@@ -434,6 +440,34 @@ describe.skipIf(isLiveBackend())(
               'the split of the radicand is only the argument of wit_sqrtU128; the root checks use the radicand itself',
           },
         },
+        {
+          artifact: 'MockUint128',
+          witnesses: Uint128Witnesses,
+          circuit: 'mulChecked',
+          // The first input has a high limb of 0 and b = 3 * 2^64: a split
+          // with that limb out of range gives the same product. The second
+          // has a high limb of 1: a split with the low limb out of range gives
+          // the same product.
+          args: [2n ** 40n + 5n, 3n * 2n ** 64n],
+          moreArgs: [[2n ** 64n + 5n, 3n]],
+          rejects: [
+            [2n ** 64n, 2n ** 64n],
+            [2n ** 64n - 1n, 2n ** 64n + 2n],
+          ],
+          argumentForgeries: productForgeries,
+          implied: {
+            'range of input 0':
+              'the split of a recomposes it from two range-checked limbs',
+            'assert 1':
+              'a_h * b <= 2^64 - 1: the cast of a_h * b to Uint<64> gives the same bound',
+            'constrain_bits on variable 15':
+              'the cast of a_h * b to Uint<64>: the assert a_h * b <= 2^64 - 1 gives the same bound',
+            'assert 2':
+              'a * b <= 2^128 - 1: the cast of the product to Uint<128> gives the same bound; the assert gives the module message',
+            'constrain_bits on variable 22':
+              'the cast of the product to Uint<128>: the assert a * b <= 2^128 - 1 gives the same bound',
+          },
+        },
         ...['divRem', 'isMultiple'].map((circuit) => ({
           artifact: 'MockUint128',
           witnesses: Uint128Witnesses,
@@ -455,16 +489,37 @@ describe.skipIf(isLiveBackend())(
 
       test.each(cases)(
         '$artifact $circuit: only implied constraints are undetected',
-        async ({ artifact, witnesses, circuit, args, rejects, implied }) => {
+        async ({
+          artifact,
+          witnesses,
+          circuit,
+          args,
+          moreArgs,
+          rejects,
+          argumentForgeries,
+          implied,
+        }) => {
           const forger = await RelationForger.create(artifact, witnesses());
           const zkir = loadZkir(artifact, circuit);
-          const undetected = await undetectedRemovals(
+          let undetected = await undetectedRemovals(
             forger,
             circuit,
             args,
             zkir,
             rejects,
+            argumentForgeries,
           );
+          for (const more of moreArgs ?? []) {
+            const also = await undetectedRemovals(
+              forger,
+              circuit,
+              more,
+              zkir,
+              [],
+              argumentForgeries,
+            );
+            undetected = undetected.filter((index) => also.includes(index));
+          }
           expect(
             undetected.map((index) => describeConstraint(zkir, index)).sort(),
           ).toEqual(Object.keys(implied).sort());

@@ -296,6 +296,25 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
     });
   });
 
+  describe('mulChecked(Uint<128>): one split', () => {
+    // The Uint<128> form splits only a; b enters the native product. A forged
+    // second split, which the U128 algorithm would use for b, does not reach
+    // the circuit.
+    test('ignores a forged second split', async () => {
+      const s = await Uint128Simulator.create();
+      s.overrideWitness(
+        'wit_divUint128',
+        forgeCall(u128.wit_divUint128, 1, (r) => ({
+          quotient: r.quotient,
+          remainder: { ...r.remainder, low: r.remainder.low ^ 1n },
+        })),
+      );
+      expect(await s.mulChecked(2n ** 100n + 7n, 5n)).toBe(
+        (2n ** 100n + 7n) * 5n,
+      );
+    });
+  });
+
   describe('addChecked: no witness', () => {
     // Both forms use native addition: a forged split cannot reach them.
     test.each([
