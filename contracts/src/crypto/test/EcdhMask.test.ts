@@ -137,6 +137,13 @@ describe('EcdhMask', () => {
         'zero ephemeral',
       );
     });
+
+    it('rejects an identity ephemeral on decrypt', async () => {
+      const placeholder = { ephemeralPk: ecMulGenerator(0n), ct: 0n };
+      await expect(contract.decrypt(placeholder, EK, DOMAIN)).rejects.toThrow(
+        'EcdhMask: identity ephemeral',
+      );
+    });
   });
 
   describe('confidentiality / correctness properties', () => {
