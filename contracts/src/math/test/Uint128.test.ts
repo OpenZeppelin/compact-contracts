@@ -746,6 +746,17 @@ describe('Uint128', () => {
     });
 
     testDryOnly('should fail when remainder >= divisor', async () => {
+      uint128Simulator.overrideWitness('wit_divU128', (context) => [
+        context.privateState,
+        { quotient: { low: 1n, high: 0n }, remainder: { low: 5n, high: 0n } },
+      ]);
+      await expectRejection(
+        uint128Simulator.div(10n, 5n),
+        'failed assert: Uint128: remainder error',
+      );
+    });
+
+    testDryOnly('should fail when the toU128 witness is invalid', async () => {
       uint128Simulator.overrideWitness('wit_divUint128', (context) => [
         context.privateState,
         { quotient: { low: 1n, high: 0n }, remainder: { low: 5n, high: 0n } },
@@ -860,6 +871,17 @@ describe('Uint128', () => {
     });
 
     testDryOnly('should fail when remainder >= divisor', async () => {
+      uint128Simulator.overrideWitness('wit_divU128', (context) => [
+        context.privateState,
+        { quotient: { low: 1n, high: 0n }, remainder: { low: 10n, high: 0n } },
+      ]);
+      await expectRejection(
+        uint128Simulator.rem(20n, 10n),
+        'failed assert: Uint128: remainder error',
+      );
+    });
+
+    testDryOnly('should fail when the toU128 witness is invalid', async () => {
       uint128Simulator.overrideWitness('wit_divUint128', (context) => [
         context.privateState,
         { quotient: { low: 1n, high: 0n }, remainder: { low: 10n, high: 0n } },
