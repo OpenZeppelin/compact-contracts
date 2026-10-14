@@ -4,12 +4,11 @@
 pragma language_version >= 0.26.0;
 
 /**
- * @title Bytes32 module
+ * @module Bytes32
  * @description A utility module providing conversions and comparisons for 32-byte arrays
  * using little-endian (LE) byte ordering.
  *
- * @remarks
- * Byte ordering convention (little-endian):
+ * @dev Byte ordering convention (little-endian):
  * - Element 0 is the least significant byte, element 31 is the most significant.
  * - This mirrors the pattern of Bytes8 ↔ Uint<64> conversions.
  *
@@ -49,17 +48,15 @@ module Bytes32 {
   ////////////////////////////////////////////////////////////////
 
   /**
-   * @title pack circuit
    * @description Packs a Vector<32, Uint<8>> into a Bytes<32>.
    *
-   * @remarks
-   * This circuit converts a 32-element vector of bytes to a 32-byte array
+   * @dev This circuit converts a 32-element vector of bytes to a 32-byte array
    * using little-endian byte ordering.
    *
-   * @circuitInfo k=14, rows=10231
+   * @constraints k=14, rows=10229 (zkir-v2)
+   * @constraints k=10, rows=800 (zkir-v3)
    *
    * @param {Vector<32, Uint<8>>} vec - The vector of 32 bytes to convert.
-   *
    * @returns {Bytes<32>} - The 32-byte array.
    */
   export pure circuit pack(vec: Vector<32, Uint<8>>): Bytes<32> {
@@ -67,17 +64,19 @@ module Bytes32 {
   }
 
   /**
-   * @title unpack circuit
    * @description Unpacks a Bytes<32> into a Vector<32, Uint<8>>.
    *
-   * @remarks
-   * This circuit converts a 32-byte array to a 32-element vector of bytes
+   * @dev This circuit converts a 32-byte array to a 32-element vector of bytes
    * using little-endian byte ordering.
    *
-   * @circuitInfo k=14, rows=10521
+   * @constraints k=14, rows=10519 (zkir-v2)
+   * @constraints k=10, rows=872 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<32>} bytes - The 32-byte array to convert.
-   *
    * @returns {Vector<32, Uint<8>>} - The 32-element vector of bytes.
    */
   export circuit unpack(bytes: Bytes<32>): Vector<32, Uint<8>> {
@@ -85,15 +84,12 @@ module Bytes32 {
   }
 
   /**
-   * @title limbToUint64 circuit
    * @description Converts an 8-byte limb of the vector to a Uint<64> using pure arithmetic.
    *
-   * @remarks
-   * This circuit converts an 8-byte limb to a 64-bit unsigned integer using pure arithmetic.
+   * @dev This circuit converts an 8-byte limb to a 64-bit unsigned integer using pure arithmetic.
    *
    * @param {Vector<32, Uint<8>>} vec - The vector of 32 bytes.
    * @param {Uint<2>} limbIndex - The limb index (0-3).
-   *
    * @returns {Uint<64>} - The 64-bit unsigned integer.
    */
   pure circuit limbToUint64(vec: Vector<32, Uint<8>>, limbIndex: Uint<2>): Uint<64> {
@@ -111,11 +107,9 @@ module Bytes32 {
   }
 
   /**
-   * @title toU256 circuit (from Vector)
    * @description Converts a Vector<32, Uint<8>> to a U256 using pure arithmetic.
    *
-   * @remarks
-   * This circuit converts a 32-element vector of bytes to a 256-bit unsigned integer
+   * @dev This circuit converts a 32-element vector of bytes to a 256-bit unsigned integer
    * using little-endian byte ordering. The vector is split into four 8-byte chunks,
    * each packed into a Uint<64> limb (same formula as `Bytes8_toUint64`).
    *
@@ -125,10 +119,10 @@ module Bytes32 {
    * - v16-v23 → high.low
    * - v24-v31 → high.high (most significant)
    *
-   * @circuitInfo k=10, rows=739
+   * @constraints k=10, rows=737 (zkir-v2)
+   * @constraints k=10, rows=578 (zkir-v3)
    *
    * @param {Vector<32, Uint<8>>} vec - The vector of 32 bytes to convert.
-   *
    * @returns {U256} - The 256-bit unsigned integer.
    */
   export pure circuit toU256(vec: Vector<32, Uint<8>>): U256 {
@@ -137,18 +131,20 @@ module Bytes32 {
   }
 
   /**
-   * @title toU256 circuit (from Bytes)
    * @description Converts a Bytes<32> to a U256.
    *
-   * @remarks
-   * This circuit converts a 32-byte array to a 256-bit unsigned integer.
+   * @dev This circuit converts a 32-byte array to a 256-bit unsigned integer.
    * The conversion is done by first unpacking to a vector via `unpack`,
    * then converting to U256.
    *
-   * @circuitInfo k=14, rows=10269
+   * @constraints k=14, rows=10267 (zkir-v2)
+   * @constraints k=10, rows=620 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<32>} bytes - The 32-byte array to convert.
-   *
    * @returns {U256} - The 256-bit unsigned integer.
    */
   export circuit toU256(bytes: Bytes<32>): U256 {
@@ -160,32 +156,33 @@ module Bytes32 {
   ////////////////////////////////////////////////////////////////
 
   /**
-  * @title eq circuit
-  * @description Compares two Bytes<32> for equality.
-  *
-  * @circuitInfo k=10, rows=589
-  *
-  * @param {Bytes<32>} a - First bytes value to compare.
-  * @param {Bytes<32>} b - Second bytes value to compare.
-  *
-  * @returns {Boolean} - True if the bytes are equal, false otherwise.
-  */
+   * @description Compares two Bytes<32> for equality.
+   *
+   * @constraints k=10, rows=587 (zkir-v2)
+   * @constraints k=8, rows=212 (zkir-v3)
+   *
+   * @param {Bytes<32>} a - First bytes value to compare.
+   * @param {Bytes<32>} b - Second bytes value to compare.
+   * @returns {Boolean} - True if the bytes are equal, false otherwise.
+   */
   export circuit eq(a: Bytes<32>, b: Bytes<32>): Boolean {
     return a == b;
   }
 
   /**
-   * @title lt circuit
    * @description Compares two Bytes<32> for less than using U256 conversion and comparison.
    *
-   * @remarks
-   * Converts both bytes to U256 via toU256, then delegates to Uint256_lt.
+   * @dev Converts both bytes to U256 via toU256, then delegates to Uint256_lt.
    *
-   * @circuitInfo k=15, rows=20569
+   * @constraints k=15, rows=20531 (zkir-v2)
+   * @constraints k=11, rows=1122 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<32>} a - First bytes value to compare.
    * @param {Bytes<32>} b - Second bytes value to compare.
-   *
    * @returns {Boolean} - True if a < b (based on U256 comparison), false otherwise.
    */
   export circuit lt(a: Bytes<32>, b: Bytes<32>): Boolean {
@@ -195,14 +192,17 @@ module Bytes32 {
   }
 
   /**
-   * @title lte circuit
    * @description Compares two Bytes<32> for less than or equal using U256 comparison.
    *
-   * @circuitInfo k=15, rows=20572
+   * @constraints k=15, rows=20534 (zkir-v2)
+   * @constraints k=11, rows=1124 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<32>} a - First bytes value to compare.
    * @param {Bytes<32>} b - Second bytes value to compare.
-   *
    * @returns {Boolean} - True if a <= b, false otherwise.
    */
   export circuit lte(a: Bytes<32>, b: Bytes<32>): Boolean {
@@ -210,14 +210,17 @@ module Bytes32 {
   }
 
   /**
-   * @title gt circuit
    * @description Compares two Bytes<32> for greater than using U256 comparison.
    *
-   * @circuitInfo k=15, rows=20569
+   * @constraints k=15, rows=20531 (zkir-v2)
+   * @constraints k=11, rows=1122 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<32>} a - First bytes value to compare.
    * @param {Bytes<32>} b - Second bytes value to compare.
-   *
    * @returns {Boolean} - True if a > b, false otherwise.
    */
   export circuit gt(a: Bytes<32>, b: Bytes<32>): Boolean {
@@ -225,14 +228,17 @@ module Bytes32 {
   }
 
   /**
-   * @title gte circuit
    * @description Compares two Bytes<32> for greater than or equal using U256 comparison.
    *
-   * @circuitInfo k=15, rows=20572
+   * @constraints k=15, rows=20534 (zkir-v2)
+   * @constraints k=11, rows=1124 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
    *
    * @param {Bytes<32>} a - First bytes value to compare.
    * @param {Bytes<32>} b - Second bytes value to compare.
-   *
    * @returns {Boolean} - True if a >= b, false otherwise.
    */
   export circuit gte(a: Bytes<32>, b: Bytes<32>): Boolean {
@@ -244,13 +250,12 @@ module Bytes32 {
   ////////////////////////////////////////////////////////////////
 
   /**
-   * @title isZero circuit
    * @description Checks if a Bytes<32> is zero.
    *
-   * @circuitInfo k=9, rows=311
+   * @constraints k=9, rows=309 (zkir-v2)
+   * @constraints k=8, rows=124 (zkir-v3)
    *
    * @param {Bytes<32>} a - The bytes value to check.
-   *
    * @returns {Boolean} - True if the bytes are zero, false otherwise.
    */
   export circuit isZero(a: Bytes<32>): Boolean {
