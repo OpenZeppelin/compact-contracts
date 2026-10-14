@@ -474,6 +474,10 @@ module Uint128 {
   /**
    * @description Subtracts one Uint<128> value from another.
    *
+   * @notice Uses the native `-` operator. The native form `a - b` fails with
+   * "result of subtraction would be negative". This circuit fails with the message
+   * of the module.
+   *
    * @constraints k=9, rows=362 (zkir-v2)
    * @constraints k=9, rows=141 (zkir-v3)
    *
