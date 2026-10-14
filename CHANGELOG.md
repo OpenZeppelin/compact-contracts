@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
+- `Utils.UINT128_MAX`: use `Uint128.MAX_UINT128` from `math/Uint128`, which returns the same value. It stays callable (#1145)
 - Math circuits with an equal native expression and no library failure message, listed with their replacements in the [migration guide](contracts/src/math/MIGRATION.md#deprecated-circuits): `Pack.pack`, `Bytes8.pack` and `toUint64(Vector<8, Uint<8>>)`, `Uint64.add`, `mul`, `min` and `max`, `Uint128.ZERO_U128`, `toUint128` and both forms of `eq`, `lt`, `lte`, `gt`, `gte`, `isZero`, `min` and `max`, `Uint256.ZERO_U256`, `eq`, `lt`, `lte`, `gt` and `gte`, `Bytes32.pack`, `toU256(Vector<32, Uint<8>>)`, `eq` and `isZero`, `Field255.toBytes`, `eq` and `isZero`. They stay callable (#1142)
 
 ### Fixed
