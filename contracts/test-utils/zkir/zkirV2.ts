@@ -83,6 +83,21 @@ export function readZkirV2(path: URL | string): ZkirV2 {
   return parseZkirV2(readFileSync(path, 'utf8'));
 }
 
+/**
+ * How {@link evaluate} checks `reconstitute_field(divisor, modulus, bits)`:
+ *
+ *   - `interpreter` (the default): `modulus < 2^bits`, and the sum
+ *     `divisor * 2^bits + modulus` is below the field modulus. The ZKIR
+ *     interpreter of `@midnight-ntwrk/zkir-v2` `check` stops with
+ *     "Reconstituted element overflows field" for a larger sum.
+ *   - `circuit`: `modulus < 2^bits` and `divisor < 2^(255 - bits)`, and the
+ *     result is the sum modulo the field modulus. The circuit that the proof
+ *     server builds for ZKIR v2 decomposes the two parts into 255 bits and
+ *     joins them as a field element, so it accepts a sum at or above the
+ *     field modulus.
+ */
+export type ReconstituteRule = 'interpreter' | 'circuit';
+
 /** A constraint that does not hold for the evaluated values. */
 export type Violation = {
   /** Index of the instruction in `instructions`. */
@@ -128,9 +143,9 @@ export const immediate = (hex: string): bigint => {
  * Variables `0` to `num_inputs - 1` are the inputs. Each instruction appends
  * the number of variables in {@link OUTPUTS}. `private_input` with a guard
  * that is not 1 reads nothing and writes 0. `less_than` requires both
- * operands below `2^bits`, and `reconstitute_field` requires its low part
- * below `2^bits` and a result below the field modulus: a value outside these
- * bounds is a violation of that instruction.
+ * operands below `2^bits`, and `reconstitute_field` requires the bounds of
+ * `options.reconstitute` (see {@link ReconstituteRule}): a value outside
+ * these bounds is a violation of that instruction.
  *
  * @throws If the inputs do not match `num_inputs`, or if the transcript has
  * fewer elements than the circuit reads. A transcript with more elements
@@ -140,7 +155,9 @@ export function evaluate(
   zkir: ZkirV2,
   inputs: readonly bigint[],
   privates: readonly bigint[],
+  options: { reconstitute?: ReconstituteRule } = {},
 ): Evaluation {
+  const rule = options.reconstitute ?? 'interpreter';
   if (inputs.length !== zkir.num_inputs) {
     throw new Error(
       `circuit takes ${zkir.num_inputs} input elements, got ${inputs.length}`,
@@ -228,7 +245,11 @@ export function evaluate(
       }
       case 'reconstitute_field': {
         const value = v('divisor') * bound('bits') + v('modulus');
-        if (v('modulus') >= bound('bits') || value >= FIELD_MODULUS) fail();
+        const highFits =
+          rule === 'circuit'
+            ? v('divisor') < 1n << BigInt(255 - num(ins, 'bits'))
+            : value < FIELD_MODULUS;
+        if (v('modulus') >= bound('bits') || !highFits) fail();
         vars.push(modField(value));
         break;
       }

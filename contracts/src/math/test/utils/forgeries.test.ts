@@ -1,6 +1,11 @@
+import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { describe, expect, test } from 'vitest';
-import type { WitnessCall } from '#test-utils/zkir/forgery.js';
+import { RelationForger, type WitnessCall } from '#test-utils/zkir/forgery.js';
+import { loadZkir } from '#test-utils/zkir/relationCheck.js';
+import { Uint64Witnesses } from '../witnesses/Uint64Witnesses.js';
 import {
+  describeConstraint,
+  findConstraint,
   inputForgeries,
   isFreeLeaf,
   jointForgeries,
@@ -100,3 +105,54 @@ describe('forgery catalogue', () => {
     expect(mustRejectPlan(call('wit_sqrtU128', [], undefined))).toBeUndefined();
   });
 });
+
+describe.skipIf(isLiveBackend())(
+  'constraint descriptions and field preimages',
+  () => {
+    test('describes each constraint of Uint64.div by what it constrains', () => {
+      const zkir = loadZkir('MockUint64', 'div');
+      expect(describeConstraint(zkir, 0)).toBe('range of input 0');
+      const quotient = findConstraint(zkir, 'range of witness element 0');
+      expect(zkir.instructions[quotient]).toMatchObject({
+        op: 'constrain_bits',
+        bits: 64,
+      });
+      expect(findConstraint(zkir, 'assert 0')).toBeLessThan(
+        findConstraint(zkir, 'assert 1'),
+      );
+      expect(() => describeConstraint(zkir, -1)).toThrow(
+        'instruction -1 is not a constraint',
+      );
+      expect(() => findConstraint(zkir, 'assert 99')).toThrow(
+        "0 constraints are described as 'assert 99', not 1",
+      );
+    });
+
+    test('checks a preimage given as field elements', async () => {
+      const forger = await RelationForger.create(
+        'MockUint64',
+        Uint64Witnesses(),
+      );
+      const honest = await forger.checkFields(
+        'div',
+        [10n, 3n],
+        [10n, 3n],
+        [3n, 1n],
+      );
+      expect(honest.verdict).toEqual({ accepted: true });
+      expect(honest.evaluation.outputs).toEqual([3n]);
+      const forged = await forger.checkFields(
+        'div',
+        [10n, 3n],
+        [10n, 3n],
+        [2n, 4n],
+      );
+      expect(forged.verdict.accepted).toBe(false);
+      await expect(
+        forger.checkFields('div', [10n, 3n], [10n, 3n], [3n]),
+      ).rejects.toThrow(
+        'the honest run of div reads 2 private elements, not 1',
+      );
+    });
+  },
+);

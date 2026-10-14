@@ -7,11 +7,15 @@ import {
   loadZkir,
   traceCall,
 } from '#test-utils/zkir/relationCheck.js';
-import { OUTPUTS, type ZkirV2 } from '#test-utils/zkir/zkirV2.js';
+import type { ZkirV2 } from '#test-utils/zkir/zkirV2.js';
 import { PackSimulator } from './simulators/PackSimulator.js';
 import { Uint64Simulator } from './simulators/Uint64Simulator.js';
 import { Uint128Simulator } from './simulators/Uint128Simulator.js';
-import { findUnsoundForgery, undetectedRemovals } from './utils/forgeries.js';
+import {
+  describeConstraint,
+  findUnsoundForgery,
+  undetectedRemovals,
+} from './utils/forgeries.js';
 import { toU128 } from './utils/oracles.js';
 import { PackWitnesses } from './witnesses/PackWitnesses.js';
 import { Uint64Witnesses } from './witnesses/Uint64Witnesses.js';
@@ -27,8 +31,7 @@ import { Uint128Witnesses } from './witnesses/Uint128Witnesses.js';
  *   - A coherent forgery detects a missing constraint that a forgery with
  *     the honest output does not detect (MM-03, AM9).
  *   - For a set of circuits, each removed constraint is either detected by
- *     the forgeries or implied by another constraint (listed with the
- *     reason).
+ *     the forgeries or listed with the reason why no forgery can detect it.
  */
 
 const json = (value: unknown) =>
@@ -39,27 +42,6 @@ const json = (value: unknown) =>
         ? Buffer.from(item).toString('hex')
         : item,
   );
-
-/** Describes a constraint instruction by what it constrains. */
-const describeConstraint = (zkir: ZkirV2, index: number): string => {
-  const instruction = zkir.instructions[index];
-  const privateVariables: number[] = [];
-  let next = zkir.num_inputs;
-  let asserts = 0;
-  for (const [i, ins] of zkir.instructions.entries()) {
-    if (i === index) break;
-    if (ins.op === 'assert') asserts++;
-    if (ins.op === 'private_input') privateVariables.push(next);
-    next += OUTPUTS[ins.op] ?? 0;
-  }
-  if (instruction.op === 'assert') return `assert ${asserts}`;
-  const variable = instruction.var as number;
-  if (variable < zkir.num_inputs) return `range of input ${variable}`;
-  const position = privateVariables.indexOf(variable);
-  return position >= 0
-    ? `range of witness element ${position}`
-    : `${instruction.op} on variable ${variable}`;
-};
 
 describe.skipIf(isLiveBackend())(
   'ZKIR v2 relation check of the math circuits',
@@ -215,8 +197,10 @@ describe.skipIf(isLiveBackend())(
     }, 120_000);
 
     // Each removed constraint is detected by a forgery, except the listed
-    // constraints, which other constraints imply. The full list for every
-    // witness circuit is in the PR 5 evidence (mutation sweep).
+    // constraints, which other constraints imply for the zkir-v2 relation
+    // check. The full list for every witness circuit is in the PR 5 evidence
+    // (mutation sweep). MathRelationCounterexamples.test.ts covers the
+    // listed constraints that the circuit needs.
     describe('constraint removal', () => {
       const cases: {
         artifact: string;
@@ -267,10 +251,14 @@ describe.skipIf(isLiveBackend())(
           args: [Uint8Array.from([0x11, 0, 0xff, 7, 9, 0x80, 3, 0xc8])],
           implied: Object.fromEntries([
             ['range of input 0', 'pack(vec) of 8 digits is below 2^64'],
-            ...Array.from({ length: 8 }, (_, i) => [
+            ...Array.from({ length: 7 }, (_, i) => [
               `range of witness element ${i}`,
               'reconstitute_field in pack(vec) bounds each digit and the recomposition',
             ]),
+            [
+              'range of witness element 7',
+              'the zkir-v2 interpreter requires each reconstitute_field sum below the field modulus; the circuit does not, see MathRelationCounterexamples.test.ts',
+            ],
           ]),
         },
         {

@@ -15,7 +15,13 @@ import {
   loadZkir,
   type RelationVerdict,
 } from './relationCheck.js';
-import { evaluate, type Violation, type ZkirV2 } from './zkirV2.js';
+import {
+  type Evaluation,
+  evaluate,
+  type ReconstituteRule,
+  type Violation,
+  type ZkirV2,
+} from './zkirV2.js';
 
 /**
  * Coherent witness forgeries for the ZKIR v2 relation check.
@@ -442,6 +448,53 @@ export class RelationForger {
       failures: run.failures,
       coherent,
     };
+  }
+
+  /**
+   * Checks a preimage that is given as field elements: the circuit inputs
+   * and the private transcript, for example a counterexample of an SMT model
+   * of the circuit. The outputs are the values that the evaluator computes.
+   * The public transcript, and the split of the private transcript into the
+   * results of the witness calls, come from the honest run of `honestArgs`.
+   *
+   * @param options.zkir - The circuit to check. The default is the compiled
+   * circuit.
+   * @param options.reconstitute - The rule of the returned evaluation (see
+   * {@link ReconstituteRule}). It does not change the relation check.
+   * @throws If the honest run reads a different number of private elements,
+   * or as {@link checkRelation}.
+   */
+  async checkFields(
+    circuit: string,
+    honestArgs: readonly unknown[],
+    inputs: readonly bigint[],
+    privates: readonly bigint[],
+    options: { zkir?: ZkirV2; reconstitute?: ReconstituteRule } = {},
+  ): Promise<{ verdict: RelationVerdict; evaluation: Evaluation }> {
+    const zkir = options.zkir ?? loadZkir(this.artifact, circuit);
+    const honest = await this.honestReplay(circuit, honestArgs);
+    const sizes = honest.calls.map((call) => witnessLeaves(call.result).length);
+    const read = sizes.reduce((sum, size) => sum + size, 0);
+    if (read !== privates.length) {
+      throw new Error(
+        `the honest run of ${circuit} reads ${read} private elements, not ${privates.length}`,
+      );
+    }
+    let next = 0;
+    const entries = sizes.map((size) => {
+      next += size;
+      return privates.slice(next - size, next);
+    });
+    const evaluation = evaluate(zkir, inputs, privates, {
+      reconstitute: options.reconstitute,
+    });
+    const verdict = await checkRelation(zkir, circuit, {
+      input: fieldAtoms(inputs),
+      output: fieldAtoms(evaluation.outputs),
+      publicTranscript: honest.proofData.publicTranscript,
+      privateTranscriptOutputs: entries.map(fieldAtoms),
+    });
+    return { verdict, evaluation };
   }
 
   /**

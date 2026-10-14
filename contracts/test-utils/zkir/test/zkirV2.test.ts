@@ -117,6 +117,35 @@ describe('zkirV2', () => {
     expect(evaluate(bad, [FIELD_MODULUS - 1n], []).violations).toHaveLength(1);
   });
 
+  it('accepts a reconstitute_field sum at or above the field modulus only with the circuit rule', () => {
+    const circuit: ZkirV2 = {
+      version: { major: 2, minor: 0 },
+      num_inputs: 2,
+      instructions: [
+        { op: 'reconstitute_field', divisor: 0, modulus: 1, bits: 8 },
+        { op: 'output', var: 2 },
+      ],
+    };
+    // 256 * (r - 1) / 256 + 1 = r, which is 0 in the field.
+    const wrap = [(FIELD_MODULUS - 1n) / 256n, 1n];
+    expect(evaluate(circuit, wrap, []).violations).toEqual([
+      { index: 0, op: 'reconstitute_field' },
+    ]);
+    const circuitRule = evaluate(circuit, wrap, [], {
+      reconstitute: 'circuit',
+    });
+    expect(circuitRule.violations).toEqual([]);
+    expect(circuitRule.outputs).toEqual([0n]);
+    // The circuit rule bounds the high part to 255 - bits bits.
+    expect(
+      evaluate(circuit, [1n << 247n, 0n], [], { reconstitute: 'circuit' })
+        .violations,
+    ).toEqual([{ index: 0, op: 'reconstitute_field' }]);
+    expect(
+      evaluate(circuit, [0n, 256n], [], { reconstitute: 'circuit' }).violations,
+    ).toEqual([{ index: 0, op: 'reconstitute_field' }]);
+  });
+
   it('reads a guarded private input only when the guard is 1', () => {
     const circuit: ZkirV2 = {
       version: { major: 2, minor: 0 },

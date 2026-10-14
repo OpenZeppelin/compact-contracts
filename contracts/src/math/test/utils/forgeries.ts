@@ -17,7 +17,11 @@ import {
   traceCall,
 } from '#test-utils/zkir/relationCheck.js';
 import { witnessCoverage } from '#test-utils/zkir/witnessCoverage.js';
-import { CONSTRAINT_OPS, type ZkirV2 } from '#test-utils/zkir/zkirV2.js';
+import {
+  CONSTRAINT_OPS,
+  OUTPUTS,
+  type ZkirV2,
+} from '#test-utils/zkir/zkirV2.js';
 import { MAX_UINT64, MAX_UINT128 } from './consts.js';
 import { toU128 } from './oracles.js';
 
@@ -855,4 +859,49 @@ export async function undetectedRemovals(
     }
   }
   return undetected;
+}
+
+/**
+ * Describes the constraint instruction at `index` by what it constrains:
+ * `assert <n>` (the n-th assertion of the circuit), `range of input <n>`,
+ * `range of witness element <n>` (the n-th private transcript element) or
+ * `<op> on variable <n>`.
+ */
+export function describeConstraint(zkir: ZkirV2, index: number): string {
+  const instruction = zkir.instructions[index];
+  if (instruction === undefined || !CONSTRAINT_OPS.includes(instruction.op)) {
+    throw new Error(`instruction ${index} is not a constraint`);
+  }
+  const privateVariables: number[] = [];
+  let next = zkir.num_inputs;
+  let asserts = 0;
+  for (const [i, ins] of zkir.instructions.entries()) {
+    if (i === index) break;
+    if (ins.op === 'assert') asserts++;
+    if (ins.op === 'private_input') privateVariables.push(next);
+    next += OUTPUTS[ins.op] ?? 0;
+  }
+  if (instruction.op === 'assert') return `assert ${asserts}`;
+  const variable = instruction.var as number;
+  if (variable < zkir.num_inputs) return `range of input ${variable}`;
+  const position = privateVariables.indexOf(variable);
+  return position >= 0
+    ? `range of witness element ${position}`
+    : `${instruction.op} on variable ${variable}`;
+}
+
+/** The index of the constraint that {@link describeConstraint} describes as `description`. */
+export function findConstraint(zkir: ZkirV2, description: string): number {
+  const found = zkir.instructions.flatMap((instruction, index) =>
+    CONSTRAINT_OPS.includes(instruction.op) &&
+    describeConstraint(zkir, index) === description
+      ? [index]
+      : [],
+  );
+  if (found.length !== 1) {
+    throw new Error(
+      `${found.length} constraints are described as '${description}', not 1`,
+    );
+  }
+  return found[0];
 }
