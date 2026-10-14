@@ -371,6 +371,22 @@ describe('Uint64', () => {
           );
         },
       );
+
+      testDryOnly(
+        'should fail with "division invalid" when quotient * b + remainder exceeds MAX_UINT64',
+        async () => {
+          // q * b + r = 2^63 * 4 + 2 = 2^65 + 2 does not fit in Uint<64>. The
+          // remainder check passes (2 < 4), so the sum check must reject it.
+          uint64Simulator.overrideWitness('wit_divUint64', (context) => [
+            context.privateState,
+            { quotient: 2n ** 63n, remainder: 2n },
+          ]);
+          await expectRejection(
+            uint64Simulator.div(10n, 4n),
+            'failed assert: Uint64: division invalid',
+          );
+        },
+      );
     });
 
     describe('rem', () => {

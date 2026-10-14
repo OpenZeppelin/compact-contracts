@@ -352,7 +352,8 @@ module Uint64 {
 
     const result = wit_divUint64(a, b);
     assert(result.remainder < b, "Uint64: remainder error");
-    assert((result.quotient * b + result.remainder) as Uint<64> == a, "Uint64: division invalid");
+    const sum: Uint<128> = result.quotient * b + result.remainder;
+    assert(sum == a, "Uint64: division invalid");
     return result;
   }
 
