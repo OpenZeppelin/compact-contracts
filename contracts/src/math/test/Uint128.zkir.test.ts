@@ -172,9 +172,12 @@ describeRelation('MockUint128', {
         [A, 0n],
         [0n, B],
       ],
+      // 2^127 * 2^127 makes the last split of _mul nonzero while the one
+      // before has a zero low part: only that split shows the overflow.
       rejects: [
         [2n ** 64n, 2n ** 64n],
         [MAX_UINT128, 2n],
+        [2n ** 127n, 2n ** 127n],
       ],
     }),
     ...both<[bigint, bigint]>({
