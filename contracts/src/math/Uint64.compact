@@ -441,12 +441,12 @@ module Uint64 {
    * @remarks
    * This circuit calculates the floor of the square root R = floor(sqrt(N)) of a 64-bit unsigned integer
    * N, provided as a Uint<64> value in [0, 2^64 - 1]. The result is a Uint<32> value R in [0, 2^32 - 1],
-   * such that R^2 <= N < (R + 1)^2. It uses a witness-based approach for the general case and includes
-   * special cases for common inputs to optimize performance.
+   * such that R^2 <= N < (R + 1)^2. It computes R off-chain with the `wit_sqrtUint64` witness and
+   * verifies R in the circuit.
    *
    * Mathematical Steps:
-   * 1. General Case Computation:
-   *    - Compute R = floor(sqrt(N)) using sqrtLocally, where R is in [0, 2^32 - 1].
+   * 1. Witness Computation:
+   *    - Compute R = floor(sqrt(N)) using wit_sqrtUint64, where R is in [0, 2^32 - 1].
    * 2. Root Verification:
    *    - Compute rootSquare = R * R using mul.
    *    - Assert rootSquare <= N, ensuring R^2 <= N.
