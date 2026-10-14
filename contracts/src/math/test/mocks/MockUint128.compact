@@ -1,0 +1,261 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the Uint128 module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { DivResultU128 } from "../../Uint128";
+
+import { U128, U256 } from "../../Types";
+
+import "../../Uint128" prefix Uint128_;
+
+export { DivResultU128, U128, U256 };
+
+// Keeps every circuit below impure. Without a ledger write the compiler
+// promotes them to pure, and the artifact ships without ZKIR or proving keys,
+// leaving the circuits evaluated but never proven.
+ledger _invocations: Counter;
+
+////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////
+
+export circuit MODULUS(): Uint<128> {
+  _invocations.increment(1);
+  return Uint128_MODULUS();
+}
+
+export circuit ZERO_U128(): U128 {
+  _invocations.increment(1);
+  return Uint128_ZERO_U128();
+}
+
+export circuit MAX_U128(): U128 {
+  _invocations.increment(1);
+  return Uint128_MAX_U128();
+}
+
+export circuit MAX_UINT128(): Uint<128> {
+  _invocations.increment(1);
+  return Uint128_MAX_UINT128();
+}
+
+////////////////////////////////////////////////////////////////
+// Conversions
+////////////////////////////////////////////////////////////////
+
+export circuit toU128(value: Uint<128>): U128 {
+  _invocations.increment(1);
+  return disclose(Uint128_toU128(value));
+}
+
+export circuit toUint128(value: U128): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_toUint128(value));
+}
+
+////////////////////////////////////////////////////////////////
+// Comparisons
+////////////////////////////////////////////////////////////////
+
+export circuit eq(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return Uint128_eq(a, b);
+}
+
+export circuit eqU128(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return Uint128_eq(a, b);
+}
+
+export circuit lt(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_lt(a, b));
+}
+
+export circuit lte(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_lte(a, b));
+}
+
+export circuit ltU128(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_lt(a, b));
+}
+
+export circuit lteU128(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_lte(a, b));
+}
+
+export circuit gt(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_gt(a, b));
+}
+
+export circuit gte(a: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_gte(a, b));
+}
+
+export circuit gtU128(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_gt(a, b));
+}
+
+export circuit gteU128(a: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_gte(a, b));
+}
+
+////////////////////////////////////////////////////////////////
+// Arithmetic
+////////////////////////////////////////////////////////////////
+
+export circuit add(a: Uint<128>, b: Uint<128>): U256 {
+  _invocations.increment(1);
+  return disclose(Uint128_add(a, b));
+}
+
+export circuit addU128(a: U128, b: U128): U256 {
+  _invocations.increment(1);
+  return disclose(Uint128_add(a, b));
+}
+
+export circuit addChecked(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_addChecked(a, b));
+}
+
+export circuit addCheckedU128(a: U128, b: U128): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_addChecked(a, b));
+}
+
+export circuit sub(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_sub(a, b));
+}
+
+export circuit subU128(a: U128, b: U128): U128 {
+  _invocations.increment(1);
+  return Uint128_sub(a, b);
+}
+
+export circuit mul(a: Uint<128>, b: Uint<128>): U256 {
+  _invocations.increment(1);
+  return disclose(Uint128_mul(a, b));
+}
+
+export circuit mulU128(a: U128, b: U128): U256 {
+  _invocations.increment(1);
+  return disclose(Uint128_mul(a, b));
+}
+
+export circuit mulChecked(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_mulChecked(a, b));
+}
+
+export circuit mulCheckedU128(a: U128, b: U128): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_mulChecked(a, b));
+}
+
+////////////////////////////////////////////////////////////////
+// Division
+////////////////////////////////////////////////////////////////
+
+export circuit div(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_div(a, b));
+}
+
+export circuit divU128(a: U128, b: U128): U128 {
+  _invocations.increment(1);
+  return disclose(Uint128_div(a, b));
+}
+
+export circuit rem(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_rem(a, b));
+}
+
+export circuit remU128(a: U128, b: U128): U128 {
+  _invocations.increment(1);
+  return disclose(Uint128_rem(a, b));
+}
+
+export circuit divRem(a: Uint<128>, b: Uint<128>): DivResultU128 {
+  _invocations.increment(1);
+  return disclose(Uint128_divRem(a, b));
+}
+
+export circuit divRemU128(a: U128, b: U128): DivResultU128 {
+  _invocations.increment(1);
+  return disclose(Uint128_divRem(a, b));
+}
+
+////////////////////////////////////////////////////////////////
+// Square Root
+////////////////////////////////////////////////////////////////
+
+export circuit sqrt(radicand: Uint<128>): Uint<64> {
+  _invocations.increment(1);
+  return disclose(Uint128_sqrt(radicand));
+}
+
+export circuit sqrtU128(radicand: U128): Uint<64> {
+  _invocations.increment(1);
+  return disclose(Uint128_sqrt(radicand));
+}
+
+////////////////////////////////////////////////////////////////
+// Utilities
+////////////////////////////////////////////////////////////////
+
+export circuit isZero(value: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return Uint128_isZero(value);
+}
+
+export circuit isZeroU128(value: U128): Boolean {
+  _invocations.increment(1);
+  return Uint128_isZero(value);
+}
+
+export circuit isMultiple(value: Uint<128>, b: Uint<128>): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_isMultiple(value, b));
+}
+
+export circuit isMultipleU128(value: U128, b: U128): Boolean {
+  _invocations.increment(1);
+  return disclose(Uint128_isMultiple(value, b));
+}
+
+export circuit min(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_min(a, b));
+}
+
+export circuit minU128(a: U128, b: U128): U128 {
+  _invocations.increment(1);
+  return Uint128_min(a, b);
+}
+
+export circuit max(a: Uint<128>, b: Uint<128>): Uint<128> {
+  _invocations.increment(1);
+  return disclose(Uint128_max(a, b));
+}
+
+export circuit maxU128(a: U128, b: U128): U128 {
+  _invocations.increment(1);
+  return disclose(Uint128_max(a, b));
+}
