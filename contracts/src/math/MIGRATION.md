@@ -184,8 +184,9 @@ It requires the same result and failure message for every honest input.
 Every witness call that remains must still reject an incorrect result.
 An override for a removed witness is not executed and is not a forgery test for the native expression.
 
-TypeScript checks extra keys on an object literal typed as `Witnesses<PrivateState>`.
-After a witness-set reduction, remove unused keys from that object literal.
+For a nonempty `Witnesses<PrivateState>` type, TypeScript rejects unknown keys on a directly typed object literal.
+An empty generated witness type is `{}`. That type permits extra keys.
+After a witness-set reduction, remove unused keys from the object even when TypeScript accepts them.
 Destructure the required functions and use `satisfies Witnesses<PrivateState>`, as in the consumer example.
 Do not change the witness names that remain reachable.
 The optional division, square-root, and checked-multiplication rewrites are separate integration changes.
