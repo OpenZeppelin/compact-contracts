@@ -6,7 +6,6 @@ import type {
   MerkleTreePath,
   WitnessContext,
 } from '@midnight-ntwrk/compact-runtime';
-import type { Ledger } from '../../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
 
 /** A note as the circuits see it: value plus a field-typed nonce. */
 export type Note = { value: bigint; nonce: bigint };
@@ -57,21 +56,39 @@ export const ConfidentialNoteFungibleTokenPrivateState = {
   generate: (): ConfidentialNoteFungibleTokenPrivateState => ({}),
 };
 
-export interface IConfidentialNoteFungibleTokenWitnesses<P> {
-  wit_ConfidentialNoteSK(context: WitnessContext<Ledger, P>): [P, Uint8Array];
-  wit_ConfidentialNoteInputNote(context: WitnessContext<Ledger, P>): [P, Note];
+/**
+ * The ledger slice the path witness reads. Structural, so this module
+ * type-checks without a compiled artifact.
+ */
+export type NoteCommitmentLedger = {
+  Core__commitments: {
+    findPathForLeaf(leaf: Uint8Array): MerkleTreePath<Uint8Array> | undefined;
+  };
+};
+
+export interface IConfidentialNoteFungibleTokenWitnesses<
+  L extends NoteCommitmentLedger,
+  P,
+> {
+  wit_ConfidentialNoteSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_ConfidentialNoteInputNote(context: WitnessContext<L, P>): [P, Note];
   wit_ConfidentialNotePath(
-    context: WitnessContext<Ledger, P>,
+    context: WitnessContext<L, P>,
     cm: Uint8Array,
   ): [P, MerkleTreePath<Uint8Array>];
   wit_ConfidentialNoteNonceRandomness(
-    context: WitnessContext<Ledger, P>,
+    context: WitnessContext<L, P>,
   ): [P, Uint8Array];
 }
 
-export const ConfidentialNoteFungibleTokenWitnesses = (
+export const ConfidentialNoteFungibleTokenWitnesses = <
+  L extends NoteCommitmentLedger,
+>(
   wallet: NoteWallet,
-): IConfidentialNoteFungibleTokenWitnesses<ConfidentialNoteFungibleTokenPrivateState> => ({
+): IConfidentialNoteFungibleTokenWitnesses<
+  L,
+  ConfidentialNoteFungibleTokenPrivateState
+> => ({
   wit_ConfidentialNoteSK(context) {
     return [context.privateState, wallet.secretKey];
   },
