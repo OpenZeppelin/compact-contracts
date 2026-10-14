@@ -5,8 +5,8 @@ pragma language_version >= 0.26.0;
 
 /**
  * @module Types
- * @description Shared type definitions for U128 and U256 structs, used by
- * Uint128 and Uint256 modules.
+ * @description Shared type definitions for the U128 and U256 structs, used by
+ * the Uint128, Uint256, Bytes32 and Field255 modules.
  *
  * @dev These types exist in a separate module to avoid cyclic dependencies
  * between Uint128 and Uint256. U256 is used as a return type for Uint128
@@ -17,6 +17,8 @@ pragma language_version >= 0.26.0;
  * - Types has no external dependencies (base types).
  * - Uint128 imports U128 and U256 from Types.
  * - Uint256 imports U128 and U256 from Types.
+ * - Bytes32 imports U128 and U256 from Types.
+ * - Field255 imports U256 from Types.
  */
 module Types {
   /**
