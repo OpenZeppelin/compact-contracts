@@ -205,20 +205,6 @@ const DIGITS: Case[] = [
   ),
 ];
 
-// Uint128.addCheckedU128 adds the high limbs in the field: a high limb
-// r - 1 and a carry of 1 give 0.
-const ADD_CHECKED: Case[] = [1, 3].map((input) => ({
-  artifact: 'MockUint128',
-  circuit: 'addCheckedU128',
-  constraint: `range of input ${input}`,
-  attack: `${input === 1 ? 'a.high' : 'b.high'} = r - 1, carry 1: the high sum wraps to 0`,
-  inputs:
-    input === 1 ? [MAX_UINT64, R - 1n, 1n, 0n] : [MAX_UINT64, 0n, 1n, R - 1n],
-  privates: sparse(8, { 0: 1n }),
-  honest: [toU128(1n), toU128(1n)],
-  reason: bits(64),
-}));
-
 /**
  * A `Uint<128>` case in the `U128` form: the inputs are the limbs of the two
  * `toU128` splits (transcript elements 0 to 7), and the transcript starts
@@ -438,7 +424,6 @@ const DIVISION_CASES: Case[] = ['div', 'rem', 'divRem', 'isMultiple'].flatMap(
 
 const CASES: Case[] = [
   ...DIGITS,
-  ...ADD_CHECKED,
   MUL_CHECKED,
   asU128Form(MUL_CHECKED),
   ...DIVISION_CASES,

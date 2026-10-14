@@ -1,17 +1,29 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, test } from 'vitest';
+import { fieldWidths } from '#test-utils/zkir/fieldRepr.js';
 import { RelationForger } from '#test-utils/zkir/forgery.js';
+import { loadZkir } from '#test-utils/zkir/relationCheck.js';
+import { witnessCoverage } from '#test-utils/zkir/witnessCoverage.js';
 import { Uint128Simulator } from './simulators/Uint128Simulator.js';
 import { MAX_UINT64, MAX_UINT128 } from './utils/consts.js';
-import { describeRelation, relationCase } from './utils/forgeries.js';
+import {
+  describeRelation,
+  expectHonestAccepted,
+  expectMustRejectInput,
+  inputForgeries,
+  RELATION_SEED,
+  relationCase,
+} from './utils/forgeries.js';
 import { toU128, toU256, type U128Limbs } from './utils/oracles.js';
 import { sqrtBigint } from './witnesses/sqrtBigint.js';
 import { Uint128Witnesses } from './witnesses/Uint128Witnesses.js';
 
 /**
  * ZKIR v2 relation tests of the `Uint128` witness circuits (INV-1, INV-8 to
- * INV-11, INV-15, INV-18, INV-25). See `utils/forgeries.ts`.
+ * INV-11, INV-15, INV-18, INV-25). See `utils/forgeries.ts`. Both forms of
+ * `addChecked` use native addition and no witness; their own block below
+ * checks them.
  *
  * Every circuit that takes a `Uint<128>` argument splits it with `toU128`,
  * and `_add` and `_mul` split their intermediate sums and products. The
@@ -132,23 +144,6 @@ describeRelation('MockUint128', {
       boundary: pairBoundary,
       random: fc.tuple(u128, u128),
       forgeries: [[A, B]],
-    }),
-    ...both<[bigint, bigint]>({
-      circuit: 'addChecked',
-      call: (s, a, b) => s.addChecked(a, b),
-      callU128: (s, a, b) => s.addCheckedU128(a, b),
-      oracle: (a, b) => a + b,
-      boundary: [
-        [0n, 0n],
-        [MAX_UINT128, 0n],
-        [MAX_UINT64, 1n],
-      ],
-      random: sumFits,
-      forgeries: [[2n ** 126n + 3n, 2n ** 126n + MAX_UINT64]],
-      rejects: [
-        [MAX_UINT128, 1n],
-        [2n ** 127n, 2n ** 127n],
-      ],
     }),
     ...both<[bigint, bigint]>({
       circuit: 'mul',
@@ -316,6 +311,92 @@ describe.skipIf(isLiveBackend())(
           const outcome = await forger.attempt(circuit, args, { plan });
           expect(outcome.verdict.accepted).toBe(false);
           expect(outcome.failures).toContain(message);
+        }
+      },
+    );
+  },
+);
+
+describe.skipIf(isLiveBackend())(
+  'MockUint128 ZKIR v2 relation: addChecked, which uses no witness',
+  () => {
+    let simulator: S;
+    let forger: RelationForger;
+    const boundary: [bigint, bigint][] = [
+      [0n, 0n],
+      [MAX_UINT128, 0n],
+      [MAX_UINT64, 1n],
+      [2n ** 127n, 2n ** 127n - 1n],
+    ];
+    const overflows: [bigint, bigint][] = [
+      [MAX_UINT128, 1n],
+      [2n ** 127n, 2n ** 127n],
+      [MAX_UINT128, MAX_UINT128],
+    ];
+
+    beforeAll(async () => {
+      simulator = await Uint128Simulator.create();
+      forger = await RelationForger.create('MockUint128', Uint128Witnesses());
+    });
+
+    test.each(['addChecked', 'addCheckedU128'])(
+      '%s has no private input',
+      (circuit) => {
+        expect(witnessCoverage(loadZkir('MockUint128', circuit))).toEqual([]);
+      },
+    );
+
+    test('accepts the honest preimage of the boundary and random inputs', async () => {
+      const inputs = [
+        ...boundary,
+        ...fc.sample(sumFits, { numRuns: 32, seed: RELATION_SEED }),
+      ];
+      for (const [a, b] of inputs) {
+        expect(
+          await expectHonestAccepted(
+            simulator,
+            'MockUint128',
+            'addChecked',
+            () => simulator.addChecked(a, b),
+          ),
+        ).toBe(a + b);
+        expect(
+          await expectHonestAccepted(
+            simulator,
+            'MockUint128',
+            'addCheckedU128',
+            () => simulator.addCheckedU128(toU128(a), toU128(b)),
+          ),
+        ).toBe(a + b);
+      }
+    }, 60_000);
+
+    test('has no accepted preimage for an overflow', async () => {
+      for (const [a, b] of overflows) {
+        await expectMustRejectInput(forger, 'addChecked', [a, b]);
+        await expectMustRejectInput(forger, 'addCheckedU128', [
+          toU128(a),
+          toU128(b),
+        ]);
+      }
+    });
+
+    test.each([
+      ['addChecked', [1n, 2n]],
+      ['addCheckedU128', [toU128(1n), toU128(2n)]],
+    ] as [string, unknown[]][])(
+      '%s rejects every argument above its declared type',
+      async (circuit, args) => {
+        const honest = await forger.replay(circuit, args);
+        expect(honest.calls).toEqual([]);
+        const forged = inputForgeries(
+          args,
+          fieldWidths(honest.proofData.input.alignment),
+        );
+        expect(forged.length).toBeGreaterThan(0);
+        for (const { label, args: forgedArgs } of forged) {
+          const outcome = await forger.attempt(circuit, forgedArgs);
+          expect(outcome.verdict.accepted, label).toBe(false);
         }
       },
     );
