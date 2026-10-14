@@ -286,7 +286,7 @@ const MUL_CHECKED: Case = {
   reason: ASSERTION,
 };
 
-// `_div`: the range checks of the quotient limbs of `wit_divU128` and the
+// `_div` (U128 forms): the range checks of the quotient limbs of `wit_divU128` and the
 // conversion assertions of the seven splits of `_mul(quotient, b)`
 // (transcript elements 0 to 7: the splits of a and b; 8 to 11: quotient.low,
 // quotient.high, remainder.low, remainder.high; then four elements per
@@ -439,22 +439,97 @@ const DIVISION: Division[] = [
     }),
   },
 ];
-const DIVISION_CASES: Case[] = ['div', 'rem', 'divRem', 'isMultiple'].flatMap(
-  (circuit) =>
-    DIVISION.flatMap(({ div, ...entry }) => {
-      const base: Case = {
-        ...entry,
-        artifact: 'MockUint128',
-        circuit,
-        honest: [10n, 5n],
-        reason: entry.constraint.startsWith('assert') ? ASSERTION : bits(64),
-      };
-      return [
-        circuit === 'div' && div !== undefined ? { ...base, ...div } : base,
-        asU128Form(base),
-      ];
+// The U128 forms keep `_div`. The preimages above are written for the scalar
+// form of `_div`; asU128Form moves them to the U128 form.
+const DIVISION_U128_CASES: Case[] = [
+  'div',
+  'rem',
+  'divRem',
+  'isMultiple',
+].flatMap((circuit) =>
+  DIVISION.map(({ div: _div, ...entry }) =>
+    asU128Form({
+      ...entry,
+      artifact: 'MockUint128',
+      circuit,
+      honest: [10n, 5n],
+      reason: entry.constraint.startsWith('assert') ? ASSERTION : bits(64),
     }),
+  ),
 );
+
+// The Uint<128> forms of div, rem, divRem and isMultiple (`divRem`) check
+// the one result of `wit_divUint128(a, b)` with native arithmetic
+// (transcript elements 0 to 3: quotient.low, quotient.high, remainder.low,
+// remainder.high). Each preimage changes the quotient and remainder limbs
+// together with the values that the circuit computes from them
+// (t = quotient.high * b, P = t * 2^64 + quotient.low * b and r), so that
+// every other check passes. The other constraints are implied (Z3 proof
+// Z14 and MathRelationCheck.test.ts).
+const NATIVE_DIVISION: Omit<Case, 'artifact' | 'circuit' | 'honest'>[] = [
+  {
+    constraint: 'range of input 0',
+    attack: 'a = 2^128: q = 2^64 - 1, r = 1 for b = 2^64 + 1',
+    inputs: [2n ** 128n, TWO_64 + 1n],
+    privates: [MAX_UINT64, 0n, 1n, 0n],
+    reason: bits(128),
+  },
+  {
+    constraint: 'range of witness element 0',
+    attack: 'quotient.low = 2^64, quotient.high = 0 for 3 * 2^64 / 3',
+    inputs: [3n * TWO_64, 3n],
+    privates: [TWO_64, 0n, 0n, 0n],
+    reason: bits(64),
+  },
+  {
+    constraint: 'range of witness element 1',
+    attack: 'quotient.high = 1 / 2 in the field: t = 1, P = 2^64 for 2^64 / 2',
+    inputs: [TWO_64, 2n],
+    privates: [0n, inverse(2n), 0n, 0n],
+    reason: bits(64),
+  },
+  {
+    constraint: 'range of witness element 2',
+    attack:
+      'remainder.low = 2^64 + 5, remainder.high = 0 for (2^64 + 5) / 2^65',
+    inputs: [TWO_64 + 5n, 2n * TWO_64],
+    privates: [0n, 0n, TWO_64 + 5n, 0n],
+    reason: bits(64),
+  },
+  {
+    constraint: 'range of witness element 3',
+    attack:
+      'remainder.low = 4, remainder.high = 1 / 2^64 in the field for 5 / 7',
+    inputs: [5n, 7n],
+    privates: [0n, 0n, 4n, inverse(TWO_64)],
+    reason: bits(64),
+  },
+  {
+    constraint: 'assert 1',
+    attack: 'q - 1, r + b: q = 2, r = 4 for 10 / 3',
+    inputs: [10n, 3n],
+    privates: [2n, 0n, 4n, 0n],
+    reason: ASSERTION,
+  },
+  {
+    constraint: 'assert 4',
+    attack: 'q + 1: q = 4, r = 1 for 10 / 3 (audit A2 scenario)',
+    inputs: [10n, 3n],
+    privates: [4n, 0n, 1n, 0n],
+    reason: ASSERTION,
+  },
+];
+const DIVISION_CASES: Case[] = [
+  ...['div', 'rem', 'divRem', 'isMultiple'].flatMap((circuit) =>
+    NATIVE_DIVISION.map((entry) => ({
+      ...entry,
+      artifact: 'MockUint128',
+      circuit,
+      honest: [10n, 5n],
+    })),
+  ),
+  ...DIVISION_U128_CASES,
+];
 
 const CASES: Case[] = [
   ...DIGITS,

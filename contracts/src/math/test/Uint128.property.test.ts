@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { Uint128Simulator } from './simulators/Uint128Simulator.js';
 import { MAX_UINT64, MAX_UINT128 } from './utils/consts.js';
+import { divisionFailure } from './utils/forgeries.js';
 import { isqrt, toU128, toU256 } from './utils/oracles.js';
 import {
   nonZeroUpTo,
@@ -169,6 +170,62 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
         expect(await s.divRemU128(x, y)).toEqual(quotientRemainder);
         expect(await s.isMultiple(a, b)).toBe(a % b === 0n);
         expect(await s.isMultipleU128(x, y)).toBe(a % b === 0n);
+      }),
+      RUNS,
+    );
+  }, 60_000);
+
+  test('a forged division result fails the Uint<128> forms and the U128 form with the same message', async () => {
+    // The Uint<128> forms check the result of wit_divUint128(a, b), the U128
+    // form the result of wit_divU128(a, b). Both get the same forged result.
+    const native = await Uint128Simulator.create();
+    const port = await Uint128Simulator.create();
+    let forged = { quotient: toU128(0n), remainder: toU128(0n) };
+    native.overrideWitness('wit_divUint128', (context) => [
+      context.privateState,
+      forged,
+    ]);
+    port.overrideWitness('wit_divU128', (context) => [
+      context.privateState,
+      forged,
+    ]);
+    const outcome = (call: Promise<unknown>) =>
+      call.then(
+        () => 'ok',
+        (error: Error) => error.message,
+      );
+    const near = (v: bigint) =>
+      fc
+        .bigInt({ min: -2n, max: 2n })
+        .map((d) =>
+          v + d < 0n ? 0n : v + d > MAX_UINT128 ? MAX_UINT128 : v + d,
+        );
+    const division = fc.tuple(uint128, divisor).chain(([a, b]) =>
+      fc.tuple(
+        fc.constant(a),
+        fc.constant(b),
+        fc.oneof(
+          // Near the honest result.
+          fc.tuple(near(a / b), near(a % b)),
+          // A zero high limb (plan review MM-04) and the honest remainder.
+          fc.tuple(fc.bigInt({ min: 0n, max: MAX_UINT64 }), fc.constant(a % b)),
+          fc.tuple(uint128, uint128),
+        ),
+      ),
+    );
+    await fc.assert(
+      fc.asyncProperty(division, async ([a, b, [q, r]]) => {
+        forged = { quotient: toU128(q), remainder: toU128(r) };
+        const failure = divisionFailure(a, b, q, r);
+        const expected =
+          failure === undefined ? 'ok' : `failed assert: ${failure}`;
+        expect(await outcome(port.divRemU128(toU128(a), toU128(b)))).toBe(
+          expected,
+        );
+        expect(await outcome(native.div(a, b))).toBe(expected);
+        expect(await outcome(native.rem(a, b))).toBe(expected);
+        expect(await outcome(native.divRem(a, b))).toBe(expected);
+        expect(await outcome(native.isMultiple(a, b))).toBe(expected);
       }),
       RUNS,
     );

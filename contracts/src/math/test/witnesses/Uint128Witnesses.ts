@@ -57,7 +57,8 @@ export interface IUint128Witnesses<L, P> {
   /**
    * Computes the quotient and remainder of dividing two Uint<128> values
    * (bigint). Uint128.toU128 calls it with the divisor 2^64 to split a value
-   * into its 64-bit limbs.
+   * into its 64-bit limbs. The Uint<128> form of Uint128.divRem calls it as
+   * its division witness.
    * @param context - The witness context containing the private state.
    * @param a - The dividend as bigint.
    * @param b - The divisor as bigint.

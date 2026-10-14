@@ -90,15 +90,42 @@ const pseudoRandom = (bits: number, ...salt: number[]): bigint => {
 };
 
 /**
- * Whether leaf `leaf` of `call` is free. `Uint128.toU128` calls
+ * The `Uint<128>` forms of these `Uint128` circuits call
+ * `wit_divUint128(a, b)` once, as their division witness. Every other call of
+ * `wit_divUint128` is a `toU128` split with the divisor 2^64.
+ */
+const DIVISION_CIRCUITS: ReadonlySet<string> = new Set([
+  'div',
+  'rem',
+  'divRem',
+  'isMultiple',
+]);
+
+/**
+ * Whether `call` of `circuit` is the division witness of a `Uint<128>`
+ * division. A division by 2^64 has the arguments of a split, so only the
+ * circuit tells the two uses apart.
+ */
+export function isDivisionCall(circuit: string, call: WitnessCall): boolean {
+  return call.name === 'wit_divUint128' && DIVISION_CIRCUITS.has(circuit);
+}
+
+/**
+ * Whether leaf `leaf` of `call` in `circuit` is free. `Uint128.toU128` calls
  * `wit_divUint128(value, 2^64)` and uses only `quotient.low` and
  * `remainder.low`. The circuit range-checks `quotient.high` (leaf 1) and
  * `remainder.high` (leaf 3) and uses them nowhere else. No other leaf of any
- * witness call is free.
+ * witness call is free: the division witness of a `Uint<128>` division uses
+ * all four leaves.
  */
-export function isFreeLeaf(call: WitnessCall, leaf: number): boolean {
+export function isFreeLeaf(
+  circuit: string,
+  call: WitnessCall,
+  leaf: number,
+): boolean {
   return (
     call.name === 'wit_divUint128' &&
+    !isDivisionCall(circuit, call) &&
     call.args[1] === TWO_64 &&
     (leaf === 1 || leaf === 3)
   );
@@ -200,8 +227,154 @@ const digitForgeries = (
   ),
 ];
 
-/** Joint forgeries for `call`, each against one check of the circuit. */
-export function jointForgeries(call: WitnessCall): Forgery[] {
+/**
+ * The first check of a `Uint128` division that the quotient `q` and the
+ * remainder `r` (limbs in range) fail, or `undefined`. The `U128` form
+ * (`_div`) and the `Uint<128>` form (`divRem`) check in this order.
+ */
+export function divisionFailure(
+  a: bigint,
+  b: bigint,
+  q: bigint,
+  r: bigint,
+): string | undefined {
+  if (r >= b) return 'Uint128: remainder error';
+  if (q * b > MAX_UINT128) return 'Uint128: division product overflow';
+  if (q * b + r !== a) return 'Uint128: division invalid';
+  return undefined;
+}
+
+/**
+ * Joint forgeries for the division witness of a `Uint<128>` division:
+ * `wit_divUint128(a, b)` in `divRem` (see {@link isDivisionCall}).
+ */
+function divisionForgeries(call: WitnessCall): Forgery[] {
+  const [a, b] = call.args as [bigint, bigint];
+  const result = call.result as DivResultU128;
+  const q = big(result.quotient);
+  const r = big(result.remainder);
+  const as = (quotient: bigint, rem: bigint): Forgery['value'] => ({
+    quotient: toU128(quotient),
+    remainder: toU128(rem),
+  });
+  const joint = (label: string, quotient: bigint, rem: bigint): Forgery => ({
+    label: `wit_divUint128 division: ${label}`,
+    value: as(quotient, rem),
+    attacks: divisionFailure(a, b, quotient, rem),
+  });
+  const out: Forgery[] = [];
+  if (q + 1n <= MAX_UINT128) out.push(joint('q + 1', q + 1n, r));
+  if (r + 1n <= MAX_UINT128) out.push(joint('r + 1', q, r + 1n));
+  if (q >= 1n && r + b <= MAX_UINT128) {
+    out.push(joint('q - 1, r + b', q - 1n, r + b));
+  }
+  // k * b is a multiple of 2^128: q + k gives the same product modulo 2^128.
+  if (b > 0n) {
+    const k = TWO_128 / (b & -b);
+    if (q + k <= MAX_UINT128) {
+      out.push(joint('q + 2^128 / 2^v(b) (product wraps to q * b)', q + k, r));
+    }
+  }
+  // The high limb of the quotient stays, the low limb is the largest: for
+  // div(10, 2^65), q * b is 2^129 - 2^65 (plan review MM-04).
+  if (result.quotient.low !== MAX_UINT64) {
+    out.push(
+      joint(
+        'quotient.low = 2^64 - 1',
+        (result.quotient.high << 64n) + MAX_UINT64,
+        r,
+      ),
+    );
+  }
+  if (result.quotient.high < MAX_UINT64) {
+    out.push(joint('quotient.high + 1', q + TWO_64, r));
+  }
+  // Limb moves with the same value: only the range check of a limb rejects.
+  const limbs = (
+    quotient: { low: bigint; high: bigint },
+    remainder: { low: bigint; high: bigint },
+  ) => ({ quotient, remainder });
+  if (result.quotient.high >= 1n) {
+    out.push({
+      label: 'wit_divUint128 division: quotient.low + 2^64, quotient.high - 1',
+      value: limbs(
+        {
+          low: result.quotient.low + TWO_64,
+          high: result.quotient.high - 1n,
+        },
+        result.remainder,
+      ),
+    });
+  }
+  out.push(
+    ...rangeIsolations(
+      'wit_divUint128 division: remainder [low, high]',
+      [result.remainder.low, result.remainder.high],
+      [1n, TWO_64],
+      MAX_UINT64,
+      ([low, high]) => limbs(result.quotient, { low, high }),
+    ),
+  );
+  // quotient.high * b is t' in the field, for a t' below 2^64 next to the
+  // honest t = q_h * b, and the low limb and the remainder complete a. b does
+  // not divide t' (else q would not be unique), so quotient.high is out of
+  // range: only its range check rejects.
+  if (b >= 2n) {
+    const t = result.quotient.high * b;
+    const lowest = a >= TWO_64 * b ? (a - TWO_64 * b) / TWO_64 + 1n : 0n;
+    const highest = a / TWO_64 < MAX_UINT64 ? a / TWO_64 : MAX_UINT64;
+    const next = [t + 1n, t - 1n].find((v) => v >= lowest && v <= highest);
+    if (next !== undefined) {
+      const rest = a - next * TWO_64;
+      out.push({
+        label:
+          "wit_divUint128 division: quotient.high = t' / b in the field, t' = q_h * b +- 1",
+        value: limbs(
+          {
+            low: rest / b,
+            high: (next * modInverse(b)) % FIELD_MODULUS,
+          },
+          toU128(rest % b),
+        ),
+      });
+    }
+  }
+  out.push({
+    label:
+      'wit_divUint128 division: quotient.low - 2^64 (field), quotient.high + 1',
+    value: limbs(
+      {
+        low: negField(TWO_64 - result.quotient.low),
+        high: result.quotient.high + 1n,
+      },
+      result.remainder,
+    ),
+  });
+  if (b >= 2n) {
+    // q * b + r == a holds in the field, quotient.low is out of range.
+    const r2 = (r + 1n) % b;
+    out.push({
+      label: 'wit_divUint128 division: q = (a - r - 1) / b in the field',
+      value: limbs(
+        {
+          low: ((a - r2 + FIELD_MODULUS) * modInverse(b)) % FIELD_MODULUS,
+          high: 0n,
+        },
+        toU128(r2),
+      ),
+    });
+  }
+  return out;
+}
+
+/**
+ * Joint forgeries for `call` in `circuit`, each against one check of the
+ * circuit.
+ */
+export function jointForgeries(circuit: string, call: WitnessCall): Forgery[] {
+  if (isDivisionCall(circuit, call)) {
+    return divisionForgeries(call);
+  }
   switch (call.name) {
     case 'wit_divUint64': {
       const [a, b] = call.args as [bigint, bigint];
@@ -288,7 +461,9 @@ export function jointForgeries(call: WitnessCall): Forgery[] {
     case 'wit_divUint128': {
       const [, divisor] = call.args as [bigint, bigint];
       if (divisor !== TWO_64) {
-        throw new Error('wit_divUint128 is called only by toU128');
+        throw new Error(
+          'wit_divUint128 outside a Uint<128> division is a toU128 split with the divisor 2^64',
+        );
       }
       const { quotient, remainder } = call.result as DivResultU128;
       const high = quotient.low;
@@ -607,6 +782,9 @@ export const mustRejectPlan: ForgeryPlan = (call) => {
   if (call.name === 'wit_divU128') {
     return { quotient: toU128(0n), remainder: call.args[0] };
   }
+  if (call.name === 'wit_divUint128') {
+    return { quotient: toU128(0n), remainder: toU128(call.args[0] as bigint) };
+  }
   return undefined;
 };
 
@@ -643,6 +821,7 @@ export type Attack = {
  *   - A coherent run records the assertion that the attack names.
  */
 export function expectSound(
+  circuit: string,
   outcome: ForgeryOutcome,
   attack: Attack,
   tally?: ForgeryTally,
@@ -655,7 +834,8 @@ export function expectSound(
     outcome.deviations.every(({ call, value, leaves }) =>
       leaves.every(
         (leaf) =>
-          isFreeLeaf(call, leaf) && witnessLeaves(value)[leaf] <= MAX_UINT64,
+          isFreeLeaf(circuit, call, leaf) &&
+          witnessLeaves(value)[leaf] <= MAX_UINT64,
       ),
     );
   expect(outcome.verdict.accepted, where).toBe(freeInRange);
@@ -686,7 +866,7 @@ type CallForgery = { call: WitnessCall; forgery: Forgery };
  * honest witness threw (a zero divisor) uses the result of
  * {@link mustRejectPlan}.
  */
-function callForgeries(run: Replay): CallForgery[] {
+function callForgeries(circuit: string, run: Replay): CallForgery[] {
   return run.calls.flatMap((honestCall) => {
     const call =
       honestCall.result === undefined
@@ -695,16 +875,17 @@ function callForgeries(run: Replay): CallForgery[] {
     const widths = fieldWidths(
       run.proofData.privateTranscriptOutputs[call.index].alignment,
     );
-    return [...jointForgeries(call), ...leafForgeries(call, widths)].map(
-      (forgery) => ({ call, forgery }),
-    );
+    return [
+      ...jointForgeries(circuit, call),
+      ...leafForgeries(call, widths),
+    ].map((forgery) => ({ call, forgery }));
   });
 }
 
-/** The single-call and the coordinated forgeries of `run`. */
-export function attacksOf(run: Replay): Attack[] {
+/** The single-call and the coordinated forgeries of `run` of `circuit`. */
+export function attacksOf(circuit: string, run: Replay): Attack[] {
   return [
-    ...callForgeries(run).map(({ call, forgery }) => ({
+    ...callForgeries(circuit, run).map(({ call, forgery }) => ({
       label: forgery.label,
       plan: (c: WitnessCall) =>
         c.index === call.index ? forgery.value : undefined,
@@ -732,7 +913,7 @@ export async function expectForgeriesRejected(
   };
   const honest = await forger.replay(circuit, args);
   expect(honest.failures, `honest ${circuit}`).toEqual([]);
-  for (const attack of attacksOf(honest)) {
+  for (const attack of attacksOf(circuit, honest)) {
     const outcome = await forger.forge(
       circuit,
       args,
@@ -740,7 +921,7 @@ export async function expectForgeriesRejected(
       undefined,
       mustRejectPlan,
     );
-    expectSound(outcome, attack, tally);
+    expectSound(circuit, outcome, attack, tally);
   }
   return tally;
 }
@@ -772,7 +953,7 @@ export async function isolatedSplits(
     const outcome = await forger.forge(circuit, args, forgery.plan);
     if (isolates(outcome, forgery.attacks)) coordinated.add(forgery.split);
   }
-  for (const { call, forgery } of callForgeries(honest)) {
+  for (const { call, forgery } of callForgeries(circuit, honest)) {
     const ordinal = found.splits.indexOf(call);
     if (ordinal < 0 || forgery.attacks === undefined) continue;
     const outcome = await forger.forge(circuit, args, (c) =>
@@ -795,7 +976,7 @@ export async function expectMustRejectInput(
 ): Promise<number> {
   const run = await forger.replay(circuit, args, mustRejectPlan);
   let count = 0;
-  for (const entry of [undefined, ...callForgeries(run)]) {
+  for (const entry of [undefined, ...callForgeries(circuit, run)]) {
     const label = entry?.forgery.label ?? 'honest witness results';
     const outcome = await forger.attempt(circuit, args, {
       plan: (c) =>
@@ -816,14 +997,17 @@ export async function expectMustRejectInput(
   return count;
 }
 
-/** The transcript positions of the free leaves of an honest run. */
-export function freePositions(calls: readonly WitnessCall[]): number[] {
+/** The transcript positions of the free leaves of an honest run of `circuit`. */
+export function freePositions(
+  circuit: string,
+  calls: readonly WitnessCall[],
+): number[] {
   const positions: number[] = [];
   let offset = 0;
   for (const call of calls) {
     const count = witnessLeaves(call.result).length;
     for (let leaf = 0; leaf < count; leaf++) {
-      if (isFreeLeaf(call, leaf)) positions.push(offset + leaf);
+      if (isFreeLeaf(circuit, call, leaf)) positions.push(offset + leaf);
     }
     offset += count;
   }
@@ -854,7 +1038,7 @@ export async function expectCoverage(
   }
   expect(
     coverage.filter((entry) => !entry.reachesSink).map((e) => e.position),
-  ).toEqual(freePositions(honest.calls));
+  ).toEqual(freePositions(circuit, honest.calls));
 }
 
 /**
@@ -1055,7 +1239,7 @@ export async function findUnsoundForgery(
   rejects: readonly (readonly unknown[])[] = [],
 ): Promise<string | undefined> {
   const honest = await forger.replay(circuit, args);
-  for (const attack of attacksOf(honest)) {
+  for (const attack of attacksOf(circuit, honest)) {
     const outcome = await forger.forge(
       circuit,
       args,
@@ -1067,7 +1251,8 @@ export async function findUnsoundForgery(
     const free = outcome.deviations.every(({ call: c, value, leaves }) =>
       leaves.every(
         (leaf) =>
-          isFreeLeaf(c, leaf) && witnessLeaves(value)[leaf] <= MAX_UINT64,
+          isFreeLeaf(circuit, c, leaf) &&
+          witnessLeaves(value)[leaf] <= MAX_UINT64,
       ),
     );
     if (outcome.outputChanged || !free) return attack.label;
@@ -1081,7 +1266,7 @@ export async function findUnsoundForgery(
   }
   for (const [index, rejected] of rejects.entries()) {
     const run = await forger.replay(circuit, rejected, mustRejectPlan);
-    for (const entry of [undefined, ...callForgeries(run)]) {
+    for (const entry of [undefined, ...callForgeries(circuit, run)]) {
       const outcome = await forger.attempt(circuit, rejected, {
         plan: (c) =>
           entry !== undefined && c.index === entry.call.index

@@ -806,7 +806,7 @@ describe('Uint128', () => {
     });
 
     testDryOnly('should fail when remainder >= divisor', async () => {
-      uint128Simulator.overrideWitness('wit_divU128', (context) => [
+      uint128Simulator.overrideWitness('wit_divUint128', (context) => [
         context.privateState,
         { quotient: { low: 1n, high: 0n }, remainder: { low: 5n, high: 0n } },
       ]);
@@ -816,16 +816,23 @@ describe('Uint128', () => {
       );
     });
 
-    testDryOnly('should fail when the toU128 witness is invalid', async () => {
-      uint128Simulator.overrideWitness('wit_divUint128', (context) => [
-        context.privateState,
-        { quotient: { low: 1n, high: 0n }, remainder: { low: 5n, high: 0n } },
-      ]);
-      await expectRejection(
-        uint128Simulator.div(10n, 5n),
-        'failed assert: Uint128: conversion invalid',
-      );
-    });
+    testDryOnly(
+      'should fail when quotient * b does not fit in 128 bits and the quotient high part is zero',
+      async () => {
+        // Plan review MM-04: q = 2^64 - 1, so q * 2^65 = 2^129 - 2^65.
+        uint128Simulator.overrideWitness('wit_divUint128', (context) => [
+          context.privateState,
+          {
+            quotient: { low: MAX_UINT64, high: 0n },
+            remainder: { low: 0n, high: 0n },
+          },
+        ]);
+        await expectRejection(
+          uint128Simulator.div(10n, 2n ** 65n),
+          'failed assert: Uint128: division product overflow',
+        );
+      },
+    );
   });
 
   describe('divU128', () => {
@@ -931,7 +938,7 @@ describe('Uint128', () => {
     });
 
     testDryOnly('should fail when remainder >= divisor', async () => {
-      uint128Simulator.overrideWitness('wit_divU128', (context) => [
+      uint128Simulator.overrideWitness('wit_divUint128', (context) => [
         context.privateState,
         { quotient: { low: 1n, high: 0n }, remainder: { low: 10n, high: 0n } },
       ]);
@@ -941,16 +948,24 @@ describe('Uint128', () => {
       );
     });
 
-    testDryOnly('should fail when the toU128 witness is invalid', async () => {
-      uint128Simulator.overrideWitness('wit_divUint128', (context) => [
-        context.privateState,
-        { quotient: { low: 1n, high: 0n }, remainder: { low: 10n, high: 0n } },
-      ]);
-      await expectRejection(
-        uint128Simulator.rem(20n, 10n),
-        'failed assert: Uint128: conversion invalid',
-      );
-    });
+    testDryOnly(
+      'should fail when the quotient high part times b is 2^64 or more',
+      async () => {
+        // The honest quotient of (2^100 + 3) / 2^65 is 2^35. A high part of 1
+        // adds 2^64 * 2^65 = 2^129 to q * b.
+        uint128Simulator.overrideWitness('wit_divUint128', (context) => [
+          context.privateState,
+          {
+            quotient: { low: 2n ** 35n, high: 1n },
+            remainder: { low: 3n, high: 0n },
+          },
+        ]);
+        await expectRejection(
+          uint128Simulator.rem(2n ** 100n + 3n, 2n ** 65n),
+          'failed assert: Uint128: division product overflow',
+        );
+      },
+    );
   });
 
   describe('remU128', () => {
@@ -1062,7 +1077,7 @@ describe('Uint128', () => {
     testDryOnly(
       'should fail when witness returns remainder >= divisor',
       async () => {
-        uint128Simulator.overrideWitness('wit_divU128', (context) => [
+        uint128Simulator.overrideWitness('wit_divUint128', (context) => [
           context.privateState,
           { quotient: { low: 1n, high: 0n }, remainder: { low: 5n, high: 0n } },
         ]);
@@ -1076,7 +1091,7 @@ describe('Uint128', () => {
     testDryOnly(
       'should fail when witness returns quotient * b + remainder != a',
       async () => {
-        uint128Simulator.overrideWitness('wit_divU128', (context) => [
+        uint128Simulator.overrideWitness('wit_divUint128', (context) => [
           context.privateState,
           { quotient: { low: 2n, high: 0n }, remainder: { low: 0n, high: 0n } },
         ]);
@@ -1091,7 +1106,7 @@ describe('Uint128', () => {
       'should fail with "division invalid" when quotient * b > a',
       async () => {
         // q * b = 15 fits in 128 bits and r < b, but q * b > a = 10.
-        uint128Simulator.overrideWitness('wit_divU128', (context) => [
+        uint128Simulator.overrideWitness('wit_divUint128', (context) => [
           context.privateState,
           { quotient: { low: 3n, high: 0n }, remainder: { low: 0n, high: 0n } },
         ]);
@@ -1394,7 +1409,7 @@ describe('Uint128', () => {
     testDryOnly(
       'should fail when witness returns quotient * b + remainder != a',
       async () => {
-        uint128Simulator.overrideWitness('wit_divU128', (context) => [
+        uint128Simulator.overrideWitness('wit_divUint128', (context) => [
           context.privateState,
           { quotient: { low: 1n, high: 0n }, remainder: { low: 1n, high: 0n } },
         ]);
@@ -1439,5 +1454,43 @@ describe('Uint128', () => {
         );
       },
     );
+  });
+
+  describe('division witness of the Uint<128> forms', () => {
+    const a = 2n ** 100n + 7n;
+    const b = 5n;
+    const forms: [string, (s: Uint128Simulator) => Promise<unknown>][] = [
+      ['div', (s) => s.div(a, b)],
+      ['rem', (s) => s.rem(a, b)],
+      ['divRem', (s) => s.divRem(a, b)],
+      ['isMultiple', (s) => s.isMultiple(a, b)],
+    ];
+
+    for (const [name, call] of forms) {
+      testDryOnly(
+        `${name} calls wit_divUint128(a, b) once and no other witness`,
+        async () => {
+          const honest = Uint128Witnesses();
+          const calls: [string, unknown[]][] = [];
+          uint128Simulator.overrideWitness(
+            'wit_divUint128',
+            (context, x, y) => {
+              calls.push(['wit_divUint128', [x, y]]);
+              return honest.wit_divUint128(context, x, y);
+            },
+          );
+          uint128Simulator.overrideWitness('wit_divU128', (context, x, y) => {
+            calls.push(['wit_divU128', [x, y]]);
+            return honest.wit_divU128(context, x, y);
+          });
+          uint128Simulator.overrideWitness('wit_sqrtU128', (context, x) => {
+            calls.push(['wit_sqrtU128', [x]]);
+            return honest.wit_sqrtU128(context, x);
+          });
+          await call(uint128Simulator);
+          expect(calls).toEqual([['wit_divUint128', [a, b]]]);
+        },
+      );
+    }
   });
 });

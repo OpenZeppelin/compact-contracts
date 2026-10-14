@@ -5,8 +5,10 @@ import { loadZkir } from '#test-utils/zkir/relationCheck.js';
 import { Uint64Witnesses } from '../witnesses/Uint64Witnesses.js';
 import {
   describeConstraint,
+  divisionFailure,
   findConstraint,
   inputForgeries,
+  isDivisionCall,
   isFreeLeaf,
   jointForgeries,
   leafForgeries,
@@ -24,11 +26,66 @@ const call = (name: string, args: unknown[], result: unknown): WitnessCall => ({
 describe('forgery catalogue', () => {
   test('marks only the high fields of a toU128 split as free', () => {
     const split = call('wit_divUint128', [5n, 2n ** 64n], {});
-    expect([0, 1, 2, 3].filter((leaf) => isFreeLeaf(split, leaf))).toEqual([
-      1, 3,
-    ]);
-    expect(isFreeLeaf(call('wit_divUint128', [5n, 3n], {}), 1)).toBe(false);
-    expect(isFreeLeaf(call('wit_divU128', [5n, 2n ** 64n], {}), 1)).toBe(false);
+    expect(
+      [0, 1, 2, 3].filter((leaf) => isFreeLeaf('mulChecked', split, leaf)),
+    ).toEqual([1, 3]);
+    expect(isFreeLeaf('toU128', call('wit_divUint128', [5n, 3n], {}), 1)).toBe(
+      false,
+    );
+    expect(
+      isFreeLeaf('divU128', call('wit_divU128', [5n, 2n ** 64n], {}), 1),
+    ).toBe(false);
+  });
+
+  test('marks no leaf of the division witness of a Uint<128> division as free', () => {
+    // A division by 2^64 has the arguments of a split.
+    const division = call('wit_divUint128', [5n, 2n ** 64n], {});
+    for (const circuit of ['div', 'rem', 'divRem', 'isMultiple']) {
+      expect(isDivisionCall(circuit, division)).toBe(true);
+      expect(
+        [0, 1, 2, 3].filter((leaf) => isFreeLeaf(circuit, division, leaf)),
+      ).toEqual([]);
+    }
+    expect(isDivisionCall('divU128', division)).toBe(false);
+    expect(isDivisionCall('div', call('wit_divUint64', [5n, 3n], {}))).toBe(
+      false,
+    );
+  });
+
+  test('names the first failing check of a division in the module order', () => {
+    expect(divisionFailure(10n, 5n, 2n, 0n)).toBeUndefined();
+    expect(divisionFailure(10n, 5n, 1n, 5n)).toBe('Uint128: remainder error');
+    // Plan review MM-04: a = 10, b = 2^65, q = 2^64 - 1, r = 0.
+    expect(divisionFailure(10n, 2n ** 65n, 2n ** 64n - 1n, 0n)).toBe(
+      'Uint128: division product overflow',
+    );
+    expect(divisionFailure(10n, 5n, 3n, 0n)).toBe('Uint128: division invalid');
+  });
+
+  test('gives division forgeries for the division witness of a Uint<128> division', () => {
+    const division = (a: bigint, b: bigint) =>
+      call('wit_divUint128', [a, b], {
+        quotient: toU128(a / b),
+        remainder: toU128(a % b),
+      });
+    const forgeries = jointForgeries('div', division(10n, 2n ** 65n));
+    expect(forgeries).toContainEqual({
+      label: 'wit_divUint128 division: quotient.low = 2^64 - 1',
+      value: { quotient: toU128(2n ** 64n - 1n), remainder: toU128(10n) },
+      attacks: 'Uint128: division product overflow',
+    });
+    expect(forgeries.map((f) => f.attacks)).toContain(
+      'Uint128: division invalid',
+    );
+    expect(
+      jointForgeries('rem', division(2n ** 100n, 3n)).map((f) => f.attacks),
+    ).toContain('Uint128: remainder error');
+    // The split forgeries stay for every other circuit.
+    expect(
+      jointForgeries('mulChecked', division(10n, 2n ** 64n)).map(
+        (f) => f.label,
+      ),
+    ).toContain('toU128 split: high + 1');
   });
 
   test('gives leaf forgeries that differ from the honest leaf', () => {
@@ -44,7 +101,10 @@ describe('forgery catalogue', () => {
   });
 
   test('gives no range isolation for a single digit', () => {
-    const forgeries = jointForgeries(call('wit_unpackBytes', [], [5n]));
+    const forgeries = jointForgeries(
+      'unpack8',
+      call('wit_unpackBytes', [], [5n]),
+    );
     expect(forgeries.map((f) => f.label)).toEqual([
       'wit_unpackBytes: digit 0 + 1 mod 256',
     ]);
@@ -53,6 +113,7 @@ describe('forgery catalogue', () => {
   test('gives the product-overflow forgery only for an even divisor', () => {
     const forge = (b: bigint) =>
       jointForgeries(
+        'divU128',
         call('wit_divU128', [toU128(100n), toU128(b)], {
           quotient: toU128(100n / b),
           remainder: toU128(100n % b),
@@ -63,11 +124,13 @@ describe('forgery catalogue', () => {
   });
 
   test('rejects an unknown witness and a split with another divisor', () => {
-    expect(() => jointForgeries(call('wit_other', [], 0n))).toThrow(
+    expect(() => jointForgeries('other', call('wit_other', [], 0n))).toThrow(
       'no joint forgeries for wit_other',
     );
-    expect(() => jointForgeries(call('wit_divUint128', [5n, 3n], {}))).toThrow(
-      'wit_divUint128 is called only by toU128',
+    expect(() =>
+      jointForgeries('toU128', call('wit_divUint128', [5n, 3n], {})),
+    ).toThrow(
+      'wit_divUint128 outside a Uint<128> division is a toU128 split with the divisor 2^64',
     );
   });
 
@@ -101,6 +164,9 @@ describe('forgery catalogue', () => {
     expect(
       mustRejectPlan(call('wit_divU128', [toU128(5n), toU128(0n)], undefined)),
     ).toEqual({ quotient: toU128(0n), remainder: toU128(5n) });
+    expect(
+      mustRejectPlan(call('wit_divUint128', [2n ** 100n, 0n], undefined)),
+    ).toEqual({ quotient: toU128(0n), remainder: toU128(2n ** 100n) });
     expect(mustRejectPlan(call('wit_divUint64', [5n, 1n], {}))).toBeUndefined();
     expect(mustRejectPlan(call('wit_sqrtU128', [], undefined))).toBeUndefined();
   });

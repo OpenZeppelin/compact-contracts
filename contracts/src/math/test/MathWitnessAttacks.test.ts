@@ -31,6 +31,11 @@ import {
  * dry backend only. An "unsupported override" error on the live backend is
  * not a rejection of the forgery.
  *
+ * The `Uint<128>` forms of the `Uint128` divisions call `wit_divUint128(a, b)`
+ * as their division witness and split nothing. The `U128` forms call
+ * `wit_divU128` and split the partial products of `_mul` with
+ * `wit_divUint128`.
+ *
  * No forgery reaches "Uint128: unexpected multiplication overflow". The final
  * carry of `Uint128._mul` is 0 for every verified split (Z3 proof Z7), and a
  * split that is not verified fails first with "conversion invalid". The
@@ -241,7 +246,7 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
       ['addU128', (s) => s.addU128(toU128(2n ** 100n + 7n), toU128(5n))],
       ['mul', (s) => s.mul(2n ** 100n + 7n, 5n)],
       ['mulChecked', (s) => s.mulChecked(2n ** 100n + 7n, 5n)],
-      ['div', (s) => s.div(2n ** 100n + 7n, 5n)],
+      ['divU128', (s) => s.divU128(toU128(2n ** 100n + 7n), toU128(5n))],
       ['sqrt', (s) => s.sqrt(2n ** 100n + 7n)],
     ];
 
@@ -272,7 +277,11 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
       ][] = [
         ['toU128', (s) => s.toU128(value), toU128(value)],
         ['mulChecked', (s) => s.mulChecked(value, 5n), value * 5n],
-        ['div', (s) => s.div(value, 5n), value / 5n],
+        [
+          'divU128',
+          (s) => s.divU128(toU128(value), toU128(5n)),
+          toU128(value / 5n),
+        ],
         ['sqrt', (s) => s.sqrt(value), 2n ** 50n],
       ];
       for (const [name, call, result] of expected) {
@@ -322,7 +331,10 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
           remainder: toU128(4n),
         })),
       );
-      await expectRejection(s.div(10n, 3n), 'Uint128: remainder error');
+      await expectRejection(
+        s.divU128(toU128(10n), toU128(3n)),
+        'Uint128: remainder error',
+      );
     });
 
     test('rejects q * b of 2^128 or more (division product overflow)', async () => {
@@ -353,7 +365,10 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
           remainder: toU128(a % b),
         })),
       );
-      await expectRejection(s.div(a, b), 'Uint128: division product overflow');
+      await expectRejection(
+        s.divU128(toU128(a), toU128(b)),
+        'Uint128: division product overflow',
+      );
     });
 
     test('rejects q * b > a with "division invalid" (BUG-3)', async () => {
@@ -365,7 +380,10 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
           remainder: toU128(0n),
         })),
       );
-      await expectRejection(s.div(10n, 3n), 'Uint128: division invalid');
+      await expectRejection(
+        s.divU128(toU128(10n), toU128(3n)),
+        'Uint128: division invalid',
+      );
     });
 
     test('rejects a - q * b != r (division invalid)', async () => {
@@ -382,6 +400,110 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
         'Uint128: division invalid',
       );
     });
+  });
+
+  describe('wit_divUint128 as the division witness of the Uint<128> forms', () => {
+    // div, rem, divRem and isMultiple check one division witness result with
+    // native arithmetic, in the order of Uint128._div: the same forged
+    // quotient and remainder fail with the same message in both forms.
+    const forms: [
+      string,
+      (s: Uint128Simulator, a: bigint, b: bigint) => Promise<unknown>,
+    ][] = [
+      ['div', (s, a, b) => s.div(a, b)],
+      ['rem', (s, a, b) => s.rem(a, b)],
+      ['divRem', (s, a, b) => s.divRem(a, b)],
+      ['isMultiple', (s, a, b) => s.isMultiple(a, b)],
+    ];
+    const attacks: [string, bigint, bigint, bigint, bigint, string][] = [
+      ['r >= b', 10n, 3n, 2n, 4n, 'Uint128: remainder error'],
+      [
+        'quotient.high * b >= 2^64',
+        2n ** 100n + 3n,
+        2n ** 65n,
+        2n ** 64n + 2n ** 35n,
+        3n,
+        'Uint128: division product overflow',
+      ],
+      // Plan review MM-04: the high part of q is zero.
+      [
+        'q * b >= 2^128 with quotient.high = 0',
+        10n,
+        2n ** 65n,
+        MAX_UINT64,
+        0n,
+        'Uint128: division product overflow',
+      ],
+      // q + 2^63 times 2^65 is q * 2^65 + 2^128.
+      [
+        'q * b + 2^128 that wraps to a',
+        2n ** 100n + 3n,
+        2n ** 65n,
+        2n ** 35n + 2n ** 63n,
+        3n,
+        'Uint128: division product overflow',
+      ],
+      ['q * b > a', 10n, 3n, 4n, 0n, 'Uint128: division invalid'],
+      ['a - q * b != r', 10n, 3n, 3n, 0n, 'Uint128: division invalid'],
+    ];
+
+    for (const [label, a, b, q, r, message] of attacks) {
+      test.each(forms)(`%s rejects ${label}`, async (_name, call) => {
+        const s = await Uint128Simulator.create();
+        s.overrideWitness(
+          'wit_divUint128',
+          forgeCall(u128.wit_divUint128, 0, () => ({
+            quotient: toU128(q),
+            remainder: toU128(r),
+          })),
+        );
+        await expectRejection(call(s, a, b), message);
+        // The U128 form fails with the same message for the same result.
+        const u = await Uint128Simulator.create();
+        u.overrideWitness(
+          'wit_divU128',
+          forgeCall(u128.wit_divU128, 0, () => ({
+            quotient: toU128(q),
+            remainder: toU128(r),
+          })),
+        );
+        await expectRejection(u.divRemU128(toU128(a), toU128(b)), message);
+      });
+    }
+
+    test.each(forms)(
+      '%s rejects changed high fields: no field of the division witness is free',
+      async (_name, call) => {
+        const s = await Uint128Simulator.create();
+        s.overrideWitness(
+          'wit_divUint128',
+          forgeCall(u128.wit_divUint128, 0, (honest) => ({
+            quotient: { ...honest.quotient, high: MAX_UINT64 },
+            remainder: { ...honest.remainder, high: 12345n },
+          })),
+        );
+        await expectRejection(
+          call(s, 2n ** 100n + 7n, 5n),
+          'Uint128: remainder error',
+        );
+      },
+    );
+
+    test.each(forms)(
+      '%s ignores a forged wit_divU128: the Uint<128> form does not call it',
+      async (_name, call) => {
+        const s = await Uint128Simulator.create();
+        s.overrideWitness(
+          'wit_divU128',
+          forgeCall(u128.wit_divU128, 0, () => ({
+            quotient: toU128(2n),
+            remainder: toU128(4n),
+          })),
+        );
+        const honest = await Uint128Simulator.create();
+        expect(await call(s, 10n, 3n)).toEqual(await call(honest, 10n, 3n));
+      },
+    );
   });
 
   describe('wit_sqrtU128: root^2 <= n < (root + 1)^2', () => {
