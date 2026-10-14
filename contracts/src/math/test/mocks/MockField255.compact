@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the Field255 module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../Field255" prefix Field255_;
+
+import { U256 } from "../../Types";
+
+export { U256 };
+
+// Keeps every circuit below impure. Without a ledger write the compiler
+// promotes them to pure, and the artifact ships without ZKIR or proving keys,
+// leaving the circuits evaluated but never proven.
+ledger _invocations: Counter;
+
+////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////
+
+export circuit MAX_FIELD(): Field {
+  _invocations.increment(1);
+  return Field255_MAX_FIELD();
+}
+
+////////////////////////////////////////////////////////////////
+// Conversions
+////////////////////////////////////////////////////////////////
+
+export circuit toBytes(value: Field): Bytes<32> {
+  _invocations.increment(1);
+  return disclose(Field255_toBytes(value));
+}
+
+export circuit toU256(value: Field): U256 {
+  _invocations.increment(1);
+  return disclose(Field255_toU256(value));
+}
+
+////////////////////////////////////////////////////////////////
+// Comparisons
+////////////////////////////////////////////////////////////////
+
+export circuit eq(a: Field, b: Field): Boolean {
+  _invocations.increment(1);
+  return Field255_eq(a, b);
+}
+
+export circuit lt(a: Field, b: Field): Boolean {
+  _invocations.increment(1);
+  return disclose(Field255_lt(a, b));
+}
+
+export circuit lte(a: Field, b: Field): Boolean {
+  _invocations.increment(1);
+  return disclose(Field255_lte(a, b));
+}
+
+export circuit gt(a: Field, b: Field): Boolean {
+  _invocations.increment(1);
+  return disclose(Field255_gt(a, b));
+}
+
+export circuit gte(a: Field, b: Field): Boolean {
+  _invocations.increment(1);
+  return disclose(Field255_gte(a, b));
+}
+
+////////////////////////////////////////////////////////////////
+// Utilities
+////////////////////////////////////////////////////////////////
+
+export circuit isZero(a: Field): Boolean {
+  _invocations.increment(1);
+  return Field255_isZero(a);
+}

@@ -1,0 +1,228 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (math/Uint256.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @title Uint256 module
+ *
+ * @description A utility module providing mathematical operations and conversions for 256-bit
+ * unsigned integers using the U256 struct. The U256 type represents numbers as
+ * `high * 2^128 + low`, where high and low are U128 structs (each containing two Uint<64> limbs).
+ *
+ * @remarks
+ * Supported Operations:
+ * - Constants:
+ *   - ZERO_U256(): Returns a U256 struct representing zero.
+ *   - MAX_U256(): Returns maximum U256 (2^256 - 1).
+ * - Conversions:
+ *   - toBytes(value): Converts U256 to Bytes<32> (little-endian).
+ *   - toUnpackedBytes(value): Converts U256 to Vector<32, Uint<8>> (little-endian).
+ * - Comparisons:
+ *   - eq(a, b): Checks if two U256 values are equal.
+ *   - lt(a, b): Checks if one U256 value is less than another.
+ *   - lte(a, b): Checks if one U256 value is less than or equal to another.
+ *   - gt(a, b): Checks if one U256 value is greater than another.
+ *   - gte(a, b): Checks if one U256 value is greater than or equal to another.
+ *
+ * TODO: Missing operations (available in other math modules):
+ * - Arithmetic:
+ *   - TODO: add(a, b): Add two U256 values.
+ *   - TODO: addChecked(a, b): Add two U256 values with overflow checking.
+ *   - TODO: sub(a, b): Subtract one U256 value from another.
+ *   - TODO: mul(a, b): Multiply two U256 values.
+ *   - TODO: mulChecked(a, b): Multiply two U256 values with overflow checking.
+ * - Division:
+ *   - TODO: div(a, b): Divide one U256 value by another.
+ *   - TODO: rem(a, b): Compute remainder of U256 division.
+ *   - TODO: divRem(a, b): Compute quotient and remainder of U256 division.
+ * - Square Root:
+ *   - TODO: sqrt(radicand): Compute floor of square root of a U256 value.
+ * - Utilities:
+ *   - TODO: isZero(a): Check if a U256 value equals zero.
+ *   - TODO: isMultiple(a, b): Check if one U256 value is a multiple of another.
+ *   - TODO: min(a, b): Return the smaller of two U256 values.
+ *   - TODO: max(a, b): Return the larger of two U256 values.
+ * - Conversions:
+ *   - TODO: toField(value): Convert U256 to Field.
+ */
+module Uint256 {
+  import { U128, U256 } from "./Types";
+
+  import { pack } from "./Pack"<32> prefix Pack32_;
+  import { toUnpackedBytes } from "./Uint64" prefix Uint64_;
+  import { MAX_U128, eq, lt } from "./Uint128" prefix Uint128_;
+
+  ////////////////////////////////////////////////////////////////
+  // Constants
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @title ZERO_U256 circuit
+   * @description Returns a U256 struct representing zero.
+   *
+   * @remarks
+   * This circuit returns a U256 struct with all fields set to zero:
+   * {low: {0, 0}, high: {0, 0}}, representing the 256-bit value 0.
+   * No computations are performed, only struct construction.
+   *
+   * @circuitInfo k=7, rows=68
+   *
+   * @returns {U256} A U256 struct representing 0.
+   */
+  export pure circuit ZERO_U256(): U256 {
+    return U256 { low: U128 { low: 0, high: 0 }, high: U128 { low: 0, high: 0 } };
+  }
+
+  /**
+   * @title MAX_U256 circuit
+   * @description Returns the maximum value for a U256 struct, where both low and high
+   * fields are set to the maximum 128-bit value (2^128 - 1).
+   *
+   * @circuitInfo k=7, rows=68
+   *
+   * @returns {U256} A U256 struct representing 2^256 - 1.
+   */
+  export pure circuit MAX_U256(): U256 {
+    return U256 { low: Uint128_MAX_U128(), high: Uint128_MAX_U128() };
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Conversions
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @title toBytes circuit
+   * @description Converts a U256 to a Bytes<32> using little-endian byte ordering.
+   *
+   * @remarks
+   * The conversion is done by first converting the U256 to unpacked bytes via
+   * `toUnpackedBytes`, then casting the vector to `Bytes<32>`.
+   *
+   * @circuitInfo k=14, rows=10273
+   *
+   * @param {U256} value - The 256-bit value to convert.
+   *
+   * @returns {Bytes<32>} - The 32-byte array representation.
+   */
+  export circuit toBytes(value: U256): Bytes<32> {
+    const vector = toUnpackedBytes(value);
+    return Pack32_pack(vector);
+  }
+
+  /**
+   * @title toUnpackedBytes circuit
+   * @description Converts a U256 to a Vector<32, Uint<8>> using little-endian byte ordering.
+   *
+   * @remarks
+   * This circuit converts a 256-bit unsigned integer into a 32-element vector of bytes.
+   * Each 64-bit limb of the U256 is converted via `Uint64_toUnpackedBytes`, then the bytes
+   * are assembled into the final vector.
+   *
+   * Limb ordering (little-endian):
+   * - low.low   → bytes 0-7   (least significant)
+   * - low.high  → bytes 8-15
+   * - high.low  → bytes 16-23
+   * - high.high → bytes 24-31 (most significant)
+   *
+   * @circuitInfo k=11, rows=1033
+   *
+   * @param {U256} value - The 256-bit value to convert.
+   *
+   * @returns {Vector<32, Uint<8>>} - The 32-element byte vector representation.
+   */
+  export circuit toUnpackedBytes(value: U256): Vector<32, Uint<8>> {
+    // Convert each limb into 8 bytes
+    const lowLow = Uint64_toUnpackedBytes(value.low.low);
+    const lowHigh = Uint64_toUnpackedBytes(value.low.high);
+    const highLow = Uint64_toUnpackedBytes(value.high.low);
+    const highHigh = Uint64_toUnpackedBytes(value.high.high);
+
+    return [...lowLow, ...lowHigh, ...highLow, ...highHigh];
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Comparisons
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @title eq circuit
+   * @description Compares two U256 values to check if a == b.
+   *
+   * @remarks
+   * Compares high and low U128 parts separately.
+   *
+   * @circuitInfo k=10, rows=644
+   *
+   * @param {U256} a - The first U256 value.
+   * @param {U256} b - The second U256 value.
+   *
+   * @returns {Boolean} True if a == b, false otherwise.
+   */
+  export pure circuit eq(a: U256, b: U256): Boolean {
+    return Uint128_eq(a.high, b.high) && Uint128_eq(a.low, b.low);
+  }
+
+  /**
+   * @title lt circuit
+   * @description Compares two U256 values to check if a < b.
+   *
+   * @remarks
+   * Checks high limbs first; if equal, falls back to low limbs.
+   *
+   * @circuitInfo k=10, rows=770
+   *
+   * @param {U256} a - The first U256 value.
+   * @param {U256} b - The second U256 value.
+   *
+   * @returns {Boolean} True if a < b, false otherwise.
+   */
+  export pure circuit lt(a: U256, b: U256): Boolean {
+    return Uint128_lt(a.high, b.high) || (Uint128_eq(a.high, b.high) && Uint128_lt(a.low, b.low));
+  }
+
+  /**
+   * @title lte circuit
+   * @description Compares two U256 values to check if a <= b.
+   *
+   * @circuitInfo k=10, rows=773
+   *
+   * @param {U256} a - The first U256 value.
+   * @param {U256} b - The second U256 value.
+   *
+   * @returns {Boolean} True if a <= b, false otherwise.
+   */
+  export pure circuit lte(a: U256, b: U256): Boolean {
+    return !lt(b, a);
+  }
+
+  /**
+   * @title gt circuit
+   * @description Compares two U256 values to check if a > b.
+   *
+   * @circuitInfo k=10, rows=770
+   *
+   * @param {U256} a - The first U256 value.
+   * @param {U256} b - The second U256 value.
+   *
+   * @returns {Boolean} True if a > b, false otherwise.
+   */
+  export pure circuit gt(a: U256, b: U256): Boolean {
+    return lt(b, a);
+  }
+
+  /**
+   * @title gte circuit
+   * @description Compares two U256 values to check if a >= b.
+   *
+   * @circuitInfo k=10, rows=773
+   *
+   * @param {U256} a - The first U256 value.
+   * @param {U256} b - The second U256 value.
+   *
+   * @returns {Boolean} True if a >= b, false otherwise.
+   */
+  export pure circuit gte(a: U256, b: U256): Boolean {
+    return !lt(a, b);
+  }
+}
