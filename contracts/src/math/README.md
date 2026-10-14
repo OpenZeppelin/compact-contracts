@@ -162,9 +162,7 @@ The witness names come from that probe's generated `Witnesses` declaration.
 Unlisted circuits have no reachable witness and need no disclosure for public input values.
 An input that itself comes from a witness can still make a native result private.
 
-The table describes the implementation in this documentation branch before native-addition integration.
-Both `Uint128.addChecked` overloads appear here because this branch still uses the splitter.
-The [native-addition migration notes](MIGRATION.md#native-addition-and-witness-interfaces) describe the integration change.
+Both `Uint128.addChecked` overloads use native addition and call no witness, so they are not in the table. The [migration notes](MIGRATION.md#native-addition-and-witness-interfaces) describe this change.
 
 | Circuit | Generated witness keys | Needs disclose() |
 |---|---|---|
@@ -181,8 +179,6 @@ The [native-addition migration notes](MIGRATION.md#native-addition-and-witness-i
 | `Uint128.toU128(value: Uint<128>): U128` | `wit_divUint128` | yes |
 | `Uint128.add(a: Uint<128>, b: Uint<128>): U256` | `wit_divUint128` | yes |
 | `Uint128.add(a: U128, b: U128): U256` | `wit_divUint128` | yes |
-| `Uint128.addChecked(a: Uint<128>, b: Uint<128>): Uint<128>` | `wit_divUint128` | yes |
-| `Uint128.addChecked(a: U128, b: U128): Uint<128>` | `wit_divUint128` | yes |
 | `Uint128.mul(a: Uint<128>, b: Uint<128>): U256` | `wit_divUint128` | yes |
 | `Uint128.mul(a: U128, b: U128): U256` | `wit_divUint128` | yes |
 | `Uint128.mulChecked(a: Uint<128>, b: Uint<128>): Uint<128>` | `wit_divUint128` | yes |
@@ -242,8 +238,8 @@ Rows use compiler 0.34.0. Each pair shows v2 / v3.
 | `Uint64.sub(a: Uint<64>, b: Uint<64>): Uint<64>` | `a - b` | 210/103 | 209/102 | `Uint64: subtraction underflow` |
 | `Uint64.mulChecked(a: Uint<64>, b: Uint<64>): Uint<64>` | `(a * b) as Uint<64>` | 296/123 | 239/104 | `Uint64: multiplication overflow` |
 | `Uint128.toU128(value: Uint<128>): U128` | `U128 { low: slice<8>((value as Bytes<16>), 0) as Uint<64>, high: slice<8>((value as Bytes<16>), 8) as Uint<64> }` | 439/159 | 16064/4870 | `Uint128: conversion invalid` |
-| `Uint128.addChecked(a: Uint<128>, b: Uint<128>): Uint<128>` | `(a + b) as Uint<128>` | 1498/451 | 431/152 | `Uint128: addition overflow`; `Uint128: conversion invalid` |
-| `Uint128.addChecked(a: U128, b: U128): Uint<128>` | `(((a.high * 0x10000000000000000 + a.low) as Uint<128>) + ((b.high * 0x10000000000000000 + b.low) as Uint<128>)) as Uint<128>` | 990/329 | 457/180 | `Uint128: addition overflow`; `Uint128: conversion invalid` |
+| `Uint128.addChecked(a: Uint<128>, b: Uint<128>): Uint<128>` | `(a + b) as Uint<128>` | 491/174 | 431/152 | `Uint128: addition overflow` |
+| `Uint128.addChecked(a: U128, b: U128): Uint<128>` | `(((a.high * 0x10000000000000000 + a.low) as Uint<128>) + ((b.high * 0x10000000000000000 + b.low) as Uint<128>)) as Uint<128>` | 767/266 | 457/180 | `Uint128: addition overflow` |
 | `Uint128.sub(a: Uint<128>, b: Uint<128>): Uint<128>` | `(a - b) as Uint<128>` | 362/141 | 361/140 | `Uint128: subtraction underflow` |
 | `Uint128.sub(a: U128, b: U128): U128` | `U128 { low: slice<8>(((((a.high * 0x10000000000000000 + a.low) as Uint<128>) - ((b.high * 0x10000000000000000 + b.low) as Uint<128>)) as Uint<128> as Bytes<16>), 0) as Uint<64>, high: slice<8>(((((a.high * 0x10000000000000000 + a.low) as Uint<128>) - ((b.high * 0x10000000000000000 + b.low) as Uint<128>)) as Uint<128> as Bytes<16>), 8) as Uint<64> }` | 550/246 | 16280/4970 | `Uint128: subtraction underflow` |
 | `Uint256.toBytes(value: U256): Bytes<32>` | `Bytes[...(value.low.low as Bytes<8>), ...(value.low.high as Bytes<8>), ...(value.high.low as Bytes<8>), ...(value.high.high as Bytes<8>)]` | 10271/628 | 19915/4500 | `Uint64: toUnpackedBytes verification failed` |
@@ -312,8 +308,8 @@ Mock names with a `U128` suffix select the struct overload.
 | Uint128.MODULUS | 5 | 23 | 6 | 31 |
 | Uint128.ZERO_U128 | 6 | 43 | 6 | 51 |
 | Uint128.add | 11 | 1407 | 9 | 456 |
-| Uint128.addChecked | 11 | 1498 | 9 | 451 |
-| Uint128.addCheckedU128 | 10 | 990 | 9 | 329 |
+| Uint128.addChecked | 9 | 491 | 9 | 174 |
+| Uint128.addCheckedU128 | 10 | 767 | 9 | 266 |
 | Uint128.addU128 | 10 | 899 | 9 | 334 |
 | Uint128.div | 12 | 3356 | 11 | 1017 |
 | Uint128.divRem | 12 | 3269 | 11 | 1026 |

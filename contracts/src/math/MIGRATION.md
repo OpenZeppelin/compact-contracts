@@ -3,7 +3,7 @@
 Move math imports from `midnight-apps/contracts/src/math` to the `@openzeppelin/compact-contracts/math` package directory.
 All 94 exported circuit declarations, four structs, and seven witness declarations remain available.
 Overloads keep their input and result types. The `U128` and `U256` structs remain public.
-The fixes and native-addition integration notes below identify the permitted behavior changes.
+The fixes and the native-addition notes below list every behavior change.
 
 ## Source and target paths
 
@@ -166,21 +166,18 @@ The BUG-2 and BUG-3 failure changes apply to incorrect witness outputs.
 
 ## Native addition and witness interfaces
 
-The native-addition integration applies to both `Uint128.addChecked` overloads.
-This documentation branch precedes that integration. Its cost and disclosure tables describe the implementation present here.
-The integration has the following D13 contract:
+Both `Uint128.addChecked` overloads compute the sum with native addition. Compared with the source library:
 
-- Both declarations become `pure circuit`.
+- Both declarations are `pure circuit`.
 - Both forms return the same checked `Uint<128>` result.
 - Overflow still fails with `Uint128: addition overflow`.
-- The scalar form removes four `wit_divUint128` calls. The U128 form removes two calls.
-- These removed calls cannot produce `Uint128: conversion invalid`.
+- The scalar form makes no `wit_divUint128` call (four in the source). The U128 form makes none (two in the source).
+- An incorrect `wit_divUint128` result can no longer make these forms fail with `Uint128: conversion invalid`.
 - The result has no splitter witness taint.
 - A consumer that uses only these forms has an empty generated `Witnesses` type.
 - A consumer that calls other witness circuits still supplies their reachable witnesses.
 
-D13 permits changes to incorrect-witness messages, removal of witness calls and their taint, and widening a declaration to `pure circuit`.
-It requires the same result and failure message for every honest input.
+No other behavior changes. Every honest input keeps its result and its failure message.
 Every witness call that remains must still reject an incorrect result.
 An override for a removed witness is not executed and is not a forgery test for the native expression.
 
@@ -189,13 +186,11 @@ An empty generated witness type is `{}`. That type permits extra keys.
 After a witness-set reduction, remove unused keys from the object even when TypeScript accepts them.
 Destructure the required functions and use `satisfies Witnesses<PrivateState>`, as in the consumer example.
 Do not change the witness names that remain reachable.
-The optional division, square-root, and checked-multiplication rewrites are separate integration changes.
-They are not present in this branch and do not establish additional witness-set or message changes here.
 
 ## Deprecated circuits
 
-D2a requires equal results and no library-specific failure. Native v3 cost must not exceed library cost at compiler 0.34.0.
-It includes composed casts, arithmetic, and ternary expressions.
+A circuit is deprecated when a native expression gives the same result for every input, the circuit has no library-specific failure message, and the native expression costs no more v3 rows at compiler 0.34.0.
+Native expressions include composed casts, arithmetic, and ternary expressions.
 There are 35 deprecated declarations, 29 declarations with documented native alternatives, and 30 kept declarations.
 The following native expressions use the arguments in each signature.
 
@@ -253,12 +248,11 @@ The same inherited-message rule applies to unpack, limb splitting, and composed 
 The vector forms of `Bytes8.toUint64` and `Bytes32.toU256` have no library failure message.
 Their native cast compositions cost more v3 rows, so they remain undeprecated.
 `Uint256.eq` also remains undeprecated: the direct native equality uses 268 v3 rows; the library uses 267.
-The minimum, maximum, and U128-to-Uint128 forms in the mapping table pass the D2a cost rule and are deprecated.
+The minimum, maximum, and U128-to-Uint128 forms in the mapping table pass the cost rule above and are deprecated.
 
 `Uint64.addChecked`, `Uint64.sub`, `Uint64.mulChecked`, and scalar `Uint128.sub` retain their library messages around native arithmetic.
-Both `Uint128.addChecked` forms retain their overflow message through the native-addition integration described above.
+Both `Uint128.addChecked` forms keep their overflow message with native addition (see above).
 `Utils.UINT128_MAX` remains available with `Uint128.MAX_UINT128` as its math alternative.
-The related deprecation changes only its comment. Token and multisig imports remain as they are.
 
 ## SDK and test integration
 
