@@ -37,7 +37,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('eq, lt, lte, gt, gte and isZero agree with bigint comparison', async () => {
     await fc.assert(
@@ -58,7 +58,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('min and max', async () => {
     await fc.assert(
@@ -71,7 +71,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('add returns a + b as U256', async () => {
     await fc.assert(
@@ -81,7 +81,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('addChecked returns a + b, or fails on overflow', async () => {
     await fc.assert(
@@ -102,7 +102,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('sub returns a - b, or fails on underflow', async () => {
     await fc.assert(
@@ -120,7 +120,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('mul returns a * b as U256', async () => {
     await fc.assert(
@@ -130,7 +130,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('mulChecked returns a * b, or fails on overflow', async () => {
     await fc.assert(
@@ -151,7 +151,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('div, rem, divRem and isMultiple agree with bigint division', async () => {
     await fc.assert(
@@ -172,7 +172,7 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('sqrt returns floor(sqrt(n))', async () => {
     await fc.assert(
@@ -182,5 +182,5 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 });

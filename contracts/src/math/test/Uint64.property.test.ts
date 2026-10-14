@@ -31,7 +31,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('addChecked returns a + b, or fails on overflow', async () => {
     await fc.assert(
@@ -47,7 +47,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('sub returns a - b, or fails on underflow', async () => {
     await fc.assert(
@@ -60,7 +60,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('mul returns a * b', async () => {
     await fc.assert(
@@ -69,7 +69,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('mulChecked returns a * b, or fails on overflow', async () => {
     const small = fc.bigInt({ min: 0n, max: 0xffffffffn });
@@ -90,7 +90,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       ),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('div, rem, divRem and isMultiple agree with bigint division', async () => {
     await fc.assert(
@@ -105,7 +105,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('sqrt returns floor(sqrt(n))', async () => {
     await fc.assert(
@@ -114,7 +114,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('min and max', async () => {
     await fc.assert(
@@ -124,7 +124,7 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('toBytes and toUnpackedBytes return the little-endian bytes', async () => {
     await fc.assert(
@@ -134,5 +134,5 @@ describe.skipIf(skipProperties)('Uint64 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 });

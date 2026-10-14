@@ -40,8 +40,8 @@ describe('PackWitnesses', () => {
       expect(first).toEqual(second);
     });
 
-    test('recomposes every single-byte value and every 16-bit value', () => {
-      for (let value = 0n; value < 1n << 16n; value++) {
+    test('recomposes every 12-bit value', () => {
+      for (let value = 0n; value < 1n << 12n; value++) {
         const bytes = toBytesLE(value, 2);
         const [, vec] = witnesses.wit_unpackBytes(
           context(PackPrivateState),

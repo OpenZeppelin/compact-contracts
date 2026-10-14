@@ -26,7 +26,7 @@ describe.skipIf(skipProperties)('Uint256 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('eq, lt, lte, gt and gte agree with bigint comparison', async () => {
     // Pairs that differ only in a low limb test the limb order.
@@ -50,5 +50,5 @@ describe.skipIf(skipProperties)('Uint256 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 });

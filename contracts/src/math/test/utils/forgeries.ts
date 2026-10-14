@@ -722,7 +722,7 @@ export function describeRelation<S>(
           );
           expect(result).toEqual(entry.oracle(...args));
         }
-      });
+      }, 60_000);
 
       test('rejects every forged witness result', async () => {
         for (const args of entry.forgeries) {

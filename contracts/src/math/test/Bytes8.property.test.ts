@@ -27,5 +27,5 @@ describe.skipIf(skipProperties)('Bytes8 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 });

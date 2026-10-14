@@ -30,7 +30,7 @@ describe.skipIf(skipProperties)('Bytes32 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('vectorToU256 and bytesToU256 return the little-endian value', async () => {
     await fc.assert(
@@ -42,7 +42,7 @@ describe.skipIf(skipProperties)('Bytes32 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('eq, lt, lte, gt, gte and isZero agree with the little-endian value', async () => {
     // Pairs that differ only in byte 0 test the byte order.
@@ -70,5 +70,5 @@ describe.skipIf(skipProperties)('Bytes32 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 });

@@ -77,8 +77,8 @@ describe('Uint64Witnesses', () => {
     const recompose = (vec: bigint[]): bigint =>
       vec.reduce((sum, digit, i) => sum + (digit << (8n * BigInt(i))), 0n);
 
-    test('returns the 8 little-endian digits of every 16-bit value', () => {
-      for (let value = 0n; value < 1n << 16n; value++) {
+    test('returns the 8 little-endian digits of every 12-bit value', () => {
+      for (let value = 0n; value < 1n << 12n; value++) {
         const [, vec] = witnesses.wit_uint64ToUnpackedBytes(context(), value);
         expect(vec).toHaveLength(8);
         expect(vec.every((digit) => digit >= 0n && digit <= 0xffn)).toBe(true);

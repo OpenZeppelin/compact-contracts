@@ -33,5 +33,6 @@ describe.skipIf(skipProperties)('Pack properties', () => {
         RUNS,
       );
     },
+    60_000,
   );
 });

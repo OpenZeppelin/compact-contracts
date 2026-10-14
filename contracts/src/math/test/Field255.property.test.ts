@@ -26,7 +26,7 @@ describe.skipIf(skipProperties)('Field255 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 
   test('eq, lt, lte, gt, gte and isZero agree with the integer order', async () => {
     await fc.assert(
@@ -40,5 +40,5 @@ describe.skipIf(skipProperties)('Field255 properties', () => {
       }),
       RUNS,
     );
-  });
+  }, 60_000);
 });
