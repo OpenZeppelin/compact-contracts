@@ -84,6 +84,9 @@ module Uint128 {
   /**
    * @description Computes division of two Uint<128> values locally (off-chain).
    *
+   * @dev `toU128` calls it with the divisor 2⁶⁴ to split a value into its 64-bit limbs.
+   * The `Uint<128>` form of `divRem` calls it as its division witness.
+   *
    * @param a The number to divide.
    * @param b The number to divide by.
    * @returns DivResultU128 The quotient and remainder of the division as U128 values.
@@ -769,27 +772,27 @@ module Uint128 {
   /**
    * @description Divides a Uint<128> a by a Uint<128> b, returning the quotient.
    *
-   * @dev Uses internal `_div` circuit for computation.
+   * @dev Uses the `Uint<128>` form of `divRem` for computation.
    *
-   * @constraints k=12, rows=3356 (zkir-v2)
-   * @constraints k=11, rows=1017 (zkir-v3)
+   * @constraints k=10, rows=845 (zkir-v2)
+   * @constraints k=9, rows=287 (zkir-v3)
    *
    * Requirements:
    *
    * - `b` must not be zero. Fails with "Uint128: division by zero".
    * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
    * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
-   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   * - The witness quotient times `b` plus the witness remainder must equal `a`. Fails with "Uint128: division invalid".
    *
    * @param {Uint<128>} a - The Uint<128> value to divide.
    * @param {Uint<128>} b - The Uint<128> value to divide by.
    * @returns {Uint<128>} The quotient of the division.
    */
   export circuit div(a: Uint<128>, b: Uint<128>): Uint<128> {
-    const aU128 = toU128(a);
-    const bU128 = toU128(b);
-    const quotient = _div(aU128, bU128).quotient;
-    return toUint128(quotient);
+    const quotient = divRem(a, b).quotient;
+    // 2⁶⁴ as a literal, not MODULUS() (type Uint<65>): the sum has the type
+    // Uint<128> and needs no cast.
+    return quotient.high * 0x10000000000000000 + quotient.low;
   }
 
   /**
@@ -818,27 +821,27 @@ module Uint128 {
   /**
    * @description Computes the remainder of dividing a Uint<128> a by a Uint<128> b.
    *
-   * @dev Uses internal `_div` circuit for computation.
+   * @dev Uses the `Uint<128>` form of `divRem` for computation.
    *
-   * @constraints k=12, rows=3356 (zkir-v2)
-   * @constraints k=11, rows=1017 (zkir-v3)
+   * @constraints k=10, rows=843 (zkir-v2)
+   * @constraints k=9, rows=285 (zkir-v3)
    *
    * Requirements:
    *
    * - `b` must not be zero. Fails with "Uint128: division by zero".
    * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
    * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
-   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   * - The witness quotient times `b` plus the witness remainder must equal `a`. Fails with "Uint128: division invalid".
    *
    * @param {Uint<128>} a - The Uint<128> value to divide.
    * @param {Uint<128>} b - The Uint<128> value to divide by.
    * @returns {Uint<128>} The remainder of the division.
    */
   export circuit rem(a: Uint<128>, b: Uint<128>): Uint<128> {
-    const aU128 = toU128(a);
-    const bU128 = toU128(b);
-    const remainder = _div(aU128, bU128).remainder;
-    return toUint128(remainder);
+    const remainder = divRem(a, b).remainder;
+    // 2⁶⁴ as a literal, not MODULUS() (type Uint<65>): the sum has the type
+    // Uint<128> and needs no cast.
+    return remainder.high * 0x10000000000000000 + remainder.low;
   }
 
   /**
@@ -867,26 +870,68 @@ module Uint128 {
   /**
    * @description Divides a Uint<128> a by a Uint<128> b, returning quotient and remainder.
    *
-   * @dev Uses internal `_div` circuit for computation.
+   * @dev Checks the witness result of `wit_divUint128(a, b)` with native `Uint` arithmetic.
+   * The witness gives q = q_h · 2⁶⁴ + q_l and r = r_h · 2⁶⁴ + r_l with q_l, q_h, r_l,
+   * r_h ∈ [0, 2⁶⁴ - 1] (range-checked as Uint<64>).
    *
-   * @constraints k=12, rows=3269 (zkir-v2)
-   * @constraints k=11, rows=1026 (zkir-v3)
+   * Mathematical Steps:
+   * 1. Zero Divisor Check: Verify b ≠ 0, before the witness call
+   * 2. Witness Generation: Compute (q, r) = divmod(a, b) off-chain
+   * 3. Remainder Bounds: Assert r < b
+   * 4. Product Bounds:
+   *    a) Assert t = q_h · b ≤ 2⁶⁴ - 1
+   *    b) Compute P = t · 2⁶⁴ + q_l · b, which equals q · b
+   *    c) Assert P ≤ 2¹²⁸ - 1
+   * 5. Correctness Verification: Assert P + r = a
+   * 6. Return DivResultU128 {quotient: q, remainder: r}
+   *
+   * Soundness (Z3 proof Z14): step 4a gives t < 2⁶⁴, and the cast of t to Uint<64> gives
+   * the same bound. With the limb ranges and b < 2¹²⁸, P < 2¹⁹² and P + r < 2¹⁹³. These
+   * values are far below the field modulus (above 2²⁵⁴), so no operation wraps. The
+   * checks then give a = q · b + r with 0 ≤ r < b, so q = ⌊a / b⌋ and r = a mod b.
+   * Without both step 4a and the cast, t · 2⁶⁴ can wrap in the field, and a wrong
+   * quotient can pass. Step 4c follows from step 5 and a < 2¹²⁸. It gives the message
+   * of the `U128` form when the product of the quotient and b does not fit in 128 bits.
+   *
+   * For each witness quotient and remainder, the first check that fails has the same
+   * message as in the `U128` form (internal `_div`).
+   *
+   * @constraints k=10, rows=886 (zkir-v2)
+   * @constraints k=9, rows=328 (zkir-v3)
    *
    * Requirements:
    *
    * - `b` must not be zero. Fails with "Uint128: division by zero".
    * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
    * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
-   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   * - The witness quotient times `b` plus the witness remainder must equal `a`. Fails with "Uint128: division invalid".
    *
    * @param {Uint<128>} a - The Uint<128> value to divide.
    * @param {Uint<128>} b - The Uint<128> value to divide by.
    * @returns {DivResultU128} A struct containing the quotient and remainder.
    */
   export circuit divRem(a: Uint<128>, b: Uint<128>): DivResultU128 {
-    const aU128 = toU128(a);
-    const bU128 = toU128(b);
-    return _div(aU128, bU128);
+    // Step 1: Verify divisor is non-zero, before the witness divides by it
+    assert(b != 0, "Uint128: division by zero");
+
+    // Step 2: Get witness for quotient and remainder
+    const result = wit_divUint128(a, b);
+
+    // Step 3: Verify remainder bounds (0 ≤ r < b). 2⁶⁴ as a literal, not
+    // MODULUS() (type Uint<65>): the sum has the type Uint<128> and needs no cast.
+    const remainder = result.remainder.high * 0x10000000000000000 + result.remainder.low;
+    assert(remainder < b, "Uint128: remainder error");
+
+    // Step 4: Verify that q * b fits in 128 bits. If q_h * b ≥ 2⁶⁴, then q * b ≥ 2¹²⁸.
+    const highProduct = result.quotient.high * b;
+    assert(highProduct <= Uint64_MAX_UINT64(), "Uint128: division product overflow");
+    const product = (highProduct as Uint<64>) * 0x10000000000000000 + result.quotient.low * b;
+    assert(product <= MAX_UINT128(), "Uint128: division product overflow");
+
+    // Step 5: Verify q * b + r = a
+    assert(product + remainder == a, "Uint128: division invalid");
+
+    return result;
   }
 
   /**
@@ -1121,26 +1166,24 @@ module Uint128 {
   /**
    * @description Checks if a Uint<128> value is a multiple of another.
    *
-   * @dev Uses internal `_isMultiple` circuit for computation.
+   * @dev Uses the `Uint<128>` form of `divRem` for computation.
    *
-   * @constraints k=12, rows=3233 (zkir-v2)
-   * @constraints k=10, rows=992 (zkir-v3)
+   * @constraints k=10, rows=850 (zkir-v2)
+   * @constraints k=9, rows=290 (zkir-v3)
    *
    * Requirements:
    *
    * - `b` must not be zero. Fails with "Uint128: division by zero".
    * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
    * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
-   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   * - The witness quotient times `b` plus the witness remainder must equal `a`. Fails with "Uint128: division invalid".
    *
    * @param {Uint<128>} a - The Uint<128> value to check.
    * @param {Uint<128>} b - The Uint<128> b to test against.
    * @returns {Boolean} True if value is a multiple of b, false otherwise.
    */
   export circuit isMultiple(a: Uint<128>, b: Uint<128>): Boolean {
-    const aU128 = toU128(a);
-    const bU128 = toU128(b);
-    return _isMultiple(aU128, bU128);
+    return divRem(a, b).remainder == default<U128>;
   }
 
   /**

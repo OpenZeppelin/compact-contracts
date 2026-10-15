@@ -2,7 +2,7 @@ import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { fieldWidths } from '#test-utils/zkir/fieldRepr.js';
-import { RelationForger } from '#test-utils/zkir/forgery.js';
+import { type ForgeryPlan, RelationForger } from '#test-utils/zkir/forgery.js';
 import { loadZkir } from '#test-utils/zkir/relationCheck.js';
 import { witnessCoverage } from '#test-utils/zkir/witnessCoverage.js';
 import { Uint128Simulator } from './simulators/Uint128Simulator.js';
@@ -12,6 +12,7 @@ import {
   expectHonestAccepted,
   expectMustRejectInput,
   inputForgeries,
+  mustRejectPlan,
   RELATION_SEED,
   relationCase,
 } from './utils/forgeries.js';
@@ -25,11 +26,13 @@ import { Uint128Witnesses } from './witnesses/Uint128Witnesses.js';
  * `addChecked` use native addition and no witness; their own block below
  * checks them.
  *
- * Every circuit that takes a `Uint<128>` argument splits it with `toU128`,
+ * Most circuits that take a `Uint<128>` argument split it with `toU128`,
  * and `_add` and `_mul` split their intermediate sums and products. The
- * forgeries attack each of these splits, the division witness and the root
- * witness. The free leaves are `quotient.high` and `remainder.high` of each
- * split.
+ * `Uint<128>` forms of `div`, `rem`, `divRem` and `isMultiple` split nothing:
+ * they call `wit_divUint128(a, b)` as their division witness and check it with
+ * native arithmetic. The forgeries attack each split, both division witnesses
+ * and the root witness. The free leaves are `quotient.high` and
+ * `remainder.high` of each split.
  */
 
 type S = Uint128Simulator;
@@ -62,16 +65,20 @@ const divisionBoundary: [bigint, bigint][] = [
   [10n, 5n],
 ];
 // An even divisor allows the wrapped-product forgery, an odd one does not.
-// The coordinated forgeries need a divisor with b.high = 0 (splits ll, hl
-// and offset 1), with b.low = 0 (lh, hh and offset 2) and b.high a power of
-// two (offset 3).
+// The coordinated forgeries of the U128 forms need a divisor with b.high = 0
+// (splits ll, hl and offset 1), with b.low = 0 (lh, hh and offset 2) and
+// b.high a power of two (offset 3). 10 / 2^65 is the input of plan review
+// MM-04: the quotient 2^64 - 1 has a zero high limb, and its product with b
+// is above 2^128.
 const divisionForgeries: [bigint, bigint][] = [
   [A, 2n ** 65n + 2n],
   [A, 12345n],
   [A, 12345n << 64n],
   [A, 1n << 127n],
+  [10n, 2n ** 65n],
 ];
-// The coordinated forgeries isolate every split of _mul(quotient, b).
+// The coordinated forgeries isolate every split of _mul(quotient, b) in the
+// U128 forms. The Uint<128> forms split nothing.
 const divisionIsolates = { coordinated: [0, 1, 2, 3, 4, 5, 6] };
 
 const asU128 = <T extends readonly bigint[]>(values: T) =>
@@ -80,7 +87,9 @@ const asU128 = <T extends readonly bigint[]>(values: T) =>
 /**
  * A case for the `Uint<128>` form and one for the `U128` form of a circuit.
  * `toResult` converts the oracle result to the result type of the `U128`
- * form.
+ * form. `isolates` applies to both forms, `isolatesU128` to the `U128` form
+ * only (a `Uint<128>` form that checks its witness with native arithmetic
+ * has no internal split).
  */
 const both = <A extends readonly bigint[]>(entry: {
   circuit: string;
@@ -92,11 +101,13 @@ const both = <A extends readonly bigint[]>(entry: {
   forgeries: A[];
   rejects?: A[];
   isolates?: { coordinated: number[]; single?: number[] };
+  isolatesU128?: { coordinated: number[]; single?: number[] };
   toResult?: (result: unknown) => unknown;
 }) => {
   const toResult = entry.toResult ?? ((result: unknown) => result);
+  const { isolatesU128, ...scalar } = entry;
   return [
-    relationCase<S, A>(entry),
+    relationCase<S, A>(scalar),
     relationCase<S, { [K in keyof A]: U128Limbs }>({
       circuit: `${entry.circuit}U128`,
       call: entry.callU128,
@@ -110,7 +121,7 @@ const both = <A extends readonly bigint[]>(entry: {
       random: entry.random.map(asU128),
       forgeries: entry.forgeries.map(asU128),
       rejects: entry.rejects?.map(asU128),
-      isolates: entry.isolates,
+      isolates: isolatesU128 ?? entry.isolates,
     }),
   ];
 };
@@ -193,7 +204,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
-      isolates: divisionIsolates,
+      isolatesU128: divisionIsolates,
       toResult: (result) => toU128(result as bigint),
     }),
     ...both<[bigint, bigint]>({
@@ -205,7 +216,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
-      isolates: divisionIsolates,
+      isolatesU128: divisionIsolates,
       toResult: (result) => toU128(result as bigint),
     }),
     ...both<[bigint, bigint]>({
@@ -217,7 +228,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
-      isolates: divisionIsolates,
+      isolatesU128: divisionIsolates,
     }),
     ...both<[bigint, bigint]>({
       circuit: 'isMultiple',
@@ -228,7 +239,7 @@ describeRelation('MockUint128', {
       random: division,
       forgeries: divisionForgeries,
       rejects: divisionRejects,
-      isolates: divisionIsolates,
+      isolatesU128: divisionIsolates,
     }),
     ...both<[bigint]>({
       circuit: 'sqrt',
@@ -280,15 +291,19 @@ describe.skipIf(isLiveBackend())(
     ] as [string, unknown[], string][])(
       '%s has no accepted preimage, with honest or forged splits',
       async (circuit, args, message) => {
-        // The honest division witness throws for a zero divisor: the plan
-        // gives a result for it.
-        const zeroDivision = { quotient: toU128(0n), remainder: toU128(5n) };
-        const plans = [
-          (call: { name: string }) =>
-            call.name === 'wit_divU128' ? zeroDivision : undefined,
-          (call: { name: string; index: number; result: unknown }) => {
-            if (call.name === 'wit_divU128') return zeroDivision;
-            if (call.index !== 0 || call.name !== 'wit_divUint128') {
+        // The honest division witnesses throw for a zero divisor:
+        // mustRejectPlan gives a result for them. The second plan also
+        // changes the free fields of the first split, if the circuit has one.
+        const plans: ForgeryPlan[] = [
+          mustRejectPlan,
+          (call) => {
+            const filled = mustRejectPlan(call);
+            if (filled !== undefined) return filled;
+            if (
+              call.index !== 0 ||
+              call.name !== 'wit_divUint128' ||
+              call.args[1] !== 2n ** 64n
+            ) {
               return undefined;
             }
             const split = call.result as {
@@ -306,6 +321,40 @@ describe.skipIf(isLiveBackend())(
           expect(outcome.verdict.accepted).toBe(false);
           expect(outcome.failures).toContain(message);
         }
+      },
+    );
+  },
+);
+
+describe.skipIf(isLiveBackend())(
+  'MockUint128 ZKIR v2 relation: the division witness of plan review MM-04',
+  () => {
+    // a = 10, b = 2^65, quotient 2^64 - 1, remainder 0: the quotient has a
+    // zero high limb, and q * b = 2^129 - 2^65 does not fit in 128 bits.
+    const forged = { quotient: toU128(MAX_UINT64), remainder: toU128(0n) };
+    let forger: RelationForger;
+
+    beforeAll(async () => {
+      forger = await RelationForger.create('MockUint128', Uint128Witnesses());
+    });
+
+    test.each([
+      ['div', [10n, 2n ** 65n], 'wit_divUint128'],
+      ['rem', [10n, 2n ** 65n], 'wit_divUint128'],
+      ['divRem', [10n, 2n ** 65n], 'wit_divUint128'],
+      ['isMultiple', [10n, 2n ** 65n], 'wit_divUint128'],
+      ['divU128', [toU128(10n), toU128(2n ** 65n)], 'wit_divU128'],
+      ['divRemU128', [toU128(10n), toU128(2n ** 65n)], 'wit_divU128'],
+    ] as [string, unknown[], string][])(
+      '%s has no accepted preimage and fails first with "division product overflow"',
+      async (circuit, args, witness) => {
+        const outcome = await forger.forge(circuit, args, (call) =>
+          call.name === witness ? forged : undefined,
+        );
+        expect(outcome.coherent).toBe(true);
+        expect(outcome.deviations.map((d) => d.call.name)).toEqual([witness]);
+        expect(outcome.verdict.accepted).toBe(false);
+        expect(outcome.failures[0]).toBe('Uint128: division product overflow');
       },
     );
   },

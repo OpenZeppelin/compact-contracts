@@ -56,35 +56,59 @@ describe.skipIf(isLiveBackend())('division witness order', () => {
   });
 
   describe('Uint128', () => {
+    // The Uint<128> forms divide with wit_divUint128(a, b), the U128 forms
+    // with wit_divU128(a, b).
     const zero = toU128(0n);
-    const cases: [string, (s: Uint128Simulator) => Promise<unknown>][] = [
-      ['div', (s) => s.div(5n, 0n)],
-      ['divU128', (s) => s.divU128(toU128(5n), zero)],
-      ['rem', (s) => s.rem(5n, 0n)],
-      ['remU128', (s) => s.remU128(toU128(5n), zero)],
-      ['divRem', (s) => s.divRem(5n, 0n)],
-      ['divRemU128', (s) => s.divRemU128(toU128(5n), zero)],
-      ['isMultiple', (s) => s.isMultiple(5n, 0n)],
-      ['isMultipleU128', (s) => s.isMultipleU128(toU128(5n), zero)],
+    const cases: [
+      string,
+      'wit_divUint128' | 'wit_divU128',
+      (s: Uint128Simulator) => Promise<unknown>,
+    ][] = [
+      ['div', 'wit_divUint128', (s) => s.div(5n, 0n)],
+      ['divU128', 'wit_divU128', (s) => s.divU128(toU128(5n), zero)],
+      ['rem', 'wit_divUint128', (s) => s.rem(5n, 0n)],
+      ['remU128', 'wit_divU128', (s) => s.remU128(toU128(5n), zero)],
+      ['divRem', 'wit_divUint128', (s) => s.divRem(5n, 0n)],
+      ['divRemU128', 'wit_divU128', (s) => s.divRemU128(toU128(5n), zero)],
+      ['isMultiple', 'wit_divUint128', (s) => s.isMultiple(5n, 0n)],
+      [
+        'isMultipleU128',
+        'wit_divU128',
+        (s) => s.isMultipleU128(toU128(5n), zero),
+      ],
     ];
 
     test.each(cases)(
-      '%s(5, 0) fails before wit_divU128',
-      async (_name, call) => {
+      '%s(5, 0) fails before its division witness %s',
+      async (_name, witness, call) => {
         const simulator = await Uint128Simulator.create();
-        const honest = Uint128Witnesses().wit_divU128;
+        const honest = Uint128Witnesses();
         let calls = 0;
-        simulator.overrideWitness(
-          'wit_divU128',
-          (
-            context: WitnessContext<unknown, Uint128PrivateState>,
-            a: U128,
-            b: U128,
-          ): [Uint128PrivateState, DivResultU128] => {
-            calls++;
-            return honest(context, a, b);
-          },
-        );
+        if (witness === 'wit_divU128') {
+          simulator.overrideWitness(
+            'wit_divU128',
+            (
+              context: WitnessContext<unknown, Uint128PrivateState>,
+              a: U128,
+              b: U128,
+            ): [Uint128PrivateState, DivResultU128] => {
+              calls++;
+              return honest.wit_divU128(context, a, b);
+            },
+          );
+        } else {
+          simulator.overrideWitness(
+            'wit_divUint128',
+            (
+              context: WitnessContext<unknown, Uint128PrivateState>,
+              a: bigint,
+              b: bigint,
+            ): [Uint128PrivateState, DivResultU128] => {
+              calls++;
+              return honest.wit_divUint128(context, a, b);
+            },
+          );
+        }
         await expectRejection(call(simulator), 'Uint128: division by zero');
         expect(calls).toBe(0);
       },

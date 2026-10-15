@@ -227,7 +227,11 @@ describe.skipIf(isLiveBackend())(
       }, 120_000);
     });
 
+    // The tests use divU128: wit_divU128 runs before the splits of _mul. (The
+    // Uint<128> form of div calls only wit_divUint128.)
     describe('the field-level fallback of the lenient replay (A2)', () => {
+      const ten = toU128(10n);
+      const three = toU128(3n);
       const split = (value: bigint) => ({
         quotient: toU128(value >> 64n),
         remainder: toU128(value & (2n ** 64n - 1n)),
@@ -260,7 +264,7 @@ describe.skipIf(isLiveBackend())(
           }),
         );
         await expect(
-          forger.forge('div', [10n, 3n], wrongQuotient),
+          forger.forge('divU128', [ten, three], wrongQuotient),
         ).rejects.toThrow('injected replay error');
       });
 
@@ -276,7 +280,7 @@ describe.skipIf(isLiveBackend())(
           })),
         );
         await expect(
-          forger.forge('div', [10n, 3n], wrongQuotient),
+          forger.forge('divU128', [ten, three], wrongQuotient),
         ).rejects.toThrow('out of bounds for prime field');
       });
 
@@ -300,30 +304,31 @@ describe.skipIf(isLiveBackend())(
       });
 
       test('a later call without an honest result gets the fill result and stays coherent', async () => {
-        // A split of b forged to 0 makes the honest division witness throw
-        // (zero divisor). The fill plan answers it, so the run continues.
+        // After the forged quotient 4, the split witness has no answer for the
+        // product 12 (as an honest division witness has none for a zero
+        // divisor). The fill plan answers it, so the run continues.
         const forger = await RelationForger.create(
           'MockUint128',
-          Uint128Witnesses(),
+          witnessesWith(() => {
+            throw new RangeError('no answer for 12');
+          }),
         );
-        const plan = (call: WitnessCall) =>
-          call.index === 1 ? split(0n) : undefined;
-        await expect(forger.forge('div', [10n, 3n], plan)).rejects.toThrow(
-          'witness call 2 (wit_divU128) has no result',
-        );
+        await expect(
+          forger.forge('divU128', [ten, three], wrongQuotient),
+        ).rejects.toThrow('witness call 1 (wit_divUint128) has no result');
         const outcome = await forger.forge(
-          'div',
-          [10n, 3n],
-          plan,
+          'divU128',
+          [ten, three],
+          wrongQuotient,
           undefined,
           (call) =>
-            call.name === 'wit_divU128'
-              ? { quotient: toU128(0n), remainder: toU128(10n) }
+            call.name === 'wit_divUint128' && call.args[0] === 12n
+              ? split(12n)
               : undefined,
         );
         expect(outcome.coherent).toBe(true);
         expect(outcome.verdict.accepted).toBe(false);
-        expect(outcome.failures).toContain('Uint128: conversion invalid');
+        expect(outcome.failures).toContain('Uint128: division invalid');
       });
     });
 
@@ -415,6 +420,23 @@ describe.skipIf(isLiveBackend())(
               'the carry of the low sum is a term of the high sum, which the next split bounds',
           },
         },
+        ...['divRem', 'isMultiple'].map((circuit) => ({
+          artifact: 'MockUint128',
+          witnesses: Uint128Witnesses,
+          circuit,
+          args: [2n ** 127n + 0x1234567890abcdefn, 2n ** 65n + 2n],
+          rejects: [[5n, 0n]],
+          implied: {
+            'range of input 1': 'less_than(r, b, 128) bounds b',
+            'assert 0': 'b != 0: r < b fails for b = 0',
+            'assert 2':
+              'q_h * b <= 2^64 - 1: the cast of q_h * b to Uint<64> gives the same bound',
+            'constrain_bits on variable 17':
+              'the cast of q_h * b to Uint<64>: the assert q_h * b <= 2^64 - 1 gives the same bound',
+            'assert 3':
+              'q * b <= 2^128 - 1: q * b + r == a and a < 2^128 imply it; the assert gives the message of the U128 form',
+          },
+        })),
       ];
 
       test.each(cases)(
