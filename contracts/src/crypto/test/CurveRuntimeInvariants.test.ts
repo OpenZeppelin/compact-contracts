@@ -1,5 +1,6 @@
 import {
   constructJubjubPoint,
+  ecMulGenerator,
   type JubjubPoint,
 } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
@@ -149,6 +150,30 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
 
     it('TRAPS on scalar == ell (out of range)', () => {
       expect(classify(() => pureCircuits.genMul(L)).ok).toBe(false);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // The identity guards in ElGamal and EcdhMask compare against
+  // `ecMulGenerator(0)`; the token's `allowance` placeholder is built the same
+  // way. Pin that this equals the affine identity `(0, 1)` in both the circuit
+  // and the runtime, so the two spellings cannot drift apart silently.
+  // -------------------------------------------------------------------------
+  describe('identity representation', () => {
+    const IDENTITY = constructJubjubPoint(0n, 1n);
+
+    it('ecMulGenerator(0) is the affine identity (0, 1) in the circuit', () => {
+      expect(pureCircuits.genMul(0n)).toStrictEqual(IDENTITY);
+    });
+
+    it('ecMulGenerator(0) is the affine identity (0, 1) in the runtime', () => {
+      expect(ecMulGenerator(0n)).toStrictEqual(IDENTITY);
+    });
+
+    it('(0, 1) behaves as the identity under the curve ops', () => {
+      const g = pureCircuits.genMul(1n);
+      expect(pureCircuits.doEcAdd(IDENTITY, g)).toStrictEqual(g);
+      expect(pureCircuits.doEcMul(IDENTITY, 5n)).toStrictEqual(IDENTITY);
     });
   });
 });
