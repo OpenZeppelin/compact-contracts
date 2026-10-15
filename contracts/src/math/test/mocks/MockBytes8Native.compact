@@ -14,3 +14,15 @@ export circuit packNative(vec: Vector<8, Uint<8>>): Bytes<8> {
   _invocations.increment(1);
   return vec as Bytes<8>;
 }
+
+export circuit vectorToUint64Native(vec: Vector<8, Uint<8>>): Uint<64> {
+  _invocations.increment(1);
+  return vec[0] +
+         vec[1] * 0x100 +
+         vec[2] * 0x10000 +
+         vec[3] * 0x1000000 +
+         vec[4] * 0x100000000 +
+         vec[5] * 0x10000000000 +
+         vec[6] * 0x1000000000000 +
+         vec[7] * 0x100000000000000;
+}

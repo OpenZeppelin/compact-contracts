@@ -50,3 +50,9 @@ export circuit gteNative(a: U256, b: U256): Boolean {
             ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>) <
             ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>)));
 }
+
+export circuit eqNative(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return (a.high.low == b.high.low && a.high.high == b.high.high) &&
+         (a.low.low == b.low.low && a.low.high == b.low.high);
+}

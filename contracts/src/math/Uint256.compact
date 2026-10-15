@@ -159,6 +159,7 @@ module Uint256 {
    * @param {U256} a - The first U256 value.
    * @param {U256} b - The second U256 value.
    * @returns {Boolean} True if a == b, false otherwise.
+   * @deprecated Use `(a.high.low == b.high.low && a.high.high == b.high.high) && (a.low.low == b.low.low && a.low.high == b.low.high)` instead.
    */
   export pure circuit eq(a: U256, b: U256): Boolean {
     return Uint128_eq(a.high, b.high) && Uint128_eq(a.low, b.low);

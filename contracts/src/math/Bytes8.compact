@@ -106,6 +106,7 @@ module Bytes8 {
    *
    * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
    * @returns {Uint<64>} The 64-bit unsigned integer.
+   * @deprecated Use `vec[0] + vec[1] * 0x100 + vec[2] * 0x10000 + vec[3] * 0x1000000 + vec[4] * 0x100000000 + vec[5] * 0x10000000000 + vec[6] * 0x1000000000000 + vec[7] * 0x100000000000000` instead.
    */
   export pure circuit toUint64(vec: Vector<8, Uint<8>>): Uint<64> {
     return _toUint64(vec);
