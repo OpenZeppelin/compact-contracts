@@ -28,6 +28,9 @@ const domain = (label: string): Uint8Array => {
 };
 const DOMAIN = domain('ecdh_mask_test');
 
+const U248_BOUND = 1n << 248n;
+const MAX_U248 = U248_BOUND - 1n;
+
 // Every run is a transaction on the live backend, so the property shrinks to a
 // handful of cases there and keeps its full sample space dry.
 const PROPERTY_RUNS = isLiveBackend() ? 3 : 100;
@@ -101,6 +104,17 @@ describe('EcdhMask', () => {
       expect(await contract.decrypt(ciphertext, EK, DOMAIN)).toBe(max);
     });
 
+    it('should round-trip the maximum Uint<248> value', async () => {
+      const ciphertext = await contract.encrypt(PK, MAX_U248, 42n, DOMAIN);
+      expect(await contract.decrypt(ciphertext, EK, DOMAIN)).toBe(MAX_U248);
+    });
+
+    it('should reject a value of 2^248 at the API boundary', async () => {
+      await expect(
+        contract.encrypt(PK, U248_BOUND, 42n, DOMAIN),
+      ).rejects.toThrow(`Uint<0..${U248_BOUND}>`);
+    });
+
     it('round-trips at the maximum valid scalar (L - 1) for key and ephemeral', async () => {
       // Exercise the top of the valid scalar range: both the recipient key's
       // secret and the ephemeral are L - 1, the largest scalar the runtime
@@ -135,10 +149,10 @@ describe('EcdhMask', () => {
       await fc.assert(
         fc.asyncProperty(
           // Keys and ephemerals stay well under the Jubjub subgroup order ℓ
-          // (~2^252) so they are valid scalars; values span the full Uint<128>.
+          // (~2^252) so they are valid scalars; values span the full Uint<248>.
           fc.bigInt({ min: 1n, max: 1n << 200n }),
           fc.bigInt({ min: 1n, max: 1n << 200n }),
-          fc.bigInt({ min: 0n, max: (1n << 128n) - 1n }),
+          fc.bigInt({ min: 0n, max: MAX_U248 }),
           async (ek, e, value) => {
             const pk = ecMulGenerator(ek);
             const ciphertext = await contract.encrypt(pk, value, e, DOMAIN);
@@ -191,7 +205,7 @@ describe('EcdhMask', () => {
     it('rejects an identity ephemeral on decrypt', async () => {
       // The shape encrypt can never emit. Its mask is kdf(identity, domain), a
       // public constant, and ct - mask lands just under the field modulus, far
-      // above any Uint<128> value.
+      // above any Uint<248> value.
       const placeholder = { ephemeralPk: ecMulGenerator(0n), ct: 0n };
       await expect(contract.decrypt(placeholder, EK, DOMAIN)).rejects.toThrow(
         'EcdhMask: identity ephemeral',
@@ -250,10 +264,10 @@ describe('EcdhMask', () => {
     });
 
     it('produces a mask below 2^248 (hiding-margin regression)', async () => {
-      // The module's ~2^-120 hiding margin rests on the kdf output staying in
-      // [0, 2^248) (the degradeToTransient range). Pin that stdlib behavior over
-      // several points so a regression surfaces here rather than silently
-      // shrinking the margin.
+      // The pad must cover the whole Uint<248> plaintext range, and the
+      // module's hiding bounds are stated for [0, 2^248), the
+      // degradeToTransient range. Pin that stdlib behavior over several points
+      // so a regression surfaces here.
       const bound = 1n << 248n;
       for (const s of [2n, 5n, 222n, 999999n]) {
         expect(await contract.kdf(ecMulGenerator(s), DOMAIN)).toBeLessThan(
