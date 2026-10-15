@@ -23,7 +23,7 @@ export circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
 
 export circuit encrypt(
                       recipientPk: JubjubPoint,
-                      value: Uint<128>,
+                      value: Uint<248>,
                       e: JubjubScalar,
                       domain: Bytes<32>
                       ): EcdhMask_Ciphertext {
