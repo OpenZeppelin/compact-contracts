@@ -37,7 +37,7 @@ Pack uses its generic parameter N.
 | `Pack.unpack(bytes: Bytes<N>): Vector<N, Uint<8>>` | Alternative |
 | `Bytes8.pack(vec: Vector<8, Uint<8>>): Bytes<8>` | Deprecated |
 | `Bytes8.unpack(bytes: Bytes<8>): Vector<8, Uint<8>>` | Alternative |
-| `Bytes8.toUint64(vec: Vector<8, Uint<8>>): Uint<64>` | Alternative |
+| `Bytes8.toUint64(vec: Vector<8, Uint<8>>): Uint<64>` | Deprecated |
 | `Bytes8.toUint64(bytes: Bytes<8>): Uint<64>` | Alternative |
 | `Uint64.MAX_UINT8(): Uint<8>` | Kept |
 | `Uint64.MAX_UINT16(): Uint<16>` | Kept |
@@ -103,14 +103,14 @@ Pack uses its generic parameter N.
 | `Uint256.MAX_U256(): U256` | Kept |
 | `Uint256.toBytes(value: U256): Bytes<32>` | Alternative |
 | `Uint256.toUnpackedBytes(value: U256): Vector<32, Uint<8>>` | Alternative |
-| `Uint256.eq(a: U256, b: U256): Boolean` | Alternative |
+| `Uint256.eq(a: U256, b: U256): Boolean` | Deprecated |
 | `Uint256.lt(a: U256, b: U256): Boolean` | Deprecated |
 | `Uint256.lte(a: U256, b: U256): Boolean` | Deprecated |
 | `Uint256.gt(a: U256, b: U256): Boolean` | Deprecated |
 | `Uint256.gte(a: U256, b: U256): Boolean` | Deprecated |
 | `Bytes32.pack(vec: Vector<32, Uint<8>>): Bytes<32>` | Deprecated |
 | `Bytes32.unpack(bytes: Bytes<32>): Vector<32, Uint<8>>` | Alternative |
-| `Bytes32.toU256(vec: Vector<32, Uint<8>>): U256` | Alternative |
+| `Bytes32.toU256(vec: Vector<32, Uint<8>>): U256` | Deprecated |
 | `Bytes32.toU256(bytes: Bytes<32>): U256` | Alternative |
 | `Bytes32.eq(a: Bytes<32>, b: Bytes<32>): Boolean` | Deprecated |
 | `Bytes32.lt(a: Bytes<32>, b: Bytes<32>): Boolean` | Alternative |
@@ -191,13 +191,14 @@ Do not change the witness names that remain reachable.
 
 A circuit is deprecated when a native expression gives the same result for every input, the circuit has no library-specific failure message, and the native expression costs no more v3 rows at compiler 0.34.0.
 Native expressions include composed casts, arithmetic, and ternary expressions.
-There are 35 deprecated declarations, 29 declarations with documented native alternatives, and 30 kept declarations.
+There are 38 deprecated declarations, 26 declarations with documented native alternatives, and 30 kept declarations.
 The following native expressions use the arguments in each signature.
 
 | Deprecated declaration | Native replacement |
 |---|---|
 | `Pack.pack(vec: Vector<N, Uint<8>>): Bytes<N>` | `vec as Bytes<N>` |
 | `Bytes8.pack(vec: Vector<8, Uint<8>>): Bytes<8>` | `vec as Bytes<8>` |
+| `Bytes8.toUint64(vec: Vector<8, Uint<8>>): Uint<64>` | `vec[0] + vec[1] * 0x100 + vec[2] * 0x10000 + vec[3] * 0x1000000 + vec[4] * 0x100000000 + vec[5] * 0x10000000000 + vec[6] * 0x1000000000000 + vec[7] * 0x100000000000000` |
 | `Uint64.add(a: Uint<64>, b: Uint<64>): Uint<128>` | `a + b` |
 | `Uint64.mul(a: Uint<64>, b: Uint<64>): Uint<128>` | `a * b` |
 | `Uint64.min(a: Uint<64>, b: Uint<64>): Uint<64>` | `a < b ? a : b` |
@@ -221,11 +222,13 @@ The following native expressions use the arguments in each signature.
 | `Uint128.max(a: Uint<128>, b: Uint<128>): Uint<128>` | `a >= b ? a : b` |
 | `Uint128.max(a: U128, b: U128): U128` | `((a.high * 0x10000000000000000 + a.low) as Uint<128>) >= ((b.high * 0x10000000000000000 + b.low) as Uint<128>) ? a : b` |
 | `Uint256.ZERO_U256(): U256` | `default<U256>` |
+| `Uint256.eq(a: U256, b: U256): Boolean` | `(a.high.low == b.high.low && a.high.high == b.high.high) && (a.low.low == b.low.low && a.low.high == b.low.high)` |
 | `Uint256.lt(a: U256, b: U256): Boolean` | `(((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) < ((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) \|\| (a.high == b.high && ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>) < ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>)))` |
 | `Uint256.lte(a: U256, b: U256): Boolean` | `!(((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) < ((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) \|\| (b.high == a.high && ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>) < ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>)))` |
 | `Uint256.gt(a: U256, b: U256): Boolean` | `(((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) < ((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) \|\| (b.high == a.high && ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>) < ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>)))` |
 | `Uint256.gte(a: U256, b: U256): Boolean` | `!(((a.high.high * 0x10000000000000000 + a.high.low) as Uint<128>) < ((b.high.high * 0x10000000000000000 + b.high.low) as Uint<128>) \|\| (a.high == b.high && ((a.low.high * 0x10000000000000000 + a.low.low) as Uint<128>) < ((b.low.high * 0x10000000000000000 + b.low.low) as Uint<128>)))` |
 | `Bytes32.pack(vec: Vector<32, Uint<8>>): Bytes<32>` | `vec as Bytes<32>` |
+| `Bytes32.toU256(vec: Vector<32, Uint<8>>): U256` | `U256 { low: U128 { low: vec[0] + vec[1] * 0x100 + vec[2] * 0x10000 + vec[3] * 0x1000000 + vec[4] * 0x100000000 + vec[5] * 0x10000000000 + vec[6] * 0x1000000000000 + vec[7] * 0x100000000000000, high: vec[8] + vec[9] * 0x100 + vec[10] * 0x10000 + vec[11] * 0x1000000 + vec[12] * 0x100000000 + vec[13] * 0x10000000000 + vec[14] * 0x1000000000000 + vec[15] * 0x100000000000000 }, high: U128 { low: vec[16] + vec[17] * 0x100 + vec[18] * 0x10000 + vec[19] * 0x1000000 + vec[20] * 0x100000000 + vec[21] * 0x10000000000 + vec[22] * 0x1000000000000 + vec[23] * 0x100000000000000, high: vec[24] + vec[25] * 0x100 + vec[26] * 0x10000 + vec[27] * 0x1000000 + vec[28] * 0x100000000 + vec[29] * 0x10000000000 + vec[30] * 0x1000000000000 + vec[31] * 0x100000000000000 } }` |
 | `Bytes32.eq(a: Bytes<32>, b: Bytes<32>): Boolean` | `a == b` |
 | `Bytes32.isZero(a: Bytes<32>): Boolean` | `a == default<Bytes<32>>` |
 | `Field255.toBytes(value: Field): Bytes<32>` | `value as Bytes<32>` |
@@ -239,15 +242,15 @@ The U256 expressions compare the high half first and then the low half.
 
 ## Retained alternatives
 
-Use the [native alternatives table](README.md#native-alternatives) for exact expressions and both backend costs for all 29 retained alternatives.
+Use the [native alternatives table](README.md#native-alternatives) for exact expressions and both backend costs for all 26 retained alternatives.
 `Bytes8.toUint64(Bytes<8>)` retains `Pack: unpack verification failed` and the `wit_unpackBytes` dependency.
 `Uint64.toBytes` retains `Uint64: toUnpackedBytes verification failed` and the `wit_uint64ToUnpackedBytes` dependency.
 Their native casts give equal honest values but have no corresponding witness checks or witness taint.
 The same inherited-message rule applies to unpack, limb splitting, and composed conversion or comparison paths.
 
-The vector forms of `Bytes8.toUint64` and `Bytes32.toU256` have no library failure message.
-Their native cast compositions cost more v3 rows, so they remain undeprecated.
-`Uint256.eq` also remains undeprecated: the direct native equality uses 268 v3 rows; the library uses 267.
+The vector forms of `Bytes8.toUint64` and `Bytes32.toU256` are deprecated in favor of weighted byte sums. Each sum fits in `Uint<64>`.
+`Uint256.eq` is deprecated in favor of a comparison of the four limbs.
+These three expressions compile to the same rows as the library circuits on both backends. The cast compositions and the direct `a == b` cost more v3 rows.
 The minimum, maximum, and U128-to-Uint128 forms in the mapping table pass the cost rule above and are deprecated.
 
 `Uint64.addChecked`, `Uint64.sub`, `Uint64.mulChecked`, and scalar `Uint128.sub` retain their library messages around native arithmetic.

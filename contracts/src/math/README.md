@@ -216,7 +216,7 @@ Provide these dependencies when the consumer calls these circuits.
 
 The [native replacement table](MIGRATION.md#deprecated-circuits) lists every deprecated declaration and its exact expression.
 All deprecated declarations remain callable.
-The following circuits keep a native alternative because they preserve a library failure message or have a lower v3 cost.
+The following circuits keep a native alternative because they preserve a library failure message.
 The replacement expressions assume the typed arguments in the listed signature.
 
 Native casts have no math witness keys and do not add witness taint.
@@ -230,7 +230,6 @@ Rows use compiler 0.34.0. Each pair shows v2 / v3.
 |---|---|---|---|---|
 | `Pack.unpack(bytes: Bytes<N>): Vector<N, Uint<8>>` | `bytes as Vector<N, Uint<8>>` | 2484/240 | 2640/1151 | `Pack: unpack verification failed` |
 | `Bytes8.unpack(bytes: Bytes<8>): Vector<8, Uint<8>>` | `bytes as Vector<8, Uint<8>>` | 2484/240 | 2640/1151 | `Pack: unpack verification failed` |
-| `Bytes8.toUint64(vec: Vector<8, Uint<8>>): Uint<64>` | `(vec as Bytes<8>) as Uint<64>` | 191/157 | 2474/236 | Lower library v3 cost |
 | `Bytes8.toUint64(bytes: Bytes<8>): Uint<64>` | `bytes as Uint<64>` | 2431/187 | 173/85 | `Pack: unpack verification failed` |
 | `Uint64.toBytes(value: Uint<64>): Bytes<8>` | `value as Bytes<8>` | 2431/187 | 173/85 | `Uint64: toUnpackedBytes verification failed` |
 | `Uint64.toUnpackedBytes(value: Uint<64>): Vector<8, Uint<8>>` | `(value as Bytes<8>) as Vector<8, Uint<8>>` | 265/177 | 2704/1167 | `Uint64: toUnpackedBytes verification failed` |
@@ -244,9 +243,7 @@ Rows use compiler 0.34.0. Each pair shows v2 / v3.
 | `Uint128.sub(a: U128, b: U128): U128` | `U128 { low: slice<8>(((((a.high * 0x10000000000000000 + a.low) as Uint<128>) - ((b.high * 0x10000000000000000 + b.low) as Uint<128>)) as Uint<128> as Bytes<16>), 0) as Uint<64>, high: slice<8>(((((a.high * 0x10000000000000000 + a.low) as Uint<128>) - ((b.high * 0x10000000000000000 + b.low) as Uint<128>)) as Uint<128> as Bytes<16>), 8) as Uint<64> }` | 550/246 | 16280/4970 | `Uint128: subtraction underflow` |
 | `Uint256.toBytes(value: U256): Bytes<32>` | `Bytes[...(value.low.low as Bytes<8>), ...(value.low.high as Bytes<8>), ...(value.high.low as Bytes<8>), ...(value.high.high as Bytes<8>)]` | 10271/628 | 19915/4500 | `Uint64: toUnpackedBytes verification failed` |
 | `Uint256.toUnpackedBytes(value: U256): Vector<32, Uint<8>>` | `(Bytes[...(value.low.low as Bytes<8>), ...(value.low.high as Bytes<8>), ...(value.high.low as Bytes<8>), ...(value.high.high as Bytes<8>)]) as Vector<32, Uint<8>>` | 1031/658 | 30685/9120 | `Uint64: toUnpackedBytes verification failed` |
-| `Uint256.eq(a: U256, b: U256): Boolean` | `a == b` | 642/267 | 642/268 | Lower library v3 cost |
 | `Bytes32.unpack(bytes: Bytes<32>): Vector<32, Uint<8>>` | `bytes as Vector<32, Uint<8>>` | 10519/872 | 11123/4790 | `Pack: unpack verification failed` |
-| `Bytes32.toU256(vec: Vector<32, Uint<8>>): U256` | `U256 { low: U128 { low: slice<8>((vec as Bytes<32>), 0) as Uint<64>, high: slice<8>((vec as Bytes<32>), 8) as Uint<64> }, high: U128 { low: slice<8>((vec as Bytes<32>), 16) as Uint<64>, high: slice<8>((vec as Bytes<32>), 24) as Uint<64> } }` | 737/578 | 70229/10733 | Lower library v3 cost |
 | `Bytes32.toU256(bytes: Bytes<32>): U256` | `U256 { low: U128 { low: slice<8>((bytes as Bytes<32>), 0) as Uint<64>, high: slice<8>((bytes as Bytes<32>), 8) as Uint<64> }, high: U128 { low: slice<8>((bytes as Bytes<32>), 16) as Uint<64>, high: slice<8>((bytes as Bytes<32>), 24) as Uint<64> } }` | 10267/620 | 31805/9638 | `Pack: unpack verification failed` |
 | `Bytes32.lt(a: Bytes<32>, b: Bytes<32>): Boolean` | `((slice<16>((a as Bytes<32>), 16) as Uint<128> < slice<16>((b as Bytes<32>), 16) as Uint<128>) \|\| (slice<16>((a as Bytes<32>), 16) == slice<16>((b as Bytes<32>), 16) && (slice<16>((a as Bytes<32>), 0) as Uint<128> < slice<16>((b as Bytes<32>), 0) as Uint<128>)))` | 20531/1122 | 74678/19600 | `Pack: unpack verification failed` |
 | `Bytes32.lte(a: Bytes<32>, b: Bytes<32>): Boolean` | `((slice<16>((a as Bytes<32>), 16) as Uint<128> < slice<16>((b as Bytes<32>), 16) as Uint<128>) \|\| (slice<16>((a as Bytes<32>), 16) == slice<16>((b as Bytes<32>), 16) && (slice<16>((a as Bytes<32>), 0) as Uint<128> <= slice<16>((b as Bytes<32>), 0) as Uint<128>)))` | 20534/1124 | 74681/19601 | `Pack: unpack verification failed` |
