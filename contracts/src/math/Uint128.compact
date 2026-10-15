@@ -1069,7 +1069,7 @@ module Uint128 {
    *
    * @param {Uint<128>} a - The Uint<128> value to check.
    * @returns {Boolean} True if a equals zero, false otherwise.
-   * @deprecated Use `value == default<Uint<128>>` instead.
+   * @deprecated Use `a == default<Uint<128>>` instead.
    */
   export pure circuit isZero(a: Uint<128>): Boolean {
     return a == 0;
@@ -1083,7 +1083,7 @@ module Uint128 {
    *
    * @param {U128} a - The U128 value to check.
    * @returns {Boolean} True if a equals zero (a.low = a.high = 0), false otherwise.
-   * @deprecated Use `value == default<U128>` instead.
+   * @deprecated Use `a == default<U128>` instead.
    */
   export pure circuit isZero(a: U128): Boolean {
     return a.low == 0 && a.high == 0;
