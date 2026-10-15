@@ -163,4 +163,28 @@ describe('JubjubPoint subgroup enforcement (runtime invariant)', () => {
       await expect(contract.genMul(L)).rejects.toThrow(SCALAR_RANGE_FAULT);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // The identity guards in ElGamal and EcdhMask compare against
+  // `ecMulGenerator(0)`; the token's `allowance` placeholder is built the same
+  // way. Pin that this equals the affine identity `(0, 1)` in both the circuit
+  // and the runtime, so the two spellings cannot drift apart silently.
+  // -------------------------------------------------------------------------
+  describe('identity representation', () => {
+    const IDENTITY = constructJubjubPoint(0n, 1n);
+
+    it('ecMulGenerator(0) is the affine identity (0, 1) in the circuit', async () => {
+      await expect(contract.genMul(0n)).resolves.toEqual(IDENTITY);
+    });
+
+    it('ecMulGenerator(0) is the affine identity (0, 1) in the runtime', () => {
+      expect(ecMulGenerator(0n)).toEqual(IDENTITY);
+    });
+
+    it('(0, 1) behaves as the identity under the curve ops', async () => {
+      const g = await contract.genMul(1n);
+      await expect(contract.doEcAdd(IDENTITY, g)).resolves.toEqual(g);
+      await expect(contract.doEcMul(IDENTITY, 5n)).resolves.toEqual(IDENTITY);
+    });
+  });
 });
