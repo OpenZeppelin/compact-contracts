@@ -204,6 +204,7 @@ The results stay witness-tainted.
 `sqrt(radicand: Uint<128>)` checks the witness root with native arithmetic.
 For every honest input, the result and the failure message do not change.
 It splits the radicand once, only for the argument of `wit_sqrtU128`; the splits inside `_sqrt` are gone, so they cannot make it fail with `Uint128: conversion invalid`.
+A test that replaces the result of one of those splits has no effect: `sqrt` returns the honest root.
 A wrong split of the radicand still fails with that message.
 For a forged root, the first failing message is the message of `sqrt(U128)`.
 The witness interface (`wit_divUint128`, `wit_sqrtU128`) and the witness taint do not change.
