@@ -155,7 +155,7 @@ The global witness names do not receive the Compact import prefix.
 | Audit L-06 | Multiplication uses seven splitter calls for the U128 form. A defensive `Uint128: unexpected multiplication overflow` assertion protects the final carry. See [the audit fix](https://github.com/OpenZeppelin/midnight-apps/pull/313) and [the tests](test/Uint128.test.ts). |
 | Audit N-01 | The circuit titles and witness names match the declarations. See [the documentation fix](https://github.com/OpenZeppelin/midnight-apps/pull/312). |
 | BUG-2 | A Uint64 division witness whose sum exceeds 64 bits fails with `Uint64: division invalid`. See [Uint64](Uint64.compact) and [its tests](test/Uint64.test.ts). |
-| BUG-3 | A Uint128 quotient whose product exceeds the dividend fails with `Uint128: division invalid`. See [Uint128](Uint128.compact) and [its tests](test/Uint128.test.ts). |
+| BUG-3 | A Uint128 witness quotient that passes the remainder check and whose product with `b` fits in 128 bits but exceeds the dividend fails with `Uint128: division invalid`. A product that does not fit in 128 bits fails earlier with `Uint128: division product overflow`. See [Uint128](Uint128.compact) and [its tests](test/Uint128.test.ts). |
 | BUG-6 | The scalar remainder tests override the actual `wit_divU128` call. Separate conversion tests check `wit_divUint128`. See [the tests](test/Uint128.test.ts). |
 | BUG-4 | The [math guide](README.md#supply-the-witnesses) gives the generated witness names and reachable dependencies. |
 | BUG-5 | The [consumer example](test/mocks/MockMathConsumer.compact) uses valid overloads and result widths. Its TypeScript witness object matches the generated type. |
