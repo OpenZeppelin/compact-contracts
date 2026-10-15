@@ -1,0 +1,232 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (math/Field255.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Field255
+ * @description A utility module providing conversions and comparisons for BLS12-381 scalar Field
+ * elements using Bytes<32> as the intermediate representation.
+ *
+ * @dev CONVERSION CHAIN:
+ *   Field → Bytes<32> (native cast) → U256 (via Bytes32)
+ *   The comparisons compare the canonical integer values in this form. The reverse conversion
+ *   (U256 to Field) and Field arithmetic do not exist yet (see the TODO list below).
+ *
+ * BLS12-381 Scalar Field:
+ *   Modulus (r) = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+ *   Max Field   = r - 1 = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000
+ *
+ * This fits within Bytes<32> (256 bits) and can be safely converted and operated upon.
+ *
+ * Supported Operations:
+ * - Constants:
+ *   - MAX_FIELD(): Returns the maximum Field value.
+ * - Conversions:
+ *   - toBytes(value): Converts Field to Bytes<32>.
+ *   - toU256(value): Converts Field to U256.
+ * - Comparisons:
+ *   - eq(a, b): Checks if two Field values are equal.
+ *   - lt(a, b): Checks if one Field value is less than another.
+ *   - lte(a, b): Checks if one Field value is less than or equal to another.
+ *   - gt(a, b): Checks if one Field value is greater than another.
+ *   - gte(a, b): Checks if one Field value is greater than or equal to another.
+ * - Utilities:
+ *   - isZero(a): Checks if a Field value is zero.
+ *
+ * TODO: Missing operations (available in other math modules):
+ * - Arithmetic:
+ *   - TODO: add(a, b): Add two Field values (modular arithmetic).
+ *   - TODO: addChecked(a, b): Add two Field values with overflow checking.
+ *   - TODO: sub(a, b): Subtract one Field value from another.
+ *   - TODO: mul(a, b): Multiply two Field values (modular arithmetic).
+ *   - TODO: mulChecked(a, b): Multiply two Field values with overflow checking.
+ * - Division:
+ *   - TODO: div(a, b): Divide one Field value by another.
+ *   - TODO: rem(a, b): Compute remainder of Field division.
+ *   - TODO: divRem(a, b): Compute quotient and remainder of Field division.
+ * - Square Root:
+ *   - TODO: sqrt(radicand): Compute floor of square root of a Field value.
+ * - Conversions:
+ *   - TODO: toUnpackedBytes(value): Convert Field to Vector<32, Uint<8>> (little-endian).
+ * - Utilities:
+ *   - TODO: isMultiple(a, b): Check if one Field value is a multiple of another.
+ *   - TODO: min(a, b): Return the smaller of two Field values.
+ *   - TODO: max(a, b): Return the larger of two Field values.
+ */
+module Field255 {
+  import { U256 } from "./Types";
+
+  import { toU256, lt } from "./Bytes32" prefix Bytes32_;
+
+  ////////////////////////////////////////////////////////////////
+  // Constants & Conversions
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Returns the maximum Field value.
+   *
+   * @dev This is the maximum value in the BLS12-381 scalar field: Max Field = r - 1
+   * where r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Field} The maximum Field value.
+   */
+  export pure circuit MAX_FIELD(): Field {
+    return 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000 as Field;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Conversions
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Converts a Field value to Bytes<32> representation.
+   *
+   * @dev This circuit uses Compact's Field → Bytes<32> casting
+   *
+   * @constraints k=9, rows=407 (zkir-v2)
+   * @constraints k=9, rows=201 (zkir-v3)
+   *
+   * @param {Field} value - The Field value to convert.
+   * @returns {Bytes<32>} The Bytes<32> representation of the Field value.
+   */
+  export circuit toBytes(value: Field): Bytes<32> {
+    return value as Bytes<32>;
+  }
+
+  /**
+   * @description Converts a Field value to a U256 struct representation.
+   *
+   * @dev This circuit converts a Field element to a U256 struct by first converting
+   * to Bytes<32> and then using the Bytes32 module's toU256 function.
+   *
+   * @constraints k=14, rows=10339 (zkir-v2)
+   * @constraints k=10, rows=680 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
+   *
+   * @param {Field} value - The Field value to convert.
+   * @returns {U256} The U256 struct representation of the Field value.
+   */
+  export circuit toU256(value: Field): U256 {
+    const bytes = toBytes(value);
+    return Bytes32_toU256(bytes);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Comparisons
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Compares two Field values for equality.
+   *
+   * @constraints k=6, rows=48 (zkir-v2)
+   * @constraints k=6, rows=57 (zkir-v3)
+   *
+   * @param {Field} a - The first Field value to compare.
+   * @param {Field} b - The second Field value to compare.
+   * @returns {Boolean} True if a == b, false otherwise.
+   */
+  export circuit eq(a: Field, b: Field): Boolean {
+    return a == b;
+  }
+
+  /**
+   * @description Compares two Field values to check if a < b.
+   *
+   * @dev This circuit compares two Field elements by converting them to Bytes<32>
+   * and using the Bytes32 less-than comparison, which internally uses U256 comparison.
+   *
+   * @constraints k=15, rows=20693 (zkir-v2)
+   * @constraints k=11, rows=1260 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
+   *
+   * @param {Field} a - The first Field value to compare.
+   * @param {Field} b - The second Field value to compare.
+   * @returns {Boolean} True if a < b, false otherwise.
+   */
+  export circuit lt(a: Field, b: Field): Boolean {
+    const aBytes = toBytes(a);
+    const bBytes = toBytes(b);
+    return Bytes32_lt(aBytes, bBytes);
+  }
+
+  /**
+   * @description Compares two Field values to check if a <= b.
+   *
+   * @constraints k=15, rows=20696 (zkir-v2)
+   * @constraints k=11, rows=1262 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
+   *
+   * @param {Field} a - The first Field value to compare.
+   * @param {Field} b - The second Field value to compare.
+   * @returns {Boolean} True if a <= b, false otherwise.
+   */
+  export circuit lte(a: Field, b: Field): Boolean {
+    return !lt(b, a);
+  }
+
+  /**
+   * @description Compares two Field values to check if a > b.
+   *
+   * @constraints k=15, rows=20693 (zkir-v2)
+   * @constraints k=11, rows=1260 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
+   *
+   * @param {Field} a - The first Field value to compare.
+   * @param {Field} b - The second Field value to compare.
+   * @returns {Boolean} True if a > b, false otherwise.
+   */
+  export circuit gt(a: Field, b: Field): Boolean {
+    return lt(b, a);
+  }
+
+  /**
+   * @description Compares two Field values to check if a >= b.
+   *
+   * @constraints k=15, rows=20696 (zkir-v2)
+   * @constraints k=11, rows=1262 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must pack to the input bytes. Fails with "Pack: unpack verification failed".
+   *
+   * @param {Field} a - The first Field value to compare.
+   * @param {Field} b - The second Field value to compare.
+   * @returns {Boolean} True if a >= b, false otherwise.
+   */
+  export circuit gte(a: Field, b: Field): Boolean {
+    return !lt(a, b);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Utilities
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Checks if a Field value equals zero.
+   *
+   * @constraints k=6, rows=47 (zkir-v2)
+   * @constraints k=6, rows=55 (zkir-v3)
+   *
+   * @param {Field} a - The Field value to check.
+   * @returns {Boolean} True if a equals zero, false otherwise.
+   */
+  export circuit isZero(a: Field): Boolean {
+    return a == 0 as Field;
+  }
+}

@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the Uint256 module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { U256 } from "../../Types";
+
+import "../../Uint256" prefix Uint256_;
+
+export { U256 };
+
+// Keeps every circuit below impure. Without a ledger write the compiler
+// promotes them to pure, and the artifact ships without ZKIR or proving keys,
+// leaving the circuits evaluated but never proven.
+ledger _invocations: Counter;
+
+////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////
+
+export circuit ZERO_U256(): U256 {
+  _invocations.increment(1);
+  return Uint256_ZERO_U256();
+}
+
+export circuit MAX_U256(): U256 {
+  _invocations.increment(1);
+  return Uint256_MAX_U256();
+}
+
+////////////////////////////////////////////////////////////////
+// Conversions
+////////////////////////////////////////////////////////////////
+
+export circuit toBytes(value: U256): Bytes<32> {
+  _invocations.increment(1);
+  return disclose(Uint256_toBytes(value));
+}
+
+export circuit toUnpackedBytes(value: U256): Vector<32, Uint<8>> {
+  _invocations.increment(1);
+  return disclose(Uint256_toUnpackedBytes(value));
+}
+
+////////////////////////////////////////////////////////////////
+// Comparisons
+////////////////////////////////////////////////////////////////
+
+export circuit eq(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return Uint256_eq(a, b);
+}
+
+export circuit lt(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return Uint256_lt(a, b);
+}
+
+export circuit lte(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return Uint256_lte(a, b);
+}
+
+export circuit gt(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return Uint256_gt(a, b);
+}
+
+export circuit gte(a: U256, b: U256): Boolean {
+  _invocations.increment(1);
+  return Uint256_gte(a, b);
+}
