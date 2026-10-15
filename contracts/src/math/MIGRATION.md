@@ -217,6 +217,7 @@ A machine-checked proof on the compiled ZKIR v2 and v3 shows that the range chec
 `mulChecked(a: Uint<128>, b: Uint<128>)` splits only `a` and computes the product with native arithmetic.
 For every honest input, the result and the failure message do not change.
 A wrong split of `a` still fails with `Uint128: conversion invalid`; the split of `b` and the splits of `_mul` are gone.
+A test that replaces the result of one of those removed splits has no effect: `mulChecked` returns the honest result, or fails with `Uint128: multiplication overflow` when the product overflows.
 The witness interface (`wit_divUint128`) and the witness taint do not change.
 
 ## Deprecated circuits
