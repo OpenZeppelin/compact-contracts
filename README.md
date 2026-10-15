@@ -196,6 +196,12 @@ or the `keccak256`-based `crypto/Eip712`.
 `multisig/presets/ShieldedMultiSigV2`, `multisig/presets/NativeShieldedTokenIssuer`
 and the `multisig/examples/` contracts reach both.
 `utils/EvmAbi` needs no `keccak256` of its own and compiles on either backend.
+The `math` modules (`Types`, `Pack`, `Bytes8`, `Uint64`, `Uint128`, `Uint256`,
+`Bytes32` and `Field255`) also compile on either backend. Many math circuits call
+witnesses that the consumer implements, and return witness-tainted results. The
+witness implementations in this repository are test-only. The
+[math guide](contracts/src/math/README.md) lists the witnesses and the
+`disclose()` needs of every circuit.
 Compiling the other modules under v3 currently hits upstream blockers,
 listed under [Known issues](CHANGELOG.md#known-issues).
 

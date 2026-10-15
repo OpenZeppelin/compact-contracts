@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add the `math` category, ported from [midnight-apps `contracts/src/math`](https://github.com/OpenZeppelin/midnight-apps/tree/7de45ab1afb34b2b101767f7c987ef79c555be10/contracts/src/math): `Types`, `Pack<N>`, `Bytes8`, `Uint64`, `Uint128`, `Uint256`, `Bytes32` and `Field255`. Circuit, struct and witness names, signatures and assert messages are unchanged. The [math guide](contracts/src/math/README.md) lists the witnesses and the `disclose()` needs of every circuit, and the [migration guide](contracts/src/math/MIGRATION.md) maps the source API (#1125, #1126, #1127, #1128, #1143)
+
+### Changed
+
+- `Uint128.addChecked` (both overloads) computes the sum with native addition. It is a `pure circuit`, makes no witness call and its result is not witness-tainted. Every honest input keeps its result and its `Uint128: addition overflow` message; an incorrect `wit_divUint128` result can no longer fail it with `Uint128: conversion invalid` (#1141)
+
+### Deprecated
+
+- Math circuits with an equal native expression and no library failure message, listed with their replacements in the [migration guide](contracts/src/math/MIGRATION.md#deprecated-circuits): `Pack.pack`, `Bytes8.pack` and `toUint64(Vector<8, Uint<8>>)`, `Uint64.add`, `mul`, `min` and `max`, `Uint128.ZERO_U128`, `toUint128` and both forms of `eq`, `lt`, `lte`, `gt`, `gte`, `isZero`, `min` and `max`, `Uint256.ZERO_U256`, `eq`, `lt`, `lte`, `gt` and `gte`, `Bytes32.pack`, `toU256(Vector<32, Uint<8>>)`, `eq` and `isZero`, `Field255.toBytes`, `eq` and `isZero`. They stay callable (#1142)
+
+### Fixed
+
+- Math fixes over the source library (see the [migration guide](contracts/src/math/MIGRATION.md#fixes)):
+  - `Uint128.sub(U128)` computes the low limb without a branch, so `sub(U128)` and every `Uint128` division prove also with compilers that range-check a downcast in an untaken branch ([midnight-apps#309](https://github.com/OpenZeppelin/midnight-apps/pull/309), #1127)
+  - `Uint128._mul` adds each result word in one step: 7 limb splits instead of 9, fewer rows for every multiplication, division and square root (audit finding L-06, [midnight-apps#313](https://github.com/OpenZeppelin/midnight-apps/pull/313), #1127)
+  - An incorrect `Uint64` division witness whose sum exceeds 64 bits fails with `Uint64: division invalid` instead of a cast error (#1126)
+  - An incorrect `Uint128` quotient that passes the remainder check and whose product with `b` fits in 128 bits but exceeds the dividend fails with `Uint128: division invalid` instead of `Uint128: subtraction underflow` (#1127)
+  - Doc comment corrections, including the typos of audit finding N-01 ([midnight-apps#312](https://github.com/OpenZeppelin/midnight-apps/pull/312), #1126, #1127, #1128)
+
 ## 0.5.0-alpha.1 (2026-10-13)
 
 ### Added
