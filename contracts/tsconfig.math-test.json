@@ -1,0 +1,11 @@
+{
+  // Type-checks the math simulators, specs and test utils (`yarn types`).
+  // The base include covers only the witnesses. The package build reads
+  // `tsconfig.build.json`, so nothing here is emitted or published.
+  "extends": "./tsconfig.json",
+  "include": ["src/math/**/*.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  }
+}

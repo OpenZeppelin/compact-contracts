@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes the Bytes8 module's circuits so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import "../../Bytes8" prefix Bytes8_;
+
+// Keeps every circuit below impure. Without a ledger write the compiler
+// promotes them to pure, and the artifact ships without ZKIR or proving keys,
+// leaving the circuits evaluated but never proven.
+ledger _invocations: Counter;
+
+////////////////////////////////////////////////////////////////
+// Conversions
+////////////////////////////////////////////////////////////////
+
+export circuit pack(vec: Vector<8, Uint<8>>): Bytes<8> {
+  _invocations.increment(1);
+  return Bytes8_pack(vec);
+}
+
+export circuit unpack(bytes: Bytes<8>): Vector<8, Uint<8>> {
+  _invocations.increment(1);
+  return disclose(Bytes8_unpack(bytes));
+}
+
+export circuit vectorToUint64(vec: Vector<8, Uint<8>>): Uint<64> {
+  _invocations.increment(1);
+  return Bytes8_toUint64(vec);
+}
+
+export circuit bytesToUint64(bytes: Bytes<8>): Uint<64> {
+  _invocations.increment(1);
+  return disclose(Bytes8_toUint64(bytes));
+}
