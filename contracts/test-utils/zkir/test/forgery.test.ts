@@ -14,6 +14,7 @@ function f(a, b) {
     throw new __compactRuntime.CompactError('cast failed: ' + a);
   }
   __compactRuntime.typeError('wit_x', 'return value', 'M.compact line 1', 'Uint<8>', a);
+  partialProofData.output = { value: _descriptor_3.toValue(result_0), alignment: _descriptor_3.alignment() };
   return a;
 }
 ${'//# sourceMapping'}URL=index.js.map
@@ -39,6 +40,12 @@ describe('lenientSource', () => {
     expect(lenient).not.toContain('throw new __compactRuntime.CompactError');
     expect(lenient).toContain(
       "__compactRuntime.checkRuntimeVersion('0.19.0');",
+    );
+  });
+
+  it('converts the circuit output through the recorder', () => {
+    expect(lenient).toContain(
+      'partialProofData.output = { value: __lenient.output(_descriptor_3, result_0), alignment: _descriptor_3.alignment() };',
     );
   });
 

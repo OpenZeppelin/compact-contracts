@@ -798,6 +798,33 @@ export function inputForgeries(
 }
 
 /**
+ * Argument forgeries for a circuit that multiplies its two `bigint`
+ * arguments: each argument moves by the field inverse of the other one, so
+ * the product in the field grows by 1. The new value is far above the
+ * declared type, and a circuit with no other bound on the argument accepts it
+ * only without the range check of that argument.
+ */
+export function productForgeries(
+  args: readonly unknown[],
+): { label: string; args: unknown[] }[] {
+  const [a, b] = args as [bigint, bigint];
+  const out: { label: string; args: unknown[] }[] = [];
+  if (b % FIELD_MODULUS !== 0n) {
+    out.push({
+      label: 'argument 0 + 1 / argument 1 in the field',
+      args: [(a + modInverse(b)) % FIELD_MODULUS, b],
+    });
+  }
+  if (a % FIELD_MODULUS !== 0n) {
+    out.push({
+      label: 'argument 1 + 1 / argument 0 in the field',
+      args: [a, (b + modInverse(a)) % FIELD_MODULUS],
+    });
+  }
+  return out;
+}
+
+/**
  * The witness plan for an input that the circuit must reject. The honest
  * division witnesses throw for a zero divisor, so this plan gives them the
  * result `quotient 0, remainder a`. Every other call stays honest.
@@ -1115,6 +1142,11 @@ export type RelationCase<
    * that only a single-call forgery isolates, over the `forgeries` inputs.
    */
   isolates?: { coordinated: number[]; single?: number[] };
+  /**
+   * More arguments above the declared type, for example
+   * {@link productForgeries}, in addition to {@link inputForgeries}.
+   */
+  argumentForgeries?: (args: A) => { label: string; args: unknown[] }[];
 };
 
 /** Erases the argument type of a case, so that one list holds all cases. */
@@ -1192,10 +1224,13 @@ export function describeRelation<S>(
       test('rejects every argument above its declared type', async () => {
         for (const args of entry.forgeries) {
           const honest = await forger.replay(entry.circuit, args);
-          for (const forged of inputForgeries(
-            args,
-            fieldWidths(honest.proofData.input.alignment),
-          )) {
+          for (const forged of [
+            ...inputForgeries(
+              args,
+              fieldWidths(honest.proofData.input.alignment),
+            ),
+            ...(entry.argumentForgeries?.(args) ?? []),
+          ]) {
             const outcome = await forger.attempt(entry.circuit, forged.args);
             expect(outcome.violations.length === 0, forged.label).toBe(
               outcome.verdict.accepted,
@@ -1265,6 +1300,9 @@ export async function findUnsoundForgery(
   args: readonly unknown[],
   zkir: ZkirV2,
   rejects: readonly (readonly unknown[])[] = [],
+  argumentForgeries: (
+    args: readonly unknown[],
+  ) => { label: string; args: unknown[] }[] = () => [],
 ): Promise<string | undefined> {
   const honest = await forger.replay(circuit, args);
   for (const attack of attacksOf(circuit, honest)) {
@@ -1285,10 +1323,10 @@ export async function findUnsoundForgery(
     );
     if (outcome.outputChanged || !free) return attack.label;
   }
-  for (const forged of inputForgeries(
-    args,
-    fieldWidths(honest.proofData.input.alignment),
-  )) {
+  for (const forged of [
+    ...inputForgeries(args, fieldWidths(honest.proofData.input.alignment)),
+    ...argumentForgeries(args),
+  ]) {
     const outcome = await forger.attempt(circuit, forged.args, { zkir });
     if (outcome.verdict.accepted) return forged.label;
   }
@@ -1321,6 +1359,9 @@ export async function undetectedRemovals(
   args: readonly unknown[],
   zkir: ZkirV2,
   rejects: readonly (readonly unknown[])[] = [],
+  argumentForgeries: (
+    args: readonly unknown[],
+  ) => { label: string; args: unknown[] }[] = () => [],
 ): Promise<number[]> {
   const undetected: number[] = [];
   for (const [index, instruction] of zkir.instructions.entries()) {
@@ -1328,8 +1369,14 @@ export async function undetectedRemovals(
     const mutant = structuredClone(zkir);
     mutant.instructions.splice(index, 1);
     if (
-      (await findUnsoundForgery(forger, circuit, args, mutant, rejects)) ===
-      undefined
+      (await findUnsoundForgery(
+        forger,
+        circuit,
+        args,
+        mutant,
+        rejects,
+        argumentForgeries,
+      )) === undefined
     ) {
       undetected.push(index);
     }

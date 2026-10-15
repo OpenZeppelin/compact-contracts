@@ -668,8 +668,22 @@ module Uint128 {
   /**
    * @description Multiplies two Uint<128> values with overflow checking.
    *
-   * @constraints k=12, rows=2838 (zkir-v2)
-   * @constraints k=10, rows=829 (zkir-v3)
+   * @dev Splits `a` with `toU128` and computes the product with native `Uint` arithmetic.
+   * Let a = a_h · 2⁶⁴ + a_l with a_l, a_h ∈ [0, 2⁶⁴ - 1].
+   *
+   * Mathematical Steps:
+   * 1. Split: a = a_h · 2⁶⁴ + a_l (`toU128`)
+   * 2. High Bound: Assert t = a_h · b ≤ 2⁶⁴ - 1. Otherwise a · b ≥ t · 2⁶⁴ ≥ 2¹²⁸.
+   * 3. Full Bound: Compute P = t · 2⁶⁴ + a_l · b, which equals a · b, and assert
+   *    P ≤ 2¹²⁸ - 1
+   * 4. Return P
+   *
+   * Soundness (Z3 proof Z16): with step 2 (and the cast of t to Uint<64>), P < 2¹⁹², far
+   * below the field modulus (above 2²⁵⁴), so no operation wraps. The two asserts fail
+   * exactly when a · b > 2¹²⁸ - 1, with the message of the `U128` form.
+   *
+   * @constraints k=10, rows=913 (zkir-v2)
+   * @constraints k=9, rows=294 (zkir-v3)
    *
    * Requirements:
    *
@@ -680,10 +694,18 @@ module Uint128 {
    * @returns {Uint<128>} The product of a and b.
    */
   export circuit mulChecked(a: Uint<128>, b: Uint<128>): Uint<128> {
+    // Step 1: Split a into 64-bit limbs
     const aU128 = toU128(a);
-    const bU128 = toU128(b);
-    const result = _mulChecked(aU128, bU128);
-    return toUint128(result);
+
+    // Step 2: Verify that a_h * b fits in 64 bits. If a_h * b ≥ 2⁶⁴, then a * b ≥ 2¹²⁸.
+    const highProduct = aU128.high * b;
+    assert(highProduct <= Uint64_MAX_UINT64(), "Uint128: multiplication overflow");
+
+    // Step 3: Verify that a * b fits in 128 bits. 2⁶⁴ as a literal, as in divRem.
+    const product = (highProduct as Uint<64>) * 0x10000000000000000 + aU128.low * b;
+    assert(product <= MAX_UINT128(), "Uint128: multiplication overflow");
+
+    return product as Uint<128>;
   }
 
   /**

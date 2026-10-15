@@ -742,6 +742,36 @@ describe('Uint128', () => {
         'failed assert: Uint128: multiplication overflow',
       );
     });
+
+    test('should return 2^128 - 1 for (2^64 - 1) * (2^64 + 1)', async () => {
+      expect(
+        await uint128Simulator.mulChecked(MAX_UINT64, MAX_UINT64 + 2n),
+      ).toBe(MAX_UINT128);
+    });
+
+    test('should throw on overflow when the high part of a is zero', async () => {
+      // a_h * b = 0, and (2^64 - 1) * (2^64 + 2) = 2^128 + 2^64 - 2.
+      await expectRejection(
+        uint128Simulator.mulChecked(MAX_UINT64, MAX_UINT64 + 3n),
+        'failed assert: Uint128: multiplication overflow',
+      );
+    });
+
+    testDryOnly('should split only a and call no other witness', async () => {
+      const honest = Uint128Witnesses();
+      const a = 2n ** 100n + 7n;
+      const calls: [string, unknown[]][] = [];
+      uint128Simulator.overrideWitness('wit_divUint128', (context, x, y) => {
+        calls.push(['wit_divUint128', [x, y]]);
+        return honest.wit_divUint128(context, x, y);
+      });
+      uint128Simulator.overrideWitness('wit_divU128', (context, x, y) => {
+        calls.push(['wit_divU128', [x, y]]);
+        return honest.wit_divU128(context, x, y);
+      });
+      expect(await uint128Simulator.mulChecked(a, 5n)).toBe(a * 5n);
+      expect(calls).toEqual([['wit_divUint128', [a, 2n ** 64n]]]);
+    });
   });
 
   describe('mulCheckedU128', () => {

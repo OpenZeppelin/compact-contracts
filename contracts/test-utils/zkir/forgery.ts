@@ -224,6 +224,10 @@ type Recorder = {
   assert(condition: boolean, message: string): void;
   typeError(name: string, ...rest: unknown[]): void;
   fail(message: unknown): void;
+  output(
+    descriptor: { toValue(value: unknown): unknown },
+    value: unknown,
+  ): unknown;
 };
 
 const recorder: Recorder = {
@@ -239,13 +243,26 @@ const recorder: Recorder = {
   fail(message) {
     recorder.failures.push(String(message));
   },
+  output(descriptor, value) {
+    // A lenient run can compute a circuit output at or above the field
+    // modulus, for example a product of arguments above their declared type.
+    // The relation check takes the outputs from the ZKIR evaluator, so the
+    // copy converts the value reduced modulo p and records the event.
+    if (typeof value === 'bigint' && value !== modField(value)) {
+      recorder.failures.push('output at or above the field modulus');
+      return descriptor.toValue(modField(value));
+    }
+    return descriptor.toValue(value);
+  },
 };
 
 /**
  * Rewrites the JavaScript that `compactc` generates into a lenient copy:
  * `assert`, `typeError` and the thrown `CompactError`s of casts call a
- * recorder instead. The runtime import points to `runtimeUrl`, so the copy
- * can live outside the package. The copy has no source map.
+ * recorder instead, and the conversion of the circuit output reduces a
+ * bigint at or above the field modulus. The runtime import points to
+ * `runtimeUrl`, so the copy can live outside the package. The copy has no
+ * source map.
  *
  * @throws If the source does not have the expected runtime import.
  */
@@ -262,6 +279,10 @@ export function lenientSource(source: string, runtimeUrl: string): string {
     .replaceAll('__compactRuntime.assert(', '__lenient.assert(')
     .replaceAll('__compactRuntime.typeError(', '__lenient.typeError(')
     .replaceAll('throw new __compactRuntime.CompactError(', '__lenient.fail(')
+    .replace(
+      /partialProofData\.output = \{ value: (_descriptor_\d+)\.toValue\(/g,
+      'partialProofData.output = { value: __lenient.output($1, ',
+    )
     .replace(/^\/\/# sourceMappingURL=.*$/m, '');
 }
 

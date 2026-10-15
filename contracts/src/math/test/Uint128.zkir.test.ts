@@ -18,6 +18,7 @@ import {
   expectMustRejectInput,
   inputForgeries,
   mustRejectPlan,
+  productForgeries,
   RELATION_SEED,
   relationCase,
   SQRT_FIELD_ROOT,
@@ -108,6 +109,8 @@ const both = <A extends readonly bigint[]>(entry: {
   rejects?: A[];
   isolates?: { coordinated: number[]; single?: number[] };
   isolatesU128?: { coordinated: number[]; single?: number[] };
+  /** Argument forgeries of the `Uint<128>` form only. */
+  argumentForgeries?: (args: A) => { label: string; args: unknown[] }[];
   toResult?: (result: unknown) => unknown;
 }) => {
   const toResult = entry.toResult ?? ((result: unknown) => result);
@@ -188,17 +191,22 @@ describeRelation('MockUint128', {
         [MAX_UINT64 + 1n, MAX_UINT64],
       ],
       random: productFits,
+      // b = 3 * 2^64 lets a split of a with a high limb out of range give the
+      // same product, so only the range check of that limb rejects it.
       forgeries: [
         [2n ** 63n + 5n, 2n ** 63n + 0x7fffn],
         [A, 0n],
         [0n, B],
+        [2n ** 40n + 5n, 3n * 2n ** 64n],
       ],
+      argumentForgeries: productForgeries,
       // 2^127 * 2^127 makes the last split of _mul nonzero while the one
       // before has a zero low part: only that split shows the overflow.
       rejects: [
         [2n ** 64n, 2n ** 64n],
         [MAX_UINT128, 2n],
         [2n ** 127n, 2n ** 127n],
+        [MAX_UINT64, 2n ** 64n + 2n],
       ],
     }),
     ...both<[bigint, bigint]>({

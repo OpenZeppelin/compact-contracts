@@ -261,7 +261,9 @@ const asU128Form = (entry: Case): Case => {
   };
 };
 
-// The last split of `_mul` (offset 3): a forged split hides an overflow.
+// mulCheckedU128 keeps `_mul`. The last split of `_mul` (offset 3): a forged
+// split hides an overflow. The preimage is written for the scalar form of
+// `_mul`; asU128Form moves it to the U128 form.
 const MUL_CHECKED: Case = {
   artifact: 'MockUint128',
   circuit: 'mulChecked',
@@ -580,11 +582,61 @@ const NATIVE_SQRT: Case[] = [
   },
 ];
 
+// Uint128.mulChecked(Uint<128>) splits only a (transcript elements 0 to 3)
+// and multiplies with native arithmetic: P = (a_h * b) * 2^64 + a_l * b. The
+// assertion and the cast on a_h * b, and the assertion and the cast on P,
+// imply each other (Z3 proof Z16).
+const A_SMALL = 2n ** 40n + 5n;
+const A_LARGE = 2n ** 100n + 7n;
+const NATIVE_MUL_CHECKED: Case[] = [
+  {
+    artifact: 'MockUint128',
+    circuit: 'mulChecked',
+    constraint: 'range of input 1',
+    attack: 'b = 3 * 2^64 + 1 / a in the field: a * b grows by 1',
+    inputs: [A_SMALL, (3n * TWO_64 + inverse(A_SMALL)) % R],
+    privates: [0n, 0n, A_SMALL, 0n],
+    honest: [3n, 5n],
+    reason: bits(128),
+  },
+  {
+    artifact: 'MockUint128',
+    circuit: 'mulChecked',
+    constraint: 'range of witness element 0',
+    attack:
+      'a_h = 1 / 2^64 in the field, a_l = a - 1 for b = 3 * 2^64: the same product',
+    inputs: [A_SMALL, 3n * TWO_64],
+    privates: [inverse(TWO_64), 0n, A_SMALL - 1n, 0n],
+    honest: [3n, 5n],
+    reason: bits(64),
+  },
+  {
+    artifact: 'MockUint128',
+    circuit: 'mulChecked',
+    constraint: 'range of witness element 2',
+    attack: 'a_h = 0, a_l = 2^64 + 5 for a = 2^64 + 5: the same product',
+    inputs: [TWO_64 + 5n, 3n],
+    privates: [0n, 0n, TWO_64 + 5n, 0n],
+    honest: [3n, 5n],
+    reason: bits(64),
+  },
+  {
+    artifact: 'MockUint128',
+    circuit: 'mulChecked',
+    constraint: 'assert 0',
+    attack: 'a split of a with low + 1',
+    inputs: [A_LARGE, 5n],
+    privates: [A_LARGE >> 64n, 0n, (A_LARGE & MAX_UINT64) + 1n, 0n],
+    honest: [3n, 5n],
+    reason: ASSERTION,
+  },
+];
+
 const CASES: Case[] = [
   ...DIGITS,
   ...ADD_CHECKED,
-  MUL_CHECKED,
   asU128Form(MUL_CHECKED),
+  ...NATIVE_MUL_CHECKED,
   ...DIVISION_CASES,
   ...NATIVE_SQRT,
 ];
