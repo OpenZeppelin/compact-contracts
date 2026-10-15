@@ -1064,10 +1064,26 @@ module Uint128 {
   /**
    * @description Computes the square root of a Uint<128> value.
    *
-   * @dev Uses internal `_sqrt` circuit for computation.
+   * @dev Checks the witness root R of `wit_sqrtU128` with native `Uint` arithmetic.
+   * R ∈ [0, 2⁶⁴ - 1] (range-checked as Uint<64>).
    *
-   * @constraints k=13, rows=4125 (zkir-v2)
-   * @constraints k=11, rows=1206 (zkir-v3)
+   * Mathematical Steps:
+   * 1. Witness Generation: Compute R = ⌊√N⌋ off-chain. The witness takes N as U128, so
+   *    `toU128` splits N first.
+   * 2. Lower Bound Verification: Assert R² ≤ N (R² < 2¹²⁸)
+   * 3. Upper Bound Verification: Assert (R + 1)² > N ((R + 1)² ≤ 2¹²⁸)
+   * 4. Return R
+   *
+   * Soundness (Z3 proof Z15): R² ≤ N < (R + 1)² gives R = ⌊√N⌋, and R is unique. Every
+   * value is at most 2¹²⁸, far below the field modulus (above 2²⁵⁴), so no operation
+   * wraps. For R = 2⁶⁴ - 1, (R + 1)² = 2¹²⁸ > N for every N, so the root of
+   * 2¹²⁸ - 1 passes.
+   *
+   * For each witness root, the first check that fails has the same message as in the
+   * `U128` form (internal `_sqrt`).
+   *
+   * @constraints k=10, rows=596 (zkir-v2)
+   * @constraints k=9, rows=213 (zkir-v3)
    *
    * Requirements:
    *
@@ -1078,8 +1094,17 @@ module Uint128 {
    * @returns {Uint<64>} The floor of the square root of radicand.
    */
   export circuit sqrt(radicand: Uint<128>): Uint<64> {
-    const radicandU128 = toU128(radicand);
-    return _sqrt(radicandU128);
+    // Step 1: Get witness for the square root
+    const root = wit_sqrtU128(toU128(radicand));
+
+    // Step 2: Verify lower bound (root² ≤ radicand)
+    assert(root * root <= radicand, "Uint128: sqrt overestimate");
+
+    // Step 3: Verify upper bound ((root + 1)² > radicand)
+    const next = root + 1;
+    assert(next * next > radicand, "Uint128: sqrt underestimate");
+
+    return root;
   }
 
   /**

@@ -420,6 +420,20 @@ describe.skipIf(isLiveBackend())(
               'the carry of the low sum is a term of the high sum, which the next split bounds',
           },
         },
+        {
+          artifact: 'MockUint128',
+          witnesses: Uint128Witnesses,
+          circuit: 'sqrt',
+          // The root 2^64 - 2 leaves root + 1 in range, and the radicand is at
+          // least the square of the field root (utils/forgeries.ts).
+          args: [(2n ** 64n - 2n) ** 2n + 7n],
+          implied: {
+            'range of input 0':
+              'the split of the radicand recomposes it from two range-checked limbs',
+            'range of witness element 0':
+              'the split of the radicand is only the argument of wit_sqrtU128; the root checks use the radicand itself',
+          },
+        },
         ...['divRem', 'isMultiple'].map((circuit) => ({
           artifact: 'MockUint128',
           witnesses: Uint128Witnesses,

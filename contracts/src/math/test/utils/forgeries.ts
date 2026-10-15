@@ -73,6 +73,25 @@ const modInverse = (value: bigint): bigint => {
   return result;
 };
 
+/**
+ * The smallest e with e^2 >= p and e^2 - p divisible by 4, for the field modulus p. The field
+ * element r = e / 2 then has r^2 = s and (r + 1)^2 = s + e + 1 in the field, with
+ * s = (e^2 - p) / 4 (about 2^127.01) and s + e + 1 above 2^128.
+ */
+const SQRT_FIELD_E = 0xac45a4010001a4020000000100000001n;
+
+/** The square of {@link SQRT_FIELD_ROOT} in the field. */
+export const SQRT_FIELD_SQUARE =
+  (SQRT_FIELD_E * SQRT_FIELD_E - FIELD_MODULUS) / 4n;
+
+/**
+ * A root that is not a `Uint<64>`: for a radicand n in [SQRT_FIELD_SQUARE, 2^128), it passes
+ * both bound checks of `Uint128.sqrt` (root^2 <= n < (root + 1)^2 in the field), so only the
+ * range check of the root rejects it. The comparisons of `Uint64.sqrt` have no such value
+ * (PR 5 mutation sweep, C5).
+ */
+export const SQRT_FIELD_ROOT = (SQRT_FIELD_E * modInverse(2n)) % FIELD_MODULUS;
+
 /** A deterministic value in `[0, 2^bits)` for a call, a leaf and a salt. */
 const pseudoRandom = (bits: number, ...salt: number[]): bigint => {
   let state = 0x9e3779b97f4a7c15n;
@@ -442,6 +461,15 @@ export function jointForgeries(circuit: string, call: WitnessCall): Forgery[] {
           label: `${call.name}: root - 1`,
           value: root - 1n,
           attacks: `${prefix}: sqrt underestimate`,
+        });
+      }
+      if (
+        call.name === 'wit_sqrtU128' &&
+        big((call.args as [U128])[0]) >= SQRT_FIELD_SQUARE
+      ) {
+        out.push({
+          label: `${call.name}: field root r, r^2 = ${SQRT_FIELD_SQUARE} <= n < (r + 1)^2 in the field`,
+          value: SQRT_FIELD_ROOT,
         });
       }
       return out;

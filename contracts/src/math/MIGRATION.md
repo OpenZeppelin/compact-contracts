@@ -199,6 +199,19 @@ For a forged quotient and remainder, the first failing message is the message of
 A consumer that uses only these forms has the generated `Witnesses` type `{ wit_divUint128 }`; remove `wit_divU128` from a directly typed object literal.
 The results stay witness-tainted.
 
+### Native square root
+
+`sqrt(radicand: Uint<128>)` checks the witness root with native arithmetic.
+For every honest input, the result and the failure message do not change.
+It splits the radicand once, only for the argument of `wit_sqrtU128`; the splits inside `_sqrt` are gone, so they cannot make it fail with `Uint128: conversion invalid`.
+A test that replaces the result of one of those splits has no effect: `sqrt` returns the honest root.
+A wrong split of the radicand still fails with that message.
+For a forged root, the first failing message is the message of `sqrt(U128)`.
+The witness interface (`wit_divUint128`, `wit_sqrtU128`) and the witness taint do not change.
+The 64-bit range check of the witness root is necessary in both `sqrt` forms.
+Without it, five field elements that are not a `Uint<64>` pass the two square checks of `sqrt(radicand: Uint<128>)`, and one passes the checks of `sqrt(radicand: U128)`.
+A machine-checked proof on the compiled ZKIR v2 and v3 shows that the range check of the root is the only constraint that rejects each of them.
+
 ## Deprecated circuits
 
 A circuit is deprecated when a native expression gives the same result for every input, the circuit has no library-specific failure message, and the native expression costs no more v3 rows at compiler 0.34.0.

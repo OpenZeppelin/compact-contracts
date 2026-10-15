@@ -231,6 +231,57 @@ describe.skipIf(skipProperties)('Uint128 properties', () => {
     );
   }, 60_000);
 
+  test('a forged root fails sqrt and sqrtU128 with the same message', async () => {
+    // sqrt checks the root with native arithmetic, sqrtU128 with the U128
+    // circuits (_sqrt). Both get the same forged root from wit_sqrtU128.
+    const native = await Uint128Simulator.create();
+    const port = await Uint128Simulator.create();
+    let forged = 0n;
+    for (const simulator of [native, port]) {
+      simulator.overrideWitness('wit_sqrtU128', (context) => [
+        context.privateState,
+        forged,
+      ]);
+    }
+    const outcome = (call: Promise<unknown>) =>
+      call.then(
+        () => 'ok',
+        (error: Error) => error.message,
+      );
+    const failure = (n: bigint, root: bigint) =>
+      root * root > n
+        ? 'failed assert: Uint128: sqrt overestimate'
+        : (root + 1n) * (root + 1n) <= n
+          ? 'failed assert: Uint128: sqrt underestimate'
+          : 'ok';
+    const root = uint128.chain((n) =>
+      fc.tuple(
+        fc.constant(n),
+        fc.oneof(
+          fc
+            .bigInt({ min: -2n, max: 2n })
+            .map((d) =>
+              isqrt(n) + d < 0n
+                ? 0n
+                : isqrt(n) + d > MAX_UINT64
+                  ? MAX_UINT64
+                  : isqrt(n) + d,
+            ),
+          fc.bigInt({ min: 0n, max: MAX_UINT64 }),
+        ),
+      ),
+    );
+    await fc.assert(
+      fc.asyncProperty(root, async ([n, r]) => {
+        forged = r;
+        const expected = failure(n, r);
+        expect(await outcome(port.sqrtU128(toU128(n)))).toBe(expected);
+        expect(await outcome(native.sqrt(n))).toBe(expected);
+      }),
+      RUNS,
+    );
+  }, 60_000);
+
   test('sqrt returns floor(sqrt(n))', async () => {
     await fc.assert(
       fc.asyncProperty(uint128, async (n) => {
