@@ -80,9 +80,6 @@ module Bytes8 {
    * @dev This internal circuit converts an 8-element vector of bytes to a 64-bit unsigned integer
    * using little-endian byte ordering (element 0 is the LSB, element 7 is the MSB).
    *
-   * @constraints k=8, rows=191 (zkir-v2)
-   * @constraints k=8, rows=157 (zkir-v3)
-   *
    * @param {Vector<8, Uint<8>>} vec - The vector of 8 bytes to convert.
    * @returns {Uint<64>} The 64-bit unsigned integer.
    */
