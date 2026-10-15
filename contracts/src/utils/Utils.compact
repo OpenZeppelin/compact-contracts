@@ -182,7 +182,8 @@ module Utils {
   /**
    * @description The maximum value representable by a `Uint<128>`.
    *
-   * @notice TODO: Remove once a math module providing this constant is available.
+   * @deprecated Use `Uint128.MAX_UINT128()` from `math/Uint128` instead. It
+   * returns the same value with the same `Uint<128>` type.
    *
    * @returns {Uint<128>} `2^128 - 1`.
    */

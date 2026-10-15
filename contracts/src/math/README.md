@@ -403,7 +403,7 @@ Use `as Bytes<32>` for a canonical numeric Field conversion.
 
 ## Related modules
 
-`Utils.UINT128_MAX` remains available. Its math alternative is `Uint128.MAX_UINT128`.
+`Utils.UINT128_MAX` is deprecated in favor of `Uint128.MAX_UINT128`, which returns the same value and type. It remains callable.
 Token and multisig modules keep their existing imports.
 `EvmAbi` uses ABI encoding rules. Crypto modules use field, scalar, and hash-domain rules.
 These rules need their own compatibility checks before a math conversion can substitute for them.

@@ -255,7 +255,7 @@ The minimum, maximum, and U128-to-Uint128 forms in the mapping table pass the co
 
 `Uint64.addChecked`, `Uint64.sub`, `Uint64.mulChecked`, and scalar `Uint128.sub` retain their library messages around native arithmetic.
 Both `Uint128.addChecked` forms keep their overflow message with native addition (see above).
-`Utils.UINT128_MAX` remains available with `Uint128.MAX_UINT128` as its math alternative.
+`Utils.UINT128_MAX` is deprecated in favor of `Uint128.MAX_UINT128`. The deprecation changes only its doc comment; token and multisig keep their imports.
 
 ## SDK and test integration
 
