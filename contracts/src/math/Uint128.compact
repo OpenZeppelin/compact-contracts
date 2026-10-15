@@ -118,6 +118,7 @@ module Uint128 {
    * @constraints k=6, rows=51 (zkir-v3)
    *
    * @returns {U128} A U128 struct with low and high fields set to 0.
+   * @deprecated Use `default<U128>` instead.
    */
   export pure circuit ZERO_U128(): U128 {
     return U128 { low: 0, high: 0 };
@@ -198,6 +199,7 @@ module Uint128 {
    *
    * @param {U128} value - The U128 value to convert.
    * @returns {Uint<128>} A Uint<128> value representing the 128-bit value.
+   * @deprecated Use `((value.high * 0x10000000000000000 + value.low) as Uint<128>)` instead.
    */
   export pure circuit toUint128(value: U128): Uint<128> {
     const highShifted = (value.high as Uint<128>) * MODULUS();
@@ -218,6 +220,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Boolean} True if a is equal to b, false otherwise.
+   * @deprecated Use `a == b` instead.
    */
   export pure circuit eq(a: Uint<128>, b: Uint<128>): Boolean {
     return a == b;
@@ -232,6 +235,7 @@ module Uint128 {
    * @param {U128} a - The first U128 value.
    * @param {U128} b - The second U128 value.
    * @returns {Boolean} True if a is equal b, false otherwise.
+   * @deprecated Use `a == b` instead.
    */
   export pure circuit eq(a: U128, b: U128): Boolean {
     return a.low == b.low && a.high == b.high;
@@ -246,6 +250,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Boolean} True if a is less than b, false otherwise.
+   * @deprecated Use `a < b` instead.
    */
   export pure circuit lt(a: Uint<128>, b: Uint<128>): Boolean {
     return a < b;
@@ -260,6 +265,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Boolean} True if a is less than or equal to b, false otherwise.
+   * @deprecated Use `a <= b` instead.
    */
   export pure circuit lte(a: Uint<128>, b: Uint<128>): Boolean {
     return a <= b;
@@ -274,6 +280,7 @@ module Uint128 {
    * @param {U128} a - The first U128 value.
    * @param {U128} b - The second U128 value.
    * @returns {Boolean} True if a is less than b, false otherwise.
+   * @deprecated Use `((a.high * 0x10000000000000000 + a.low) as Uint<128>) < ((b.high * 0x10000000000000000 + b.low) as Uint<128>)` instead.
    */
   export pure circuit lt(a: U128, b: U128): Boolean {
     return a.high < b.high || (a.high == b.high && a.low < b.low);
@@ -288,6 +295,7 @@ module Uint128 {
    * @param {U128} a - The first U128 value.
    * @param {U128} b - The second U128 value.
    * @returns {Boolean} True if a is less than or equal to b, false otherwise.
+   * @deprecated Use `((a.high * 0x10000000000000000 + a.low) as Uint<128>) <= ((b.high * 0x10000000000000000 + b.low) as Uint<128>)` instead.
    */
   export pure circuit lte(a: U128, b: U128): Boolean {
     return !lt(b, a);
@@ -302,6 +310,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Boolean} True if a is greater than b, false otherwise.
+   * @deprecated Use `a > b` instead.
    */
   export pure circuit gt(a: Uint<128>, b: Uint<128>): Boolean {
     return a > b;
@@ -316,6 +325,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Boolean} True if a is greater than or equal to b, false otherwise.
+   * @deprecated Use `a >= b` instead.
    */
   export pure circuit gte(a: Uint<128>, b: Uint<128>): Boolean {
     return a >= b;
@@ -330,6 +340,7 @@ module Uint128 {
    * @param {U128} a - The first U128 value.
    * @param {U128} b - The second U128 value.
    * @returns {Boolean} True if a is greater than b, false otherwise.
+   * @deprecated Use `((a.high * 0x10000000000000000 + a.low) as Uint<128>) > ((b.high * 0x10000000000000000 + b.low) as Uint<128>)` instead.
    */
   export pure circuit gt(a: U128, b: U128): Boolean {
     return lt(b, a);
@@ -344,6 +355,7 @@ module Uint128 {
    * @param {U128} a - The first U128 value.
    * @param {U128} b - The second U128 value.
    * @returns {Boolean} True if a is greater than or equal to b, false otherwise.
+   * @deprecated Use `((a.high * 0x10000000000000000 + a.low) as Uint<128>) >= ((b.high * 0x10000000000000000 + b.low) as Uint<128>)` instead.
    */
   export pure circuit gte(a: U128, b: U128): Boolean {
     return !lt(a, b);
@@ -1057,6 +1069,7 @@ module Uint128 {
    *
    * @param {Uint<128>} a - The Uint<128> value to check.
    * @returns {Boolean} True if a equals zero, false otherwise.
+   * @deprecated Use `a == default<Uint<128>>` instead.
    */
   export pure circuit isZero(a: Uint<128>): Boolean {
     return a == 0;
@@ -1070,6 +1083,7 @@ module Uint128 {
    *
    * @param {U128} a - The U128 value to check.
    * @returns {Boolean} True if a equals zero (a.low = a.high = 0), false otherwise.
+   * @deprecated Use `a == default<U128>` instead.
    */
   export pure circuit isZero(a: U128): Boolean {
     return a.low == 0 && a.high == 0;
@@ -1161,6 +1175,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Uint<128>} The smaller of a and b.
+   * @deprecated Use `a <= b ? a : b` instead.
    */
   export pure circuit min(a: Uint<128>, b: Uint<128>): Uint<128> {
     return lte(a, b) ? a : b;
@@ -1175,6 +1190,7 @@ module Uint128 {
    * @param {U128} a - The first U128 value.
    * @param {U128} b - The second U128 value.
    * @returns {U128} The smaller of a and b.
+   * @deprecated Use `((a.high * 0x10000000000000000 + a.low) as Uint<128>) <= ((b.high * 0x10000000000000000 + b.low) as Uint<128>) ? a : b` instead.
    */
   export pure circuit min(a: U128, b: U128): U128 {
     return lte(a, b) ? a : b;
@@ -1189,6 +1205,7 @@ module Uint128 {
    * @param {Uint<128>} a - The first Uint<128> value.
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Uint<128>} The larger of a and b.
+   * @deprecated Use `a >= b ? a : b` instead.
    */
   export pure circuit max(a: Uint<128>, b: Uint<128>): Uint<128> {
     return gte(a, b) ? a : b;
@@ -1203,6 +1220,7 @@ module Uint128 {
    * @param {U128} a - The first U128 value.
    * @param {U128} b - The second U128 value.
    * @returns {U128} The larger of a and b.
+   * @deprecated Use `((a.high * 0x10000000000000000 + a.low) as Uint<128>) >= ((b.high * 0x10000000000000000 + b.low) as Uint<128>) ? a : b` instead.
    */
   export pure circuit max(a: U128, b: U128): U128 {
     return gte(a, b) ? a : b;

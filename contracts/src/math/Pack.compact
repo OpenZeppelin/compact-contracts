@@ -41,6 +41,7 @@ module Pack<#N> {
    *
    * @param {Vector<N, Uint<8>>} vec - The vector of N bytes to convert.
    * @returns {Bytes<N>} The byte array of length N.
+   * @deprecated Use `vec as Bytes<N>` instead.
    */
   export pure circuit pack(vec: Vector<N, Uint<8>>): Bytes<N> {
     return Bytes[...vec];
