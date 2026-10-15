@@ -208,6 +208,9 @@ A test that replaces the result of one of those splits has no effect: `sqrt` ret
 A wrong split of the radicand still fails with that message.
 For a forged root, the first failing message is the message of `sqrt(U128)`.
 The witness interface (`wit_divUint128`, `wit_sqrtU128`) and the witness taint do not change.
+The 64-bit range check of the witness root is necessary in both `sqrt` forms.
+Without it, five field elements that are not a `Uint<64>` pass the two square checks of `sqrt(radicand: Uint<128>)`, and one passes the checks of `sqrt(radicand: U128)`.
+A machine-checked proof on the compiled ZKIR v2 and v3 shows that the range check of the root is the only constraint that rejects each of them.
 
 ## Deprecated circuits
 
