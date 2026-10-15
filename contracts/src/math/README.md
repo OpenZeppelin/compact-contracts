@@ -148,6 +148,9 @@ Use `bigint` for Compact integers and fields, `Uint8Array` for bytes, and `bigin
 | `wit_divU128` | `a: U128, b: U128` | `{ quotient: U128, remainder: U128 }` | [Uint128Witnesses](test/witnesses/Uint128Witnesses.ts) |
 | `wit_sqrtU128` | `radicand: U128` | Integer square root as `bigint` | [Uint128Witnesses](test/witnesses/Uint128Witnesses.ts) |
 
+The `Uint<128>` forms of `div`, `rem`, `divRem` and `isMultiple` call `wit_divUint128(a, b)` with the divisor `b` of the circuit; the other circuits call it with the divisor 2^64.
+Implement `wit_divUint128` as a general division, as the reference does. An implementation that only splits at 2^64 makes these forms fail.
+
 These names are global in the generated consumer interface.
 An import prefix changes circuit names. It does not rename the witness keys.
 All `Pack<N>` instances share `wit_unpackBytes`. Implement it for the input array length.

@@ -190,6 +190,7 @@ Do not change the witness names that remain reachable.
 ### Native division
 
 The `Uint<128>` forms of `div`, `rem`, `divRem` and `isMultiple` call `wit_divUint128(a, b)` once and check its result with native arithmetic.
+Before this change, the library called `wit_divUint128` only with the divisor 2^64. These forms call it with the divisor `b` of the circuit, so a consumer witness must implement a general division, as the reference does. A witness that only splits at 2^64 makes these forms fail.
 For every honest input, the result and the failure message do not change.
 The forms no longer call `wit_divU128` and split nothing, so a wrong split cannot make them fail with `Uint128: conversion invalid`.
 A test that replaces the `wit_divU128` result has no effect on these forms: they return the honest result.
