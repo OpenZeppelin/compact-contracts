@@ -60,14 +60,12 @@ Some other examples of automation are:
 
 ## Pull requests
 
-Pull requests are squash-merged to keep the `main` branch history clean. The title of the pull request becomes the commit message, so it should be written in a consistent format:
+Pull requests are squash-merged to keep the `main` branch history clean. The title of the pull request becomes the commit message, so it must follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `type(scope): summary`, e.g. `fix(token): reject zero-amount transfers`.
 
-1) Begin with a capital letter.
+1) Keep the summary short and imperative: "add feature X" and not "adds feature X" or "added feature X".
 2) Do not end with a period.
-3) Write in the imperative: "Add feature X" and not "Adds feature X" or "Added feature X".
-
-This repository does not follow conventional commits, so do not prefix the title with "fix:" or "feat:".
+3) Use the scope to name the module or area the change touches.
 
 Work in progress pull requests should be submitted as Drafts and should not be prefixed with "WIP:".
 
-Branch names don't matter, and commit messages within a pull request mostly don't matter either, although they can help the review process.
+Branch names don't matter. Commits within a pull request must be signed and follow the same Conventional Commits format; see [`CONTRIBUTING.md`](CONTRIBUTING.md#commit-and-pr-conventions).

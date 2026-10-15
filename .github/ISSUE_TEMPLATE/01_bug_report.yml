@@ -18,7 +18,7 @@ body:
       label: Prerequisites
       description: Please ensure you have completed all of the following.
       options:
-        - label: I have read the [Contributing Guidelines](https://github.com/OpenZeppelin/midnight-contracts/CONTRIBUTING.md#creating-an-issue).
+        - label: I have read the [Contributing Guidelines](https://github.com/OpenZeppelin/compact-contracts/blob/main/CONTRIBUTING.md#opening-an-issue).
           required: true
         - label: I agree to follow the [Code of Conduct](https://github.com/OpenZeppelin/midnight-contracts/CODE_OF_CONDUCT.md).
           required: true
