@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `Uint128.div`, `rem`, `divRem` and `isMultiple` (`Uint<128>` forms) check the result of `wit_divUint128(a, b)` with native arithmetic. They make one witness call instead of 10, and a consumer that uses no other circuit that needs `wit_divU128` can drop that witness. Results and messages for valid inputs are unchanged. Rows (v2 / v3): `div` 3356 / 1017 to 845 / 287, `divRem` 3269 / 1026 to 886 / 328 (#1146)
+- `Uint128.div`, `rem`, `divRem` and `isMultiple` (`Uint<128>` forms) check the result of `wit_divUint128(a, b)` with native arithmetic. They make one witness call instead of 10, and a consumer that uses no other circuit that needs `wit_divU128` can drop that witness. Results and messages for valid inputs are unchanged. For an incorrect witness result: the forms no longer split `a` and `b` or call `wit_divU128`, so a wrong split or a replaced `wit_divU128` result no longer fails them with `Uint128: conversion invalid` or a division message (they return the honest result); the first `wit_divUint128` call is now the division, so an incorrect result of that call fails with the first failing message of the `U128` form, for example `Uint128: remainder error`. Rows (v2 / v3): `div` 3356 / 1017 to 845 / 287, `divRem` 3269 / 1026 to 886 / 328 (#1146)
 - `Uint128.addChecked` (both overloads) computes the sum with native addition. It is a `pure circuit`, makes no witness call and its result is not witness-tainted. Every honest input keeps its result and its `Uint128: addition overflow` message; an incorrect `wit_divUint128` result can no longer fail it with `Uint128: conversion invalid` (#1141)
 
 ### Deprecated
