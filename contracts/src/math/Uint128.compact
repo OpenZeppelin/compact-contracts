@@ -426,8 +426,12 @@ module Uint128 {
   /**
    * @description Adds two Uint<128> values with overflow checking.
    *
-   * @constraints k=11, rows=1498 (zkir-v2)
-   * @constraints k=9, rows=451 (zkir-v3)
+   * @notice Uses the native `+` operator and calls no witness, so the result is
+   * not witness-tainted. The native form `(a + b) as Uint<128>` fails with a
+   * generic cast error. This circuit fails with the message of the module.
+   *
+   * @constraints k=9, rows=491 (zkir-v2)
+   * @constraints k=9, rows=174 (zkir-v3)
    *
    * Requirements:
    *
@@ -437,20 +441,21 @@ module Uint128 {
    * @param {Uint<128>} b - The second Uint<128> value.
    * @returns {Uint<128>} The sum of a and b.
    */
-  export circuit addChecked(a: Uint<128>, b: Uint<128>): Uint<128> {
-    const sum = add(a, b); // U256 { low: U128, high: U128 }
-
-    // If high != 0 then a+b exceeded 2¹²⁸-1
-    assert(isZero(sum.high), "Uint128: addition overflow");
-
-    return toUint128(sum.low);
+  export pure circuit addChecked(a: Uint<128>, b: Uint<128>): Uint<128> {
+    const sum = a + b;
+    assert(sum <= MAX_UINT128(), "Uint128: addition overflow");
+    return sum as Uint<128>;
   }
 
   /**
    * @description Adds two U128 values with overflow checking.
    *
-   * @constraints k=10, rows=990 (zkir-v2)
-   * @constraints k=9, rows=329 (zkir-v3)
+   * @notice Uses the native `+` operator on `toUint128(a)` and `toUint128(b)` and
+   * calls no witness, so the result is not witness-tainted. This circuit fails
+   * with the message of the module.
+   *
+   * @constraints k=10, rows=767 (zkir-v2)
+   * @constraints k=9, rows=266 (zkir-v3)
    *
    * Requirements:
    *
@@ -460,17 +465,18 @@ module Uint128 {
    * @param {U128} b - The second U128 value.
    * @returns {Uint<128>} The sum of a and b.
    */
-  export circuit addChecked(a: U128, b: U128): Uint<128> {
-    const sum = _add(a, b); // U256 { low: U128, high: U128 }
-
-    // If high != 0 then a+b exceeded 2¹²⁸-1
-    assert(isZero(sum.high), "Uint128: addition overflow");
-
-    return toUint128(sum.low);
+  export pure circuit addChecked(a: U128, b: U128): Uint<128> {
+    const sum = toUint128(a) + toUint128(b);
+    assert(sum <= MAX_UINT128(), "Uint128: addition overflow");
+    return sum as Uint<128>;
   }
 
   /**
    * @description Subtracts one Uint<128> value from another.
+   *
+   * @notice Uses the native `-` operator. The native form `a - b` fails with
+   * "result of subtraction would be negative". This circuit fails with the message
+   * of the module.
    *
    * @constraints k=9, rows=362 (zkir-v2)
    * @constraints k=9, rows=141 (zkir-v3)

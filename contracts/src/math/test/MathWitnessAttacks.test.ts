@@ -238,7 +238,7 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
     const cases: [string, (s: Uint128Simulator) => Promise<unknown>][] = [
       ['toU128', (s) => s.toU128(2n ** 100n + 7n)],
       ['add', (s) => s.add(2n ** 100n + 7n, 5n)],
-      ['addChecked', (s) => s.addChecked(2n ** 100n + 7n, 5n)],
+      ['addU128', (s) => s.addU128(toU128(2n ** 100n + 7n), toU128(5n))],
       ['mul', (s) => s.mul(2n ** 100n + 7n, 5n)],
       ['mulChecked', (s) => s.mulChecked(2n ** 100n + 7n, 5n)],
       ['div', (s) => s.div(2n ** 100n + 7n, 5n)],
@@ -271,7 +271,6 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
         unknown,
       ][] = [
         ['toU128', (s) => s.toU128(value), toU128(value)],
-        ['addChecked', (s) => s.addChecked(value, 5n), value + 5n],
         ['mulChecked', (s) => s.mulChecked(value, 5n), value * 5n],
         ['div', (s) => s.div(value, 5n), value / 5n],
         ['sqrt', (s) => s.sqrt(value), 2n ** 50n],
@@ -285,6 +284,31 @@ describe.skipIf(isLiveBackend())('malicious witness results', () => {
         });
         expect(await call(s), name).toEqual(result);
       }
+    });
+  });
+
+  describe('addChecked: no witness', () => {
+    // Both forms use native addition: a forged split cannot reach them.
+    test.each([
+      [
+        'addChecked',
+        (s: Uint128Simulator) => s.addChecked(2n ** 100n + 7n, 5n),
+      ],
+      [
+        'addCheckedU128',
+        (s: Uint128Simulator) =>
+          s.addCheckedU128(toU128(2n ** 100n + 7n), toU128(5n)),
+      ],
+    ])('%s ignores a wrong split', async (_name, call) => {
+      const s = await Uint128Simulator.create();
+      s.overrideWitness(
+        'wit_divUint128',
+        forgeCall(u128.wit_divUint128, 0, (r) => ({
+          quotient: r.quotient,
+          remainder: { ...r.remainder, low: r.remainder.low ^ 1n },
+        })),
+      );
+      expect(await call(s)).toBe(2n ** 100n + 12n);
     });
   });
 

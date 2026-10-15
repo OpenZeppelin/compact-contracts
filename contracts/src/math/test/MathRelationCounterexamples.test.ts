@@ -205,19 +205,39 @@ const DIGITS: Case[] = [
   ),
 ];
 
-// Uint128.addCheckedU128 adds the high limbs in the field: a high limb
-// r - 1 and a carry of 1 give 0.
-const ADD_CHECKED: Case[] = [1, 3].map((input) => ({
-  artifact: 'MockUint128',
-  circuit: 'addCheckedU128',
-  constraint: `range of input ${input}`,
-  attack: `${input === 1 ? 'a.high' : 'b.high'} = r - 1, carry 1: the high sum wraps to 0`,
-  inputs:
-    input === 1 ? [MAX_UINT64, R - 1n, 1n, 0n] : [MAX_UINT64, 0n, 1n, R - 1n],
-  privates: sparse(8, { 0: 1n }),
-  honest: [toU128(1n), toU128(1n)],
-  reason: bits(64),
-}));
+// Uint128.addChecked (both forms) adds its arguments in the field and
+// range-checks the sum. Only the range checks of the arguments reject an
+// argument above its type that gives a sum in range.
+const ADD_CHECKED: Case[] = [
+  ...[0, 1].map((input) => ({
+    artifact: 'MockUint128',
+    circuit: 'addChecked',
+    constraint: `range of input ${input}`,
+    attack: `${input === 0 ? 'a = r - 1, b = 1' : 'a = 1, b = r - 1'}: the sum wraps to 0`,
+    inputs: input === 0 ? [R - 1n, 1n] : [1n, R - 1n],
+    privates: [],
+    honest: [1n, 2n],
+    reason: bits(128),
+  })),
+  ...[0, 1, 2, 3].map((input) => {
+    const limb = ['a.low', 'a.high', 'b.low', 'b.high'][input];
+    const high = input % 2 === 1;
+    const inputs = [0n, 0n, 0n, 0n];
+    inputs[input] = high ? inverse(TWO_64) : TWO_64;
+    return {
+      artifact: 'MockUint128',
+      circuit: 'addCheckedU128',
+      constraint: `range of input ${input}`,
+      attack: high
+        ? `${limb} = 1 / 2^64 in the field: the argument counts as 1`
+        : `${limb} = 2^64: the sum 2^64 is in range`,
+      inputs,
+      privates: [],
+      honest: [toU128(1n), toU128(2n)],
+      reason: bits(64),
+    };
+  }),
+];
 
 /**
  * A `Uint<128>` case in the `U128` form: the inputs are the limbs of the two
