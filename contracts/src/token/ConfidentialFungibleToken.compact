@@ -28,6 +28,11 @@ pragma language_version >= 0.23.0;
  * (`extensions/ConfidentialFungibleTokenPublicSupply`) a composing contract pairs
  * with them if it wants a tracked supply.
  *
+ * @notice Allowances. `approve` funds the allowance from the caller's spendable
+ * balance: the balance is debited by `value` and the escrow holds it until it
+ * is spent or re-approved. Outstanding allowances therefore never exceed what
+ * the owner held when approving, and a re-approve replaces the prior one.
+ *
  * @notice Single-receiver. Auditor support, freeze, and admin-style seize are
  * deliberately left to companion modules or a future multi-receiver variant.
  * The escrow-spend primitive here (`_spendEscrow`) enables user-consenting
@@ -531,8 +536,8 @@ module ConfidentialFungibleToken {
   /**
    * @description Returns the escrow entry (the encrypted allowance) that `owner`
    * granted `spender`. When no allowance exists, returns a well-formed
-   * encrypted-zero entry (its encrypted amounts decrypt to 0, analogous to an
-   * ERC-20 zero allowance) rather than `default<EscrowEntry>`: the returned
+   * encrypted-zero entry (its encrypted amounts decrypt to 0) rather than
+   * `default<EscrowEntry>`: the returned
    * Jubjub points are on-curve, so the view is safe to prove (e.g. through a
    * contract-to-contract call) and safe for a wallet to decrypt, whereas a zeroed
    * default holds off-curve points. The cap is encrypted, not public.
