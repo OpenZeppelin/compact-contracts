@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Uint128.sub(U128)` computes the low limb without a branch, so `sub(U128)` and every `Uint128` division prove also with compilers that range-check a downcast in an untaken branch ([midnight-apps#309](https://github.com/OpenZeppelin/midnight-apps/pull/309), #1127)
   - `Uint128._mul` adds each result word in one step: 7 limb splits instead of 9, fewer rows for every multiplication, division and square root (audit finding L-06, [midnight-apps#313](https://github.com/OpenZeppelin/midnight-apps/pull/313), #1127)
   - An incorrect `Uint64` division witness whose sum exceeds 64 bits fails with `Uint64: division invalid` instead of a cast error (#1126)
-  - An incorrect `Uint128` quotient whose product exceeds the dividend fails with `Uint128: division invalid` instead of `Uint128: subtraction underflow` (#1127)
+  - An incorrect `Uint128` quotient that passes the remainder check and whose product with `b` fits in 128 bits but exceeds the dividend fails with `Uint128: division invalid` instead of `Uint128: subtraction underflow` (#1127)
   - Doc comment corrections, including the typos of audit finding N-01 ([midnight-apps#312](https://github.com/OpenZeppelin/midnight-apps/pull/312), #1126, #1127, #1128)
 
 ## 0.5.0-alpha.1 (2026-10-13)
