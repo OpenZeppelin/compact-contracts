@@ -53,11 +53,11 @@ Pack uses its generic parameter N.
 | `Uint64.div(a: Uint<64>, b: Uint<64>): Uint<64>` | Kept |
 | `Uint64.rem(a: Uint<64>, b: Uint<64>): Uint<64>` | Kept |
 | `Uint64.divRem(a: Uint<64>, b: Uint<64>): DivResultU64` | Kept |
-| `Uint64.sqrt(radical: Uint<64>): Uint<32>` | Kept |
-| `Uint64.isMultiple(value: Uint<64>, b: Uint<64>): Boolean` | Kept |
+| `Uint64.sqrt(radicand: Uint<64>): Uint<32>` | Kept |
+| `Uint64.isMultiple(a: Uint<64>, b: Uint<64>): Boolean` | Kept |
 | `Uint64.min(a: Uint<64>, b: Uint<64>): Uint<64>` | Deprecated |
 | `Uint64.max(a: Uint<64>, b: Uint<64>): Uint<64>` | Deprecated |
-| `Uint128.MODULUS(): Uint<128>` | Kept |
+| `Uint128.MODULUS(): Uint<65>` | Kept |
 | `Uint128.ZERO_U128(): U128` | Deprecated |
 | `Uint128.MAX_U128(): U128` | Kept |
 | `Uint128.MAX_UINT128(): Uint<128>` | Kept |
@@ -91,10 +91,10 @@ Pack uses its generic parameter N.
 | `Uint128.divRem(a: U128, b: U128): DivResultU128` | Kept |
 | `Uint128.sqrt(radicand: Uint<128>): Uint<64>` | Kept |
 | `Uint128.sqrt(radicand: U128): Uint<64>` | Kept |
-| `Uint128.isZero(value: Uint<128>): Boolean` | Deprecated |
-| `Uint128.isZero(value: U128): Boolean` | Deprecated |
-| `Uint128.isMultiple(value: Uint<128>, b: Uint<128>): Boolean` | Kept |
-| `Uint128.isMultiple(value: U128, b: U128): Boolean` | Kept |
+| `Uint128.isZero(a: Uint<128>): Boolean` | Deprecated |
+| `Uint128.isZero(a: U128): Boolean` | Deprecated |
+| `Uint128.isMultiple(a: Uint<128>, b: Uint<128>): Boolean` | Kept |
+| `Uint128.isMultiple(a: U128, b: U128): Boolean` | Kept |
 | `Uint128.min(a: Uint<128>, b: Uint<128>): Uint<128>` | Deprecated |
 | `Uint128.min(a: U128, b: U128): U128` | Deprecated |
 | `Uint128.max(a: Uint<128>, b: Uint<128>): Uint<128>` | Deprecated |
@@ -214,8 +214,8 @@ The following native expressions use the arguments in each signature.
 | `Uint128.gte(a: Uint<128>, b: Uint<128>): Boolean` | `a >= b` |
 | `Uint128.gt(a: U128, b: U128): Boolean` | `((a.high * 0x10000000000000000 + a.low) as Uint<128>) > ((b.high * 0x10000000000000000 + b.low) as Uint<128>)` |
 | `Uint128.gte(a: U128, b: U128): Boolean` | `((a.high * 0x10000000000000000 + a.low) as Uint<128>) >= ((b.high * 0x10000000000000000 + b.low) as Uint<128>)` |
-| `Uint128.isZero(value: Uint<128>): Boolean` | `value == default<Uint<128>>` |
-| `Uint128.isZero(value: U128): Boolean` | `value == default<U128>` |
+| `Uint128.isZero(a: Uint<128>): Boolean` | `a == default<Uint<128>>` |
+| `Uint128.isZero(a: U128): Boolean` | `a == default<U128>` |
 | `Uint128.min(a: Uint<128>, b: Uint<128>): Uint<128>` | `a <= b ? a : b` |
 | `Uint128.min(a: U128, b: U128): U128` | `((a.high * 0x10000000000000000 + a.low) as Uint<128>) <= ((b.high * 0x10000000000000000 + b.low) as Uint<128>) ? a : b` |
 | `Uint128.max(a: Uint<128>, b: Uint<128>): Uint<128>` | `a >= b ? a : b` |

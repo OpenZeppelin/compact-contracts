@@ -174,8 +174,8 @@ Both `Uint128.addChecked` overloads use native addition and call no witness, so 
 | `Uint64.div(a: Uint<64>, b: Uint<64>): Uint<64>` | `wit_divUint64` | yes |
 | `Uint64.rem(a: Uint<64>, b: Uint<64>): Uint<64>` | `wit_divUint64` | yes |
 | `Uint64.divRem(a: Uint<64>, b: Uint<64>): DivResultU64` | `wit_divUint64` | yes |
-| `Uint64.sqrt(radical: Uint<64>): Uint<32>` | `wit_sqrtUint64` | yes |
-| `Uint64.isMultiple(value: Uint<64>, b: Uint<64>): Boolean` | `wit_divUint64` | yes |
+| `Uint64.sqrt(radicand: Uint<64>): Uint<32>` | `wit_sqrtUint64` | yes |
+| `Uint64.isMultiple(a: Uint<64>, b: Uint<64>): Boolean` | `wit_divUint64` | yes |
 | `Uint128.toU128(value: Uint<128>): U128` | `wit_divUint128` | yes |
 | `Uint128.add(a: Uint<128>, b: Uint<128>): U256` | `wit_divUint128` | yes |
 | `Uint128.add(a: U128, b: U128): U256` | `wit_divUint128` | yes |
@@ -191,8 +191,8 @@ Both `Uint128.addChecked` overloads use native addition and call no witness, so 
 | `Uint128.divRem(a: U128, b: U128): DivResultU128` | `wit_divU128`, `wit_divUint128` | yes |
 | `Uint128.sqrt(radicand: Uint<128>): Uint<64>` | `wit_divUint128`, `wit_sqrtU128` | yes |
 | `Uint128.sqrt(radicand: U128): Uint<64>` | `wit_divUint128`, `wit_sqrtU128` | yes |
-| `Uint128.isMultiple(value: Uint<128>, b: Uint<128>): Boolean` | `wit_divU128`, `wit_divUint128` | yes |
-| `Uint128.isMultiple(value: U128, b: U128): Boolean` | `wit_divU128`, `wit_divUint128` | yes |
+| `Uint128.isMultiple(a: Uint<128>, b: Uint<128>): Boolean` | `wit_divU128`, `wit_divUint128` | yes |
+| `Uint128.isMultiple(a: U128, b: U128): Boolean` | `wit_divU128`, `wit_divUint128` | yes |
 | `Uint256.toBytes(value: U256): Bytes<32>` | `wit_uint64ToUnpackedBytes` | yes |
 | `Uint256.toUnpackedBytes(value: U256): Vector<32, Uint<8>>` | `wit_uint64ToUnpackedBytes` | yes |
 | `Bytes32.unpack(bytes: Bytes<32>): Vector<32, Uint<8>>` | `wit_unpackBytes` | yes |
