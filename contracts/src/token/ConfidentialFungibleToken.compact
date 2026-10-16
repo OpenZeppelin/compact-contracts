@@ -1037,7 +1037,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * ???? @circuitInfo k=16, rows=72346
+   * @circuitInfo k=16, rows=72346
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1286,7 +1286,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * ???? @circuitInfo k=16, rows=45376
+   * @circuitInfo k=16, rows=45376
    *
    * Requirements:
    *
