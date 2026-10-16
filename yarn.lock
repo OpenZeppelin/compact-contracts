@@ -1526,7 +1526,7 @@ __metadata:
     "@vitest/coverage-v8": "npm:^5.0.0"
     ethers: "npm:^6.17.0"
     fast-check: "npm:^4.10.1"
-    pino: "npm:^9.7.0"
+    pino: "npm:^10.3.1"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.3"
     vite: "npm:^8.3.0"
