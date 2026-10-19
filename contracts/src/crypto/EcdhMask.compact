@@ -80,9 +80,9 @@ pragma language_version >= 0.26.0;
  * stronger Oracle Diffie-Hellman assumption. It is NOT IND-CCA: Theorem 12.4
  * needs a MAC, and the additive pad is malleable (see Integrity), which
  * is acceptable here only because the on-chain ciphertext is bound in-circuit to
- * the value it commits to elsewhere. Hiding depends on the plaintext width: `kdf`
- * returns a `degradeToTransient` output in `[0, 2^248)`, so treating it as
- * uniform a value below `2^w` is hidden within `2^(w-248)` statistical slack. A
+ * the value it commits to elsewhere. Hiding depends on the plaintext width. The
+ * `kdf` output is a `degradeToTransient` value in `[0, 2^248)`. Taken as
+ * uniform, it hides a value below `2^w` within `2^(w-248)` statistical slack. A
  * `Uint<128>` keeps about `2^-120`, leaving only the assumption that the hash of
  * the DH secret is PRF-like. A full `Uint<248>` has no margin: a random one
  * loses under one bit on average, but two chosen values far apart are
