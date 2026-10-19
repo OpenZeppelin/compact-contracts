@@ -26,25 +26,14 @@ jobs:
           fetch-depth: 2
           persist-credentials: false
 
+      # The script only imports node builtins, so this job needs a Node but no
+      # `yarn install`.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
       - name: Require a CHANGELOG entry for contract changes
         env:
           SKIP_CHANGELOG: ${{ contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
-        run: |
-          # HEAD is the PR merge commit, HEAD^1 the base tip.
-          CHANGED=$(git diff --name-only --no-renames HEAD^1 HEAD)
-
-          if ! grep -qP '^contracts/src/(?!(.*/)?test/)' <<< "$CHANGED"; then
-            echo "No contracts/src/ changes outside test dirs. No entry needed."
-            exit 0
-          fi
-          if grep -qx 'CHANGELOG.md' <<< "$CHANGED"; then
-            echo "CHANGELOG.md updated."
-            exit 0
-          fi
-          if [ "$SKIP_CHANGELOG" = "true" ]; then
-            echo "skip-changelog label set. No entry needed."
-            exit 0
-          fi
-
-          echo "::error::This PR changes contracts/src/ but not CHANGELOG.md. Add an entry under '## Unreleased', or ask a maintainer to add the skip-changelog label if nothing user-facing changed."
-          exit 1
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release-ci.ts changelog-check

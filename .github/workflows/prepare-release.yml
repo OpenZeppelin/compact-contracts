@@ -148,31 +148,7 @@ jobs:
       - name: Roll changelog
         env:
           ALLOW_EMPTY: ${{ inputs.allow_empty_changelog }}
-        run: |
-          node -e '
-            const fs = require("fs");
-            const v = process.env.NEW_VERSION;
-            const lines = fs.readFileSync("CHANGELOG.md", "utf8").replace(/\r\n/g, "\n").split("\n");
-            const heads = lines.flatMap((l, i) => (/^## Unreleased$/.test(l) ? [i] : []));
-            if (heads.length !== 1) {
-              console.error(`Error: CHANGELOG.md needs exactly one "## Unreleased" header, found ${heads.length}.`);
-              process.exit(1);
-            }
-            if (lines.some((l) => l === `## ${v}` || l.startsWith(`## ${v} `))) {
-              console.error(`Error: CHANGELOG.md already has a "## ${v}" section.`);
-              process.exit(1);
-            }
-            const start = heads[0];
-            const next = lines.findIndex((l, i) => i > start && /^## /.test(l));
-            const section = lines.slice(start + 1, next === -1 ? lines.length : next);
-            if (process.env.ALLOW_EMPTY !== "true" && !section.some((l) => /^- /.test(l))) {
-              console.error("Error: CHANGELOG.md has no entries under \"## Unreleased\". If that is intended, re-run with allow_empty_changelog ticked.");
-              process.exit(1);
-            }
-            const date = new Date().toISOString().slice(0, 10);
-            lines.splice(start + 1, 0, "", `## ${v} (${date})`);
-            fs.writeFileSync("CHANGELOG.md", lines.join("\n"));
-          '
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release-ci.ts roll-changelog
 
       - name: Collect changed files
         id: changes

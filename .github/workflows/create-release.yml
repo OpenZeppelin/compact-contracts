@@ -49,6 +49,13 @@ jobs:
           # No git writes here (release is cut via gh/app token), so don't persist creds.
           persist-credentials: false
 
+      # The script only imports node builtins, so this job needs a Node but no
+      # `yarn install`.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
       - name: Read package version
         id: version
         run: |
@@ -78,21 +85,8 @@ jobs:
           fi
 
           # Notes open with the version's CHANGELOG section. A missing section fails the release.
-          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
-          node -e '
-            const fs = require("fs");
-            const lines = fs.readFileSync("CHANGELOG.md", "utf8").replace(/\r\n/g, "\n").split("\n");
-            const h = `## ${process.env.VERSION}`;
-            const start = lines.findIndex((l) => l === h || l.startsWith(`${h} `));
-            if (start === -1) {
-              console.error(`Error: CHANGELOG.md has no "${h}" section to use as release notes.`);
-              process.exit(1);
-            }
-            const next = lines.findIndex((l, i) => i > start && /^## /.test(l));
-            const body = lines.slice(start + 1, next === -1 ? lines.length : next);
-            const notes = body.join("\n").trim();
-            process.stdout.write(notes ? `${notes}\n` : "");
-          ' > "$NOTES_FILE"
+          export NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release-ci.ts release-notes
 
           PRERELEASE_FLAG=""
           if [ "$PRERELEASE" = "true" ]; then
