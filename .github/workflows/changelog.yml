@@ -36,4 +36,5 @@ jobs:
       - name: Require a CHANGELOG entry for contract changes
         env:
           SKIP_CHANGELOG: ${{ contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
+          HEAD_REF: ${{ github.head_ref }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release-ci.ts changelog-check

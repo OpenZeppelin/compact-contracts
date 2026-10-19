@@ -39,11 +39,12 @@ npm dist-tags: stable → `latest`, `-alpha`/`-rc` → `beta`.
 
 ## Changelog
 
-Every PR that touches `contracts/src/` (outside test dirs) adds an entry under
-`## Unreleased` in `CHANGELOG.md`, or carries the `skip-changelog` label if
-nothing user-facing changed. The **Changelog entry** check enforces this once it
-is a required check (see One-time setup). The bump PR rolls those entries into
-the release, so no separate changelog PR is needed at release time.
+Every PR that changes `contracts/src/` (outside test dirs) or a runtime
+dependency in `contracts/package.json` adds an entry under `## Unreleased` in
+`CHANGELOG.md`, or carries the `skip-changelog` label if nothing user-facing
+changed. The **Changelog entry** check enforces this once it is a required
+check (see One-time setup). The bump PR rolls those entries into the release,
+so no separate changelog PR is needed at release time.
 
 ## Versioning
 

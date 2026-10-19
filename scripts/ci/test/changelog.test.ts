@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   changelogVerdict,
+  contractChange,
+  PACKAGE_JSON,
   releaseNotes,
   rollUnreleased,
+  unreleasedEntries,
 } from '../changelog.ts';
 
 /** Unit tests for `changelog.ts`: rolling, reading, and requiring entries. */
@@ -119,6 +122,15 @@ describe('rollUnreleased', () => {
     expect(roll(text).ok).toBe(true);
   });
 
+  it('should fail on a stray ## header under Unreleased', () => {
+    const text = CHANGELOG.replace('### Changed', '## Changed');
+    expect(roll(text)).toStrictEqual({
+      ok: false,
+      message:
+        'CHANGELOG.md has a stray "## Changed" header under "## Unreleased" (entry headings are ###).',
+    });
+  });
+
   it('should fail on an Unreleased section with no entries', () => {
     expect(roll(EMPTY_UNRELEASED)).toStrictEqual({
       ok: false,
@@ -182,6 +194,23 @@ describe('releaseNotes', () => {
     expect(releaseNotes(text, '0.6.0')).toStrictEqual({ ok: true, notes: '' });
   });
 
+  it('should return an empty string for a heading-only section', () => {
+    const rolled = roll(EMPTY_UNRELEASED, true);
+    expect(rolled.ok).toBe(true);
+    expect(
+      releaseNotes(rolled.ok ? rolled.text : '', '0.5.0-alpha.2'),
+    ).toStrictEqual({ ok: true, notes: '' });
+  });
+
+  it('should fail on a stray ## header in the section', () => {
+    const text = CHANGELOG.replace('### Added', '## Changed');
+    expect(releaseNotes(text, '0.5.0-alpha.1')).toStrictEqual({
+      ok: false,
+      message:
+        'CHANGELOG.md has a stray "## Changed" header under "## 0.5.0-alpha.1 (2026-10-13)" (entry headings are ###).',
+    });
+  });
+
   it('should normalize CRLF line endings', () => {
     expect(
       releaseNotes(CHANGELOG.replace(/\n/g, '\r\n'), '0.0.1-alpha.1'),
@@ -189,50 +218,145 @@ describe('releaseNotes', () => {
   });
 });
 
-describe('changelogVerdict', () => {
-  const SRC = 'contracts/src/token/FungibleToken.compact';
-
-  it('should pass a change that only touches test dirs', () => {
-    expect(
-      changelogVerdict(
-        ['contracts/src/token/test/FungibleToken.test.ts'],
-        false,
-      ).ok,
-    ).toBe(true);
-  });
-
-  it('should pass a change under a nested test dir', () => {
-    expect(
-      changelogVerdict(
-        ['contracts/src/token/examples/test/Example.test.ts'],
-        false,
-      ).ok,
-    ).toBe(true);
-  });
-
-  it('should pass a docs-only change', () => {
-    expect(changelogVerdict(['README.md', 'docs/x.md'], false).ok).toBe(true);
-  });
-
-  it('should fail a contract change without a CHANGELOG.md entry', () => {
-    const verdict = changelogVerdict([SRC], false);
-    expect(verdict.ok).toBe(false);
-    expect(verdict.message).toContain(
-      'ask a maintainer to add the skip-changelog label',
+describe('unreleasedEntries', () => {
+  it('should return no entries when the Unreleased header is missing', () => {
+    expect(unreleasedEntries(CHANGELOG.replace('## Unreleased\n', ''))).toEqual(
+      [],
     );
   });
 
-  it('should not mistake a test-like dir name for a test dir', () => {
+  it('should return only the bullet lines', () => {
+    expect(unreleasedEntries(CHANGELOG)).toStrictEqual([
+      '- Widen `EcdhMask.encrypt` to `Uint<248>` (#1150)',
+    ]);
+  });
+
+  it('should ignore a bullet under a version section', () => {
+    expect(unreleasedEntries(EMPTY_UNRELEASED)).toStrictEqual([]);
+  });
+});
+
+describe('contractChange', () => {
+  const SRC = 'contracts/src/token/FungibleToken.compact';
+  const pkg = (
+    dependencies: Record<string, string>,
+    devDependencies: Record<string, string> = {},
+  ) =>
+    JSON.stringify(
+      {
+        name: '@openzeppelin/compact-contracts',
+        dependencies,
+        devDependencies,
+      },
+      null,
+      2,
+    );
+  const BEFORE = pkg({ '@midnight-ntwrk/compact-runtime': '0.19.0' });
+
+  it('should count a contract source change', () => {
+    expect(contractChange([SRC])).toBe(true);
+  });
+
+  it('should not count a change that only touches test dirs', () => {
     expect(
-      changelogVerdict(['contracts/src/token/testing/Helper.ts'], false).ok,
+      contractChange(['contracts/src/token/test/FungibleToken.test.ts']),
     ).toBe(false);
   });
 
-  it('should pass a contract change with a CHANGELOG.md entry', () => {
-    expect(changelogVerdict([SRC, 'CHANGELOG.md'], false).ok).toBe(true);
+  it('should not count a change under a nested test dir', () => {
+    expect(
+      contractChange(['contracts/src/token/examples/test/Example.test.ts']),
+    ).toBe(false);
+  });
+
+  it('should not mistake a test-like dir name for a test dir', () => {
+    expect(contractChange(['contracts/src/token/testing/Helper.ts'])).toBe(
+      true,
+    );
+  });
+
+  it('should not count a docs-only change', () => {
+    expect(contractChange(['README.md', 'docs/x.md'])).toBe(false);
+  });
+
+  it('should count a runtime dependency bump', () => {
+    const after = pkg({ '@midnight-ntwrk/compact-runtime': '0.20.0' });
+    expect(contractChange([PACKAGE_JSON], { before: BEFORE, after })).toBe(
+      true,
+    );
+  });
+
+  it('should not count a devDependency-only bump', () => {
+    const after = pkg(
+      { '@midnight-ntwrk/compact-runtime': '0.19.0' },
+      { vitest: '^5.0.0' },
+    );
+    expect(contractChange([PACKAGE_JSON], { before: BEFORE, after })).toBe(
+      false,
+    );
+  });
+
+  it('should not count reordered runtime dependencies', () => {
+    const before = pkg({ a: '1.0.0', b: '2.0.0' });
+    const after = pkg({ b: '2.0.0', a: '1.0.0' });
+    expect(contractChange([PACKAGE_JSON], { before, after })).toBe(false);
+  });
+
+  it('should count an unparsable package.json', () => {
+    expect(
+      contractChange([PACKAGE_JSON], { before: BEFORE, after: '{ "name": ' }),
+    ).toBe(true);
+  });
+
+  it('should count a package.json change passed without its texts', () => {
+    expect(contractChange([PACKAGE_JSON])).toBe(true);
+  });
+});
+
+describe('changelogVerdict', () => {
+  const PR = {
+    contractChange: true,
+    entryAdded: false,
+    skipLabel: false,
+    bumpBranch: false,
+  };
+
+  it('should pass a PR with no contract change', () => {
+    expect(changelogVerdict({ ...PR, contractChange: false })).toStrictEqual({
+      ok: true,
+      message:
+        'No contract source or runtime dependency changes. No entry needed.',
+    });
+  });
+
+  it('should pass the version bump PR', () => {
+    expect(changelogVerdict({ ...PR, bumpBranch: true })).toStrictEqual({
+      ok: true,
+      message: 'Version bump PR, rolls the changelog.',
+    });
+  });
+
+  it('should pass a contract change that adds an Unreleased entry', () => {
+    expect(changelogVerdict({ ...PR, entryAdded: true })).toStrictEqual({
+      ok: true,
+      message: 'CHANGELOG.md gained an Unreleased entry.',
+    });
   });
 
   it('should pass a contract change with the skip-changelog label', () => {
-    expect(changelogVerdict([SRC], true).ok).toBe(true);
+    expect(changelogVerdict({ ...PR, skipLabel: true })).toStrictEqual({
+      ok: true,
+      message: 'skip-changelog label set. No entry needed.',
+    });
+  });
+
+  it('should fail a contract change without an Unreleased entry', () => {
+    expect(changelogVerdict(PR)).toStrictEqual({
+      ok: false,
+      message:
+        "This PR changes contract sources but adds no entry under '## Unreleased' " +
+        'in CHANGELOG.md. Add one, or ask a maintainer to add the skip-changelog ' +
+        'label if nothing user-facing changed.',
+    });
   });
 });

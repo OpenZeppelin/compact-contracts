@@ -2,8 +2,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   changelogVerdict,
+  contractChange,
+  PACKAGE_JSON,
   releaseNotes,
   rollUnreleased,
+  unreleasedEntries,
 } from './ci/changelog.ts';
 import { spawnCapture } from './ci/gh.ts';
 import { REPO_ROOT } from './live/paths.ts';
@@ -19,7 +22,7 @@ import { REPO_ROOT } from './live/paths.ts';
  * Usage, with the inputs each command reads from the environment:
  *   node scripts/release-ci.ts roll-changelog   # NEW_VERSION, ALLOW_EMPTY
  *   node scripts/release-ci.ts release-notes    # VERSION, NOTES_FILE
- *   node scripts/release-ci.ts changelog-check  # SKIP_CHANGELOG
+ *   node scripts/release-ci.ts changelog-check  # SKIP_CHANGELOG, HEAD_REF
  *
  * `roll-changelog` runs in `prepare-release.yml`, `release-notes` in
  * `create-release.yml`, `changelog-check` in `changelog.yml`.
@@ -77,27 +80,47 @@ function notes(): number {
   return 0;
 }
 
-/** Fail a PR that changes contract sources without a changelog entry. */
+/** stdout of a `git` call in the repo. A failure throws, which fails the step:
+ * a guessed answer would let the check pass or fail for the wrong reason. */
+function git(...args: string[]): string {
+  const result = spawnCapture('git', ['-C', REPO_ROOT, ...args]);
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr.trim()}`);
+  }
+  return result.stdout;
+}
+
+/** Both sides of `file` across the PR, or `undefined` when the PR leaves it
+ * alone. */
+function bothSides(
+  changed: readonly string[],
+  file: string,
+): { before: string; after: string } | undefined {
+  if (!changed.includes(file)) return undefined;
+  return {
+    before: git('show', `HEAD^1:${file}`),
+    after: git('show', `HEAD:${file}`),
+  };
+}
+
+/** Fail a PR that changes contract sources without an Unreleased entry. */
 function changelogCheck(): number {
   // On `pull_request` HEAD is the PR merge commit and HEAD^1 the base tip, so
   // this is the PR's own change set even after the base has moved on.
-  const diff = spawnCapture('git', [
-    '-C',
-    REPO_ROOT,
-    'diff',
-    '--name-only',
-    '--no-renames',
-    'HEAD^1',
-    'HEAD',
-  ]);
-  if (diff.status !== 0) {
-    console.log(`git diff failed: ${diff.stderr.trim()}`);
-    return 1;
-  }
-  const verdict = changelogVerdict(
-    diff.stdout.split('\n').filter((f) => f !== ''),
-    optionalEnv('SKIP_CHANGELOG') === 'true',
-  );
+  const changed = git('diff', '--name-only', '--no-renames', 'HEAD^1', 'HEAD')
+    .split('\n')
+    .filter((f) => f !== '');
+  const changelog = bothSides(changed, 'CHANGELOG.md');
+  const known = new Set(changelog ? unreleasedEntries(changelog.before) : []);
+  const verdict = changelogVerdict({
+    contractChange: contractChange(changed, bothSides(changed, PACKAGE_JSON)),
+    entryAdded:
+      changelog !== undefined &&
+      unreleasedEntries(changelog.after).some((e) => !known.has(e)),
+    skipLabel: optionalEnv('SKIP_CHANGELOG') === 'true',
+    // prepare-release.yml opens its version bump PR from `chore/bump-<version>`.
+    bumpBranch: optionalEnv('HEAD_REF').startsWith('chore/bump-'),
+  });
   console.log(verdict.ok ? verdict.message : `::error::${verdict.message}`);
   return verdict.ok ? 0 : 1;
 }

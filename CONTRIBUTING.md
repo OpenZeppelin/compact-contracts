@@ -150,8 +150,9 @@ Please follow these steps to have your contribution considered by the maintainer
 3. Follow all instructions in [the template](.github/PULL_REQUEST_TEMPLATE.md)
 4. Follow the [engineering guidelines](./GUIDELINES.md).
 5. Follow the [styleguides](#styleguides)
-6. If the PR changes `contracts/src/` (outside test dirs), add an entry under `## Unreleased` in the [CHANGELOG](./CHANGELOG.md),
-or ask a maintainer to add the `skip-changelog` label if nothing user-facing changed.
+6. If the PR changes `contracts/src/` (outside test dirs) or a runtime dependency in `contracts/package.json`, add an entry
+under `## Unreleased` in the [CHANGELOG](./CHANGELOG.md), or ask a maintainer to add the `skip-changelog` label if nothing
+user-facing changed.
 7. After you submit your pull request, verify that all [status checks](https://help.github.com/articles/about-status-checks/) are passing. <details><summary>What if the status checks are failing?</summary>
 If a status check is failing, and you believe that the failure is unrelated to your change, please leave a comment on the pull request explaining why you believe the failure is unrelated.
 A maintainer will re-run the status check for you. If we conclude that the failure was a false positive, then we will open an issue to track that problem with our status check suite.</details>
