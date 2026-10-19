@@ -135,7 +135,7 @@ module EcdhMask {
    *
    * @notice `e` MUST be fresh per call (see the module freshness precondition).
    *
-   * @constraints k=14, rows=9318
+   * @constraints k=14, rows=9318 (zkir-v3)
    *
    * Requirements:
    *
@@ -172,7 +172,7 @@ module EcdhMask {
    * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
    * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.
    *
-   * @constraints k=13, rows=7917
+   * @constraints k=13, rows=7917 (zkir-v3)
    *
    * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
    *                  `E^ek` for the recipient; equal by construction).
@@ -194,7 +194,7 @@ module EcdhMask {
    * (SEC 1 §5.1.4, action 3). `encrypt` cannot produce one, so a wallet that
    * meets one holds a placeholder, not an encryption.
    *
-   * @constraints k=14, rows=8976
+   * @constraints k=14, rows=8976 (zkir-v3)
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
