@@ -1,0 +1,50 @@
+name: Changelog
+
+on:
+  pull_request:
+    # labeled/unlabeled re-run the changelog check when skip-changelog is toggled.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    name: Changelog entry
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The PR merge commit and its parents.
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Require a CHANGELOG entry for contract changes
+        env:
+          SKIP_CHANGELOG: ${{ contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
+        run: |
+          # HEAD is the PR merge commit, HEAD^1 the base tip.
+          CHANGED=$(git diff --name-only --no-renames HEAD^1 HEAD)
+
+          if ! grep -qP '^contracts/src/(?!(.*/)?test/)' <<< "$CHANGED"; then
+            echo "No contracts/src/ changes outside test dirs. No entry needed."
+            exit 0
+          fi
+          if grep -qx 'CHANGELOG.md' <<< "$CHANGED"; then
+            echo "CHANGELOG.md updated."
+            exit 0
+          fi
+          if [ "$SKIP_CHANGELOG" = "true" ]; then
+            echo "skip-changelog label set. No entry needed."
+            exit 0
+          fi
+
+          echo "::error::This PR changes contracts/src/ but not CHANGELOG.md. Add an entry under '## Unreleased', or ask a maintainer to add the skip-changelog label if nothing user-facing changed."
+          exit 1

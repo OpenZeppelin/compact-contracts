@@ -11,6 +11,10 @@ on:
         description: "Target version (exact SemVer, e.g. 0.3.0-alpha.3)"
         required: true
         type: string
+      allow_empty_changelog:
+        description: "Roll an empty Unreleased section (first rc cut, clean audit)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -140,6 +144,36 @@ jobs:
           find ./contracts/src/ -type d -name '.*' -prune -o \
             -type f -exec sed -Ei "s#${ESCAPED_CURRENT}${VERSION_SUFFIX}#$ESCAPED_NEW#g" {} +
 
+      # The bump commit carries the release notes that create-release.yml reads.
+      - name: Roll changelog
+        env:
+          ALLOW_EMPTY: ${{ inputs.allow_empty_changelog }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const v = process.env.NEW_VERSION;
+            const lines = fs.readFileSync("CHANGELOG.md", "utf8").replace(/\r\n/g, "\n").split("\n");
+            const heads = lines.flatMap((l, i) => (/^## Unreleased$/.test(l) ? [i] : []));
+            if (heads.length !== 1) {
+              console.error(`Error: CHANGELOG.md needs exactly one "## Unreleased" header, found ${heads.length}.`);
+              process.exit(1);
+            }
+            if (lines.some((l) => l === `## ${v}` || l.startsWith(`## ${v} `))) {
+              console.error(`Error: CHANGELOG.md already has a "## ${v}" section.`);
+              process.exit(1);
+            }
+            const start = heads[0];
+            const next = lines.findIndex((l, i) => i > start && /^## /.test(l));
+            const section = lines.slice(start + 1, next === -1 ? lines.length : next);
+            if (process.env.ALLOW_EMPTY !== "true" && !section.some((l) => /^- /.test(l))) {
+              console.error("Error: CHANGELOG.md has no entries under \"## Unreleased\". If that is intended, re-run with allow_empty_changelog ticked.");
+              process.exit(1);
+            }
+            const date = new Date().toISOString().slice(0, 10);
+            lines.splice(start + 1, 0, "", `## ${v} (${date})`);
+            fs.writeFileSync("CHANGELOG.md", lines.join("\n"));
+          '
+
       - name: Collect changed files
         id: changes
         run: |
@@ -180,7 +214,7 @@ jobs:
           GH_TOKEN: ${{ steps.gh-app-token.outputs.token }}
           BASE_BRANCH: ${{ github.ref_name }}
         run: |
-          BODY=$(printf 'Automated version bump to `%s`.\n\nMerging this PR into `%s` cuts `v%s` and publishes to npm after the release approval gate.' "$NEW_VERSION" "$BASE_BRANCH" "$NEW_VERSION")
+          BODY=$(printf 'Automated version bump to `%s`. Also rolls the CHANGELOG `## Unreleased` section into `## %s`, which opens the release notes.\n\nMerging this PR into `%s` cuts `v%s` and publishes to npm after the release approval gate.' "$NEW_VERSION" "$NEW_VERSION" "$BASE_BRANCH" "$NEW_VERSION")
           gh pr create \
             --base "$BASE_BRANCH" \
             --head "$BUMP_BRANCH" \

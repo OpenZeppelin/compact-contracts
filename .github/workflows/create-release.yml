@@ -77,14 +77,34 @@ jobs:
             exit 0
           fi
 
+          # Notes open with the version's CHANGELOG section. A missing section fails the release.
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          node -e '
+            const fs = require("fs");
+            const lines = fs.readFileSync("CHANGELOG.md", "utf8").replace(/\r\n/g, "\n").split("\n");
+            const h = `## ${process.env.VERSION}`;
+            const start = lines.findIndex((l) => l === h || l.startsWith(`${h} `));
+            if (start === -1) {
+              console.error(`Error: CHANGELOG.md has no "${h}" section to use as release notes.`);
+              process.exit(1);
+            }
+            const next = lines.findIndex((l, i) => i > start && /^## /.test(l));
+            const body = lines.slice(start + 1, next === -1 ? lines.length : next);
+            const notes = body.join("\n").trim();
+            process.stdout.write(notes ? `${notes}\n` : "");
+          ' > "$NOTES_FILE"
+
           PRERELEASE_FLAG=""
           if [ "$PRERELEASE" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
 
           echo "Creating release $TAG on $TARGET (prerelease=$PRERELEASE)"
+          # The API prepends the notes file to the generated notes.
+          # An empty section yields generated notes only.
           gh release create "$TAG" \
             --target "$TARGET" \
             --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
             --generate-notes \
             $PRERELEASE_FLAG
