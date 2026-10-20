@@ -177,6 +177,10 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @dev The wrap test is `m > MAX - mask`, which needs no wider integer; the
    * arithmetic runs in `Field` so the untaken arm cannot fail.
    *
+   * @dev Reducing modulo the mask's width also keeps every ledger atom below
+   * 32 bytes. The generated `List` accessors (`head`, `popFront`) throw
+   * `exceeded structure bounds` on an entry with a full-width field atom.
+   *
    * @param {Uint<248>} m - The plaintext.
    * @param {Uint<248>} mask - The `kdf` output.
    * @return {Uint<248>} - The ciphertext.
