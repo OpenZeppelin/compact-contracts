@@ -1,6 +1,10 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  createEitherTestContractAddress,
+  eitherContractFromAddress,
+} from '#test-utils/fixtures/address.js';
+import {
   encodeShieldedCoinInfo,
   GENESIS_NATIVE_SHIELDED_TOKEN_COLORS,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
@@ -161,6 +165,25 @@ describe('ShieldedTreasury', () => {
         'ShieldedTreasury: no balance',
       );
     });
+
+    it('should reject a send to the treasury itself', async () => {
+      const self = eitherContractFromAddress(treasury.contractAddress);
+      await expect(treasury._send(self, COLOR, 400n)).rejects.toThrow(
+        'ShieldedTreasury: self-send',
+      );
+      expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT);
+      expect(await treasury.getSentTotal(COLOR)).toEqual(0n);
+    });
+
+    // A foreign contract never claims the output in-tx, so the node rejects the send.
+    it.skipIf(isLiveBackend())(
+      'should not reject a foreign contract address (the guard is self-specific)',
+      async () => {
+        const other = createEitherTestContractAddress('not-the-treasury');
+        await treasury._send(other, COLOR, 400n);
+        expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT - 400n);
+      },
+    );
   });
 
   // `sendShielded` emits a partial spend's change as a fresh output owned by
