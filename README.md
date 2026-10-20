@@ -10,7 +10,7 @@ This project is built on the Midnight Network.
 
 > ## ⚠️ WARNING! ⚠️
 >
-> This repo contains highly experimental code.
+> Pre-release versions (`-alpha`, `-rc`) contain experimental, unaudited code.
 > Expect rapid iteration.
 > **Use at your own risk.**
 
@@ -268,7 +268,15 @@ rm -rf .turbo/
 
 ## Security
 
-This project is still in a very early and experimental phase. Audit reports and their scopes are listed in [audits](./audits/README.md). DO NOT USE IT IN PRODUCTION.
+For production, use a stable release (no `-alpha` or `-rc` suffix) on the Midnight ledger it targets. Pre-releases are not audited and should not be used in production.
+
+| Release | Midnight ledger | Compact compiler | Audits |
+| ------- | --------------- | ---------------- | ------ |
+| 0.3.0   | Ledger v8       | 0.31.0           | [Aug 2026](./audits/2026-08-v0.3.0-alpha.1.pdf), [Oct 2026](./audits/2026-10-v0.3.0-rc.2-v0.4.0-alpha.6.pdf) |
+| 0.2.0   | Ledger v7       | 0.29.0           | None of its own. Its changes were reviewed in the Aug 2026 audit. |
+| 0.1.0   | Ledger v7       | 0.29.0           | [May 2026](./audits/2026-05-v0.1.0.pdf) |
+
+Scopes and audited commits are listed in [audits](./audits/README.md).
 
 Please report any security issues you find to <security@openzeppelin.com>. See [SECURITY.md](SECURITY.md).
 
