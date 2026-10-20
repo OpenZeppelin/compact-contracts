@@ -34,7 +34,8 @@ pragma language_version >= 0.26.0;
  * - Public, per tx: one entry per `_deliver` call, beside the leaf it
  *   describes. The count is constant per entry point when the composer
  *   delivers every output (see Composition).
- * - Private: `encPk`, `value`, `nonce`, the seed, `e`, `S`, `slot`.
+ * - Private: `encPk`, `value`, `nonce`, the seed, `e`, `S`. `slot` is hashed
+ *   into `e` and never written; it is a public constant of the composer.
  * - Hiding: with a uniform mask the pad is perfect, so `valueCt` and
  *   `nonceCt` carry nothing about the plaintext, whatever its width or
  *   distribution below `2^248`. The mask's uniformity is `EcdhMask`'s
