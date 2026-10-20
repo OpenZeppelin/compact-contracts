@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `execute`, `mint`, `mintToSelf`, `burn` and `burnFromSelf` take `Vector<t>` keys and signatures
   - `execute`'s recipient error reads `ShieldedMultiSigV2: recipient must be a coin public key`
 - **Breaking:** `ZOwnablePK.initialize` rejects a zero `instanceSalt` as `ZOwnablePK: invalid salt`. A zero salt gave deployments that share an owner id the same public owner commitment. (#1054)
+- `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the id point (#1077)
 
 ## 0.4.0-alpha.5 (2026-09-29)
 
