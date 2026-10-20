@@ -390,7 +390,9 @@ module ConfidentialFungibleToken {
   /**
    * @description Escrowed allowances, keyed by owner then spender. Membership is
    * checked independently of the entry, so an allowance that was never escrowed
-   * is unspendable.
+   * is unspendable. A spend also requires both owner and spender to be
+   * registered, so an entry written here for an unregistered account (for
+   * example by a composing contract) is unspendable as well.
    * @type {Bytes<32>} owner - The account that escrowed the allowance.
    * @type {Bytes<32>} spender - The account allowed to spend it.
    * @type {EscrowEntry} entry - The escrowed allowance.
@@ -1125,7 +1127,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @constraints k=17, rows=68920
+   * @constraints k=17, rows=68924
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1135,6 +1137,7 @@ module ConfidentialFungibleToken {
    * - `value` is within `MAX_TRANSFER_VALUE()`.
    * - `to` is registered and is not the zero account.
    * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   * - `fromAddress` and the caller are registered.
    *
    * @param {Bytes<32>} fromAddress - The owner whose escrow is drawn on.
    * @param {Bytes<32>} to - The recipient account.
@@ -1299,6 +1302,13 @@ module ConfidentialFungibleToken {
    * not prove the post-refund balance on a later re-approve/revoke. See the
    * `EscrowEntry` field doc.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   * - `fromAddress` and the caller are registered.
+   *
    * @param fromAddress - The owner whose escrow the caller (spender) draws on.
    * @param value - The amount to consume from the allowance.
    */
@@ -1310,6 +1320,10 @@ module ConfidentialFungibleToken {
     assert(_escrow.member(disclose(fromAddress)) &&
            _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
            "ConfidentialFungibleToken: no escrow");
+    assert(_encryptionKeys.member(disclose(spenderId)),
+           "ConfidentialFungibleToken: spender not registered");
+    assert(_encryptionKeys.member(disclose(fromAddress)),
+           "ConfidentialFungibleToken: owner not registered");
 
     const entry = _escrow.lookup(disclose(fromAddress)).lookup(disclose(spenderId));
 
@@ -1374,13 +1388,14 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @constraints k=16, rows=42201
+   * @constraints k=16, rows=42205
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `value` is within `MAX_TRANSFER_VALUE()`.
    * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   * - `fromAddress` and the caller are registered.
    *
    * @param {Bytes<32>} fromAddress - The owner whose escrow is consumed.
    * @param {Uint<128>} value - The amount to burn.

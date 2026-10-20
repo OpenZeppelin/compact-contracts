@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Breaking:** `ShieldedAccessControl`: revoking or renouncing a `(role, accountId)` pairing that was never granted reverts with `role was never granted`, so a nullifier can only exist for a granted pairing (#1116)
+- `ConfidentialFungibleToken`: `transferFrom` and `_burnFrom` reject an escrow whose owner or spender is unregistered as `owner not registered` / `spender not registered` (#1165)
 
 ## 0.4.0-alpha.6 (2026-10-06)
 
