@@ -74,6 +74,9 @@ pragma language_version >= 0.26.0;
  *   owner.
  * - Delivering a note twice adds an entry and nothing else. Wallets dedupe by
  *   commitment.
+ * - A composed contract supersedes the core header's out-of-band delivery and
+ *   no-rescan statements: its wallets find their notes by scanning
+ *   `_deliveries`.
  *
  * @notice Client-side duties:
  * - Keys: `encPk = g^ekScalar`. Derive `ekScalar` from the wallet seed under a
