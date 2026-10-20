@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add the `math/UintN<N>` module: `wrappingAdd` and `wrappingSub` compute `(a ± b) mod 2^N` on `Uint<N>` for any width and never fail, and `MODULUS` returns `2^N` as a `Field`. (#1189)
+- Add the `ConfidentialNoteFungibleTokenDelivery` extension: `_deliver` publishes an output note's `(value, nonce)` to the `_deliveries` list, padded under one nonce-bound ECDH ephemeral and two `EcdhMask.kdf` masks to the owner's Jubjub key, and the pure `recoverNote` opens an entry off-chain, so a wallet finds its notes by scanning the chain. (#727)
 
 ### Changed
 

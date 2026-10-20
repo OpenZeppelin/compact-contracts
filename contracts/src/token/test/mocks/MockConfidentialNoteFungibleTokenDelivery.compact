@@ -1,0 +1,19 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenDelivery extension in
+// isolation: `_deliver` is re-exported ungated, so anyone can push an entry.
+// The extension imports no token module, so nothing here is committed; a
+// consumer wires it beside the core's note creation. DO NOT deploy this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../extensions/ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
+
+export { Delivery_Delivery, Delivery_RecoveredNote }
+
+export { Delivery__deliveries };
+
+export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
+  return Delivery__deliver(encPk, value, nonce, slot);
+}
+
+export pure circuit recoverNote(delivery: Delivery_Delivery, ekScalar: JubjubScalar): Delivery_RecoveredNote {
+  return Delivery_recoverNote(delivery, ekScalar);
+}
