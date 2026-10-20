@@ -92,17 +92,12 @@ module UnshieldedTreasury {
   /**
    * @description Sends unshielded tokens from the treasury.
    *
-   * @warning Recipients are not validated. An unspendable recipient (such as a
-   * zero address) is accepted and permanently removes the funds from the
-   * contract. This is not a sanctioned burn — no unshielded equivalent of
-   * `shieldedBurnAddress` is exposed to contracts — so treat recipient
-   * validation as the consuming contract's responsibility.
-   *
-   * @warning Sending to this contract's own address zeroes the tracked balance
-   * while the funds stay held and spendable at the protocol level, after which
-   * `_send` will refuse to touch them. Recovery is only possible outside this
-   * module: a consumer may reconcile the exported `_balances`, or spend the
-   * funds through its own `sendUnshielded` call.
+   * @warning Beyond the self check, recipients are not validated. An
+   * unspendable recipient (such as a zero address) is accepted and
+   * permanently removes the funds from the contract. This is not a
+   * sanctioned burn — no unshielded equivalent of `shieldedBurnAddress` is
+   * exposed to contracts — so treat recipient validation as the consuming
+   * contract's responsibility.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -110,6 +105,7 @@ module UnshieldedTreasury {
    *
    * Requirements:
    *
+   * - `recipient` must not be this contract's own address.
    * - The amount must be non-zero. The ledger rejects zero-value outputs.
    * - The treasury must hold sufficient balance for the given token color.
    *
@@ -124,6 +120,11 @@ module UnshieldedTreasury {
     color: Bytes<32>,
     amount: Uint<128>
   ): [] {
+    // `kernel.self()` stays outside the `||`: the compiler treats a ledger
+    // read behind a witness-conditioned branch as an undeclared disclosure
+    const self = kernel.self();
+    assert(!recipient.is_left || recipient.left != self,
+           "UnshieldedTreasury: self-send");
     assert(amount != 0, "UnshieldedTreasury: zero amount");
 
     const bal = getTokenBalance(color);

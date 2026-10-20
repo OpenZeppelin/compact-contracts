@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ConfidentialFungibleToken`: `transferFrom` and `_burnFrom` reject an escrow whose owner or spender is unregistered as `owner not registered` / `spender not registered` (#1165)
 - `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the id point (#1077)
 - **Breaking:** `ShieldedTreasury._send` rejects self as recipient (#1177)
+- **Breaking:** `UnshieldedTreasury._send` rejects the contract's own address as recipient with `UnshieldedTreasury: self-send`. A self-addressed send is auto-received, so the funds stayed held while the tracked balance dropped and `_send` could no longer reach them. (#1182)
 
 ### Removed
 
