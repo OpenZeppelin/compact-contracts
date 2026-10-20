@@ -268,9 +268,9 @@ rm -rf .turbo/
 
 ## Security
 
-This project is still in a very early and experimental phase. It has never been audited nor thoroughly reviewed for security vulnerabilities. DO NOT USE IT IN PRODUCTION.
+This project is still in a very early and experimental phase. Audit reports and their scopes are listed in [audits](./audits/README.md). DO NOT USE IT IN PRODUCTION.
 
-Please report any security issues you find to <security@openzeppelin.com>.
+Please report any security issues you find to <security@openzeppelin.com>. See [SECURITY.md](SECURITY.md).
 
 ### Provenance
 
