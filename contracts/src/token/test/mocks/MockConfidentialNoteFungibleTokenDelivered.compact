@@ -1,0 +1,57 @@
+// TEST-ONLY. Composes the ConfidentialNoteFungibleToken core at depth 32 with
+// the Delivery extension the way a deployed token would: every output note is
+// committed and delivered in one circuit, the constructor mint included, so a
+// wallet finds every note by scanning `Delivery__deliveries`. `mint` is
+// ungated, so anyone can create value. DO NOT deploy this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
+import "../../extensions/ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
+
+export { Core_Note, Delivery_Delivery, Delivery_RecoveredNote }
+
+export { Core__isInitialized, Core__instanceSalt, Core__commitments, Core__nullifiers, Core__issuedNonces, Delivery__deliveries };
+
+// Mints `value` to `ownerPk` at deploy and delivers it to `ownerEncPk`. The
+// deployer keeps nothing: the core derives the nonce and the owner scans.
+constructor(instanceSalt: Bytes<32>, ownerPk: Field, ownerEncPk: JubjubPoint, value: Uint<128>) {
+  Core_initialize(instanceSalt);
+  const note = Core__mint(ownerPk, value);
+  Delivery__deliver(ownerEncPk, note.value, note.nonce, pad(32, "MockDelivered:ctor"));
+}
+
+export circuit mint(recipientPk: Field, recipientEncPk: JubjubPoint, value: Uint<128>): [] {
+  const note = Core__mint(recipientPk, value);
+  Delivery__deliver(recipientEncPk, note.value, note.nonce, pad(32, "MockDelivered:mint"));
+}
+
+// Both outputs are delivered, the change to the sender's own key, so the
+// entry count per transfer is two whatever the amounts.
+export circuit transfer(recipientPk: Field, recipientEncPk: JubjubPoint, senderEncPk: JubjubPoint, value: Uint<128>): [] {
+  const notes = Core_transfer(recipientPk, value);
+  Delivery__deliver(recipientEncPk, notes[0].value, notes[0].nonce, pad(32, "MockDelivered:out"));
+  Delivery__deliver(senderEncPk, notes[1].value, notes[1].nonce, pad(32, "MockDelivered:change"));
+}
+
+export circuit burn(senderEncPk: JubjubPoint, value: Uint<128>): [] {
+  const changeNote = Core_burn(value);
+  Delivery__deliver(senderEncPk, changeNote.value, changeNote.nonce, pad(32, "MockDelivered:change"));
+}
+
+// The pure circuits a wallet needs from one artifact: identity, commitment,
+// nullifier, and the delivery opener.
+export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
+  return Core_derivePk(sk, salt);
+}
+
+export pure circuit commitOf(note: Core_Note, pk: Field): Bytes<32> {
+  return Core_commitOf(note, pk);
+}
+
+export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
+  return Core_nullifierOf(note);
+}
+
+export pure circuit recoverNote(delivery: Delivery_Delivery, ekScalar: JubjubScalar): Delivery_RecoveredNote {
+  return Delivery_recoverNote(delivery, ekScalar);
+}
