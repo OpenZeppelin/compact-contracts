@@ -1056,10 +1056,23 @@ describe.skipIf(isLiveBackend())(
       expect(bal).toEqual(await cft.balanceOf(BOB.accountId));
     });
 
-    it('allowance returns the default entry when no escrow exists', async () => {
-      expect(await cft.allowance(ALICE.accountId, BOB.accountId)).toEqual(
-        await cft.allowance(BOB.accountId, CHARLIE.accountId),
-      );
+    it('allowance returns the encrypted-zero entry when no escrow exists', async () => {
+      // Pin the exact shape, not just that two missing pairs agree: every
+      // point is the identity (an on-curve Enc(0), decryptable by a wallet),
+      // and the memo pad is zero.
+      const id = identityPoint();
+      for (const [owner, spender] of [
+        [ALICE.accountId, BOB.accountId],
+        [BOB.accountId, CHARLIE.accountId],
+      ]) {
+        const entry = await cft.allowance(owner, spender);
+        expect(entry.spenderCt.c1).toEqual(id);
+        expect(entry.spenderCt.c2).toEqual(id);
+        expect(entry.ownerCt.c1).toEqual(id);
+        expect(entry.ownerCt.c2).toEqual(id);
+        expect(entry.ownerMemo.ephemeralPk).toEqual(id);
+        expect(entry.ownerMemo.ct).toBe(0n);
+      }
     });
   },
 );
