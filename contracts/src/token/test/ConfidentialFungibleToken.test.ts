@@ -734,6 +734,25 @@ describe.skipIf(isLiveBackend())(
       );
     });
 
+    it('rejects an approve exceeding the spendable balance', async () => {
+      await registerAll();
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
+      await expect(cft.approve(BOB.accountId, 101n)).rejects.toThrow(
+        'ConfidentialFungibleToken: insufficient balance',
+      );
+      // The bound is the balance itself: approving exactly 100 is allowed.
+      await cft.approve(BOB.accountId, 100n);
+    });
+
     it('rejects transferFrom to the zero account', async () => {
       await approveBob(100n, 40n);
       await cft.privateState.switchIdentity(BOB.secretKey, BOB.encryptionKey);
