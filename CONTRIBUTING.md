@@ -150,8 +150,9 @@ Please follow these steps to have your contribution considered by the maintainer
 3. Follow all instructions in [the template](.github/PULL_REQUEST_TEMPLATE.md)
 4. Follow the [engineering guidelines](./GUIDELINES.md).
 5. Follow the [styleguides](#styleguides)
-6. If the PR includes non-trivial changes, additions, or deletions (especially in Compact modules and/or witnesses),
-add an entry to the [CHANGELOG](./CHANGELOG.md).
+6. If the PR changes `contracts/src/` (outside test dirs) or a runtime dependency in `contracts/package.json`, add an entry
+under `## Unreleased` in the [CHANGELOG](./CHANGELOG.md), or ask a maintainer to add the `skip-changelog` label if nothing
+user-facing changed.
 7. After you submit your pull request, verify that all [status checks](https://help.github.com/articles/about-status-checks/) are passing. <details><summary>What if the status checks are failing?</summary>
 If a status check is failing, and you believe that the failure is unrelated to your change, please leave a comment on the pull request explaining why you believe the failure is unrelated.
 A maintainer will re-run the status check for you. If we conclude that the failure was a false positive, then we will open an issue to track that problem with our status check suite.</details>
@@ -346,6 +347,7 @@ Please open an issue on `OpenZeppelin/compact-contracts` if you have suggestions
 | `under-review` | [search][search-OpenZeppelin-repo-label-under-review] | [search][search-OpenZeppelin-org-label-under-review] | Pull requests being reviewed by maintainers or OpenZeppelin core team. |
 | `requires-changes` | [search][search-OpenZeppelin-repo-label-requires-changes] | [search][search-OpenZeppelin-org-label-requires-changes] | Pull requests which need to be updated based on review comments and then reviewed again. |
 | `needs-testing` | [search][search-OpenZeppelin-repo-label-needs-testing] | [search][search-OpenZeppelin-org-label-needs-testing] | Pull requests which need manual testing. |
+| `skip-changelog` | [search][search-OpenZeppelin-repo-label-skip-changelog] | [search][search-OpenZeppelin-org-label-skip-changelog] | Pull requests which change `contracts/src/` but nothing user-facing, so they need no CHANGELOG entry. |
 
 [search-OpenZeppelin-repo-label-enhancement]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aenhancement
 [search-OpenZeppelin-org-label-enhancement]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aenhancement
@@ -391,6 +393,8 @@ Please open an issue on `OpenZeppelin/compact-contracts` if you have suggestions
 [search-OpenZeppelin-org-label-requires-changes]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Arequires-changes
 [search-OpenZeppelin-repo-label-needs-testing]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aneeds-testing
 [search-OpenZeppelin-org-label-needs-testing]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Aneeds-testing
+[search-OpenZeppelin-repo-label-skip-changelog]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Askip-changelog
+[search-OpenZeppelin-org-label-skip-changelog]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Askip-changelog
 
 [beginner]:https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abeginner+label%3Ahelp-wanted+user%3AOpenZeppelin+sort%3Acomments-desc
 [help-wanted]:https://github.com/search?q=is%3Aopen+is%3Aissue+label%3Ahelp-wanted+user%3AOpenZeppelin+sort%3Acomments-desc+-label%3Abeginner

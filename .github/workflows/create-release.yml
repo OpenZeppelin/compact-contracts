@@ -49,6 +49,13 @@ jobs:
           # No git writes here (release is cut via gh/app token), so don't persist creds.
           persist-credentials: false
 
+      # The script only imports node builtins, so this job needs a Node but no
+      # `yarn install`.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+
       - name: Read package version
         id: version
         run: |
@@ -77,14 +84,21 @@ jobs:
             exit 0
           fi
 
+          # Notes open with the version's CHANGELOG section. A missing section fails the release.
+          export NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release-ci.ts release-notes
+
           PRERELEASE_FLAG=""
           if [ "$PRERELEASE" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
 
           echo "Creating release $TAG on $TARGET (prerelease=$PRERELEASE)"
+          # The API prepends the notes file to the generated notes.
+          # An empty section yields generated notes only.
           gh release create "$TAG" \
             --target "$TARGET" \
             --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
             --generate-notes \
             $PRERELEASE_FLAG

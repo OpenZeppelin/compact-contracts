@@ -27,6 +27,7 @@ Fixes #??? <!-- Fill in with issue number -->
 - [ ] I have read the [Contributing Guide](../CONTRIBUTING.md#your-first-code-contribution)
 - [ ] I have added tests that prove my fix is effective or that my feature works. See [GUIDELINES.md#testing](../GUIDELINES.md#testing) for more information.
 - [ ] I have added documentation for new methods or changes to existing method behavior. See [GUIDELINES.md#documentation](../GUIDELINES.md#documentation) for more information.
+- [ ] I have added a CHANGELOG entry under `## Unreleased`, or asked a maintainer to add the `skip-changelog` label because nothing user-facing changed. See [CONTRIBUTING.md](../CONTRIBUTING.md#pull-requests).
 - [ ] CI Workflows Are Passing
 
 #### Further comments

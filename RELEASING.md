@@ -22,15 +22,29 @@ There is no long-lived per-version branch: a version bump is just a PR into
 
 1. Run **Prepare release** (`prepare-release.yml`) via *Actions → Run workflow*:
    pick the branch, type the exact target version. It opens a `chore/bump-<version>`
-   PR into that branch.
+   PR into that branch. The same commit rolls `## Unreleased` in `CHANGELOG.md`
+   into `## <version> (<date>)`. The workflow fails if `## Unreleased` has no
+   entries (unless `allow_empty_changelog` is ticked). `<date>` is the UTC date
+   Prepare ran. If the bump PR conflicts on `CHANGELOG.md`, re-run Prepare
+   release.
 2. Review and merge the bump PR.
 3. On merge, **Create release** (`create-release.yml`) cuts `v<version>` + a
    GitHub Release from that branch (`--prerelease` for any `-alpha`/`-rc`
-   version).
+   version). The release notes are that version's `CHANGELOG.md` section,
+   followed by GitHub's generated list. The job fails if the section is missing.
 4. That fires **Publish** (`release.yml`), which pauses at the `release`
    approval gate. An authorized reviewer approves, then it publishes to npm.
 
 npm dist-tags: stable → `latest`, `-alpha`/`-rc` → `beta`.
+
+## Changelog
+
+Every PR that changes `contracts/src/` (outside test dirs) or a runtime
+dependency in `contracts/package.json` adds an entry under `## Unreleased` in
+`CHANGELOG.md`, or carries the `skip-changelog` label if nothing user-facing
+changed. The **Changelog entry** check enforces this once it is a required
+check (see One-time setup). The bump PR rolls those entries into the release,
+so no separate changelog PR is needed at release time.
 
 ## Versioning
 
@@ -47,21 +61,34 @@ alpha counter.
 **Audit starts (cut the release line)**
 - `git branch release/X.Y.x <audit-sha> && git push origin release/X.Y.x`
   (creating the branch cuts nothing — its version is already tagged).
-- Prepare release on `release/X.Y.x`, version `X.Y.0-rc.1` → merge → publishes `beta`.
+- Prepare release on `release/X.Y.x`, version `X.Y.0-rc.1` (tick
+  `allow_empty_changelog` if `## Unreleased` is empty) → merge → publishes `beta`.
 - rc fixes later: repeat with `X.Y.0-rc.2`, etc.
 
 **Audit clears (stable + next alpha, same day)**
 - Merge audit fixes into `release/X.Y.x`.
-- Prepare release on `release/X.Y.x`, version `X.Y.0` → merge → publishes `latest`.
+- Prepare release on `release/X.Y.x`, version `X.Y.0` (tick
+  `allow_empty_changelog` if `## Unreleased` is empty) → merge → publishes `latest`.
 - Prepare release on `main`, next minor's first alpha `X.(Y+1).0-alpha.1` → merge
   → publishes `beta`.
-- Back-merge `release/X.Y.x` → `main` (keep `main`'s higher version on conflict),
-  then delete `release/X.Y.x`.
+- Back-merge `release/X.Y.x` → `main` (keep `main`'s higher version on conflict,
+  and in `CHANGELOG.md` keep both sides' version sections, newest first), then
+  delete `release/X.Y.x`.
 
 ## Retries
 
 Re-running is safe: `create-release.yml` only cuts a release if the tag has no
 release yet, so no manual tag/release deletion is needed.
+
+A **Create release** failure on a missing changelog section re-fails on re-run,
+because it reads the same commit. Merge the `CHANGELOG.md` fix, then cut the
+release by hand (add `--prerelease` for alpha/rc). A release cut with a
+maintainer token still fires `release.yml`.
+
+```sh
+gh release create v<version> --target <fix-sha> --title v<version> \
+  --notes-file <section.md> --generate-notes
+```
 
 ## One-time setup (repo admin)
 
@@ -70,3 +97,6 @@ release yet, so no manual tag/release deletion is needed.
 - **Variables/secrets**: `GH_APP_ID` (var) and `GH_APP_PRIVATE_KEY` (secret) must
   be set — both `prepare-release.yml` and `create-release.yml` need the app token
   (the latter so its release event chains to the publish workflow).
+- **Issues → Labels**: create the `skip-changelog` label.
+- **Settings → Rules → Rulesets → Main Branch Protection**: require the
+  **Changelog entry** status check. Without it the check is advisory only.
