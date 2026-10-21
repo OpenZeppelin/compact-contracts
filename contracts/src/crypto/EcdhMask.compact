@@ -50,7 +50,8 @@ pragma language_version >= 0.23.0;
  * `e ≡ 0 (mod ℓ)`. (Guarding `e != 0` directly would instead lean on the runtime
  * faulting `ecMul` for scalars `≥ ℓ`; the point guard removes that dependency.)
  * These are the only weak inputs (for a subgroup key, `S = identity` iff the
- * ephemeral point is the identity).
+ * ephemeral point is the identity). The identity's representation and point
+ * equality are as in `crypto/ElGamal`.
  *
  * @dev Integrity. The pad is malleable and NO authentication is added here. This
  * is safe in the intended on-chain use, where the ciphertext is computed
