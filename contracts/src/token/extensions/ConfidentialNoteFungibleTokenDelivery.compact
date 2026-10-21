@@ -1,0 +1,265 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (token/extensions/ConfidentialNoteFungibleTokenDelivery.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenDelivery
+ * @description Optional standalone extension that publishes every output note
+ * of a `ConfidentialNoteFungibleToken` encrypted to its owner's Jubjub key, so
+ * a wallet discovers its notes from chain data alone. One ECDH per output, two
+ * one-time pads from `EcdhMask.kdf`, one append-only `_deliveries` list. It
+ * imports no token module: the composer calls `_deliver` beside the core's
+ * note creation.
+ *
+ * @dev Notation, on top of the core's:
+ * - `encPk = g^ekScalar`: the owner's Jubjub encryption key, paired with the
+ *   spend identity `pk` out of band.
+ * - `e = Hf(seed, "CNFT:delivery:e", slot, nonce)`: the ephemeral scalar.
+ * - `E = g^e` and `S = encPk^e = E^ekScalar`: the `crypto/Ecdh` exchange.
+ * - `valueCt = (value + kdf(S, "CNFT:delivery:value")) mod 2^248` and
+ *   `nonceCt = (nonce + kdf(S, "CNFT:delivery:nonce")) mod 2^248`: one-time
+ *   pads over `[0, 2^248)`, the width of `kdf`'s output.
+ *
+ * @dev Compatibility:
+ * The wire format a wallet depends on is the `Delivery` layout, the two pad
+ * tags, and the modular pad. The `e` tag and the `EphemeralPreimage` layout
+ * are sender-side: a recipient recovers `S` from `E` and never recomputes `e`.
+ * The compatibility suite pins all of them.
+ *
+ * @notice Privacy:
+ * - Public, per output: `E`, a fresh pseudorandom point, and two pad outputs,
+ *   each uniform to anyone without `ekScalar`. No field names `pk`, `encPk`
+ *   or `cm`, so entries cannot be grouped by recipient.
+ * - Public, per tx: one entry per `_deliver` call, beside the leaf it
+ *   describes. The count is constant per entry point when the composer
+ *   delivers every output (see Composition).
+ * - Private: `encPk`, `value`, `nonce`, the seed, `e`, `S`. `slot` is hashed
+ *   into `e` and never written; it is a public constant of the composer.
+ * - Hiding: with a uniform mask the pad is perfect, so `valueCt` and
+ *   `nonceCt` carry nothing about the plaintext, whatever its width or
+ *   distribution below `2^248` (`UintN<248>.MODULUS`). The mask's
+ *   uniformity is `EcdhMask`'s assumption: hashed ElGamal, CDH in the
+ *   random-oracle model.
+ *
+ * @notice Security:
+ * - The nonce is the spend capability and the pads are one-time, so a
+ *   repeated `e` to one key opens both notes. `e` binds the nonce: two
+ *   committed notes never share a pad even under a reused seed, since
+ *   `_issuedNonces` keeps nonces unique. The seed MUST still be fresh and
+ *   secret per call. `e` is secret only while the seed or the nonce is, and a
+ *   known `e` opens the entry to everyone.
+ * - No authentication: the pads are malleable and nothing binds an entry to a
+ *   leaf. A wallet accepts a recovered note only once `commitOf(note, pk)` is
+ *   in the tree (see Client-side duties).
+ * - No authorization: `_deliver` is ungated like the core's `_` circuits. The
+ *   composer's gate on note creation is the gate on delivery.
+ * - Not checked here: that the delivered pair is the committed note, and that
+ *   `encPk` pairs with the owner's `pk`. The composer passes one note to
+ *   `_mintNote` and to `_deliver` in one circuit. A wrong `encPk` makes the
+ *   note undiscoverable, not stealable, since `cm` binds the owner's `pk`.
+ *
+ * @notice Concurrency:
+ * `_deliver` reads nothing and pins nothing, so every delivery commutes with
+ * every other call.
+ *
+ * @notice Composition:
+ * - Call `_deliver` once per output and per intended key, zero-value change
+ *   included, never under a condition on private data: the entry count per
+ *   entry point must stay constant.
+ * - `slot` separates deliveries of one note to several keys. Under a reused
+ *   seed, the same note to two keys with one slot shares `E`, which links the
+ *   two entries without opening either; distinct slots remove the link.
+ * - Nothing to initialize and no ledger read: `_deliver` runs from the
+ *   composer's constructor, which is how a constructor-time mint reaches its
+ *   owner.
+ * - Delivering a note twice adds an entry and nothing else. Wallets dedupe by
+ *   commitment.
+ * - A composed contract supersedes the core header's out-of-band delivery and
+ *   no-rescan statements: its wallets find their notes by scanning
+ *   `_deliveries`.
+ *
+ * @notice Client-side duties:
+ * - Keys: `encPk = g^ekScalar`. Derive `ekScalar` from the wallet seed under a
+ *   module-specific domain (`ElGamal.secretToScalar` is the library's
+ *   derivation) and share `(pk, encPk)` together.
+ * - Scan: read `_deliveries` from the length last seen, newest first. For each
+ *   entry, `recoverNote(entry, ekScalar)`; drop `value >= 2^128`, a wrong key
+ *   with overwhelming probability; keep the note iff
+ *   `commitOf({ value, nonce }, pk)` is a leaf, and record the leaf index;
+ *   `nullifierOf(note)` in `_nullifiers` means spent. One scalar
+ *   multiplication per entry, no proof.
+ * - `ekScalar` never enters an on-chain circuit: `recoverNote` is pure and
+ *   runs in the wallet.
+ *
+ * @notice Scalability:
+ * `_deliveries` gains one entry per output and is never pruned; every wallet
+ * scans every entry once.
+ *
+ * @dev Performance:
+ * `_deliver` pays one SHA-256 block for `e`, two scalar multiplications, two
+ * `kdf` calls, each hashing the point and its tag, and the two modular pads.
+ */
+module ConfidentialNoteFungibleTokenDelivery {
+  import CompactStandardLibrary;
+  import "../../crypto/Ecdh" prefix Ecdh_;
+  import "../../crypto/EcdhMask" prefix EcdhMask_;
+  import { wrappingAdd, wrappingSub } from "../../math/UintN"<248> prefix U248_;
+
+  /**
+   * @description One output note, encrypted to its owner. Public once written;
+   * no field is secret on its own.
+   * @type {JubjubPoint} ephemeralPk - `E = g^e`, fresh per output. Never the
+   * identity.
+   * @type {Uint<248>} valueCt - `(value + kdf(S, "CNFT:delivery:value")) mod 2^248`.
+   * @type {Uint<248>} nonceCt - `(nonce + kdf(S, "CNFT:delivery:nonce")) mod 2^248`.
+   *
+   * @dev The `Uint<248>` pads keep both ciphertext atoms below 32 bytes. The
+   * generated `List` accessors (`head`, `popFront`) throw `exceeded structure
+   * bounds` on an entry with a full-width field atom.
+   */
+  export struct Delivery {
+    ephemeralPk: JubjubPoint;
+    valueCt: Uint<248>;
+    nonceCt: Uint<248>;
+  }
+
+  /**
+   * @description An entry with its pads stripped, nothing checked. A wrong key
+   * yields a uniform pair; the wallet range-checks `value` and matches the
+   * commitment.
+   * @type {Uint<248>} value - The note's value, below `2^128` for a note
+   * addressed to the key.
+   * @type {Uint<248>} nonce - The note's nonce.
+   */
+  export struct RecoveredNote {
+    value: Uint<248>;
+    nonce: Uint<248>;
+  }
+
+  /**
+   * @description Preimage of the ephemeral scalar. Same shape as the core's
+   * `NoncePreimage`; the domain tag is what keeps `e` apart from a core nonce
+   * drawn from the same seed.
+   * @type {Bytes<32>} seed - The caller's per-invocation randomness.
+   * @type {Bytes<32>} domain - The ephemeral domain tag.
+   * @type {Bytes<32>} slot - The per-output tag.
+   * @type {Field} nonce - The delivered note's nonce.
+   */
+  struct EphemeralPreimage {
+    seed: Bytes<32>;
+    domain: Bytes<32>;
+    slot: Bytes<32>;
+    nonce: Field;
+  }
+
+  /**
+   * @description Every delivery ever made, newest first. Append-only: no
+   * circuit reads, removes or overwrites an entry. Unbounded, like the core's
+   * `_nullifiers` and `_issuedNonces`.
+   * @type {List<Delivery>} _deliveries - The feed wallets scan.
+   */
+  export ledger _deliveries: List<Delivery>;
+
+  /**
+   * @witness wit_ConfidentialNoteDeliveryRandomness
+   * @description Returns the seed `_deliver` derives its ephemeral scalar
+   * from.
+   *
+   * @dev Freshness is mandatory:
+   * MUST be fresh and secret per call. The nonce binding turns a reused seed
+   * from a stolen note into nothing; `e` still stays secret only while the
+   * seed or the nonce does.
+   *
+   * @returns {Bytes<32>} seed - A 32-byte cryptographically secure random
+   * value.
+   */
+  witness wit_ConfidentialNoteDeliveryRandomness(): Bytes<32>;
+
+  /**
+   * @description Publishes `(value, nonce)` encrypted to `encPk`: one ECDH
+   * under a nonce-bound ephemeral, two modular `EcdhMask` pads, one
+   * `_deliveries` entry. Call it beside the core's note creation, once per
+   * output and intended key.
+   *
+   * @constraints k=15, rows=26723
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * @dev Nonce-bound ephemeral:
+   * `e = Hf(seed, domain, slot, nonce)`, so an entry repeats only when all of
+   * `(encPk, seed, slot, nonce)` repeat, and a reused seed never pads two
+   * committed notes alike.
+   *
+   * @dev Constant shape:
+   * No branch on the ledger and no ledger read: the transcript is independent
+   * of every input, and two deliveries in one block never conflict.
+   *
+   * Requirements:
+   *
+   * - `encPk` is not the identity point.
+   * - `nonce < 2^248`. Every `degradeToTransient` output qualifies.
+   *
+   * @param {JubjubPoint} encPk - The owner's encryption key, `g^ekScalar`.
+   * @param {Uint<128>} value - The note's value.
+   * @param {Field} nonce - The note's nonce.
+   * @param {Bytes<32>} slot - The per-output tag; distinct per key when one
+   * note goes to several.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
+    const e = degradeToTransient(persistentHash<EphemeralPreimage>(EphemeralPreimage {
+      seed: wit_ConfidentialNoteDeliveryRandomness(),
+      domain: pad(32, "CNFT:delivery:e"),
+      slot: slot,
+      nonce: nonce
+    })) as JubjubScalar;
+    // The identity-key and zero-ephemeral guards come from `deriveShared`.
+    const shared = Ecdh_deriveShared(encPk, e);
+    // The cast is the width check: a bit above the pad would sit in the clear.
+    const paddedNonce = nonce as Uint<248>;
+    const delivery = Delivery {
+      ephemeralPk: shared.ephemeralPk,
+      valueCt: U248_wrappingAdd(value as Uint<248>,
+                                EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
+      nonceCt: U248_wrappingAdd(paddedNonce,
+                                EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
+    };
+    _deliveries.pushFront(disclose(delivery));
+  }
+
+  /**
+   * @description Strips the pads from an entry with the owner's secret scalar.
+   * Pure and off-chain: a wallet reads its notes with no proof.
+   *
+   * @notice Raw result:
+   * Nothing derived from `ekScalar` or the recovered pair is checked, so the
+   * circuit is no oracle for a candidate key. A wrong key returns a uniform
+   * pair; the wallet filters on `value < 2^128` and the commitment tree.
+   *
+   * @dev Identity ephemeral:
+   * `_deliver` never writes one, and its pads would be public constants, so
+   * the entry is refused rather than opened, as `EcdhMask.decrypt` does.
+   *
+   * Requirements:
+   *
+   * - `delivery.ephemeralPk` is not the identity point.
+   *
+   * @param {Delivery} delivery - The entry to open.
+   * @param {JubjubScalar} ekScalar - The secret behind the `encPk` the entry
+   * was addressed to.
+   * @return {RecoveredNote} - The padded pair.
+   */
+  export pure circuit recoverNote(delivery: Delivery, ekScalar: JubjubScalar): RecoveredNote {
+    assert(delivery.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
+           "ConfidentialNoteFungibleTokenDelivery: identity ephemeral");
+    const sShared = Ecdh_recoverShared(delivery.ephemeralPk, ekScalar);
+    return RecoveredNote {
+      value: U248_wrappingSub(delivery.valueCt,
+                              EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
+      nonce: U248_wrappingSub(delivery.nonceCt,
+                              EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
+    };
+  }
+}
