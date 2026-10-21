@@ -121,7 +121,7 @@ function changelogCheck(): number {
     // prepare-release.yml opens its version bump PR from `chore/bump-<version>`.
     bumpBranch: optionalEnv('HEAD_REF').startsWith('chore/bump-'),
   });
-  console.log(verdict.ok ? verdict.message : `::error::${verdict.message}`);
+  console.log(verdict.message);
   return verdict.ok ? 0 : 1;
 }
 
