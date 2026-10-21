@@ -721,7 +721,8 @@ describe.skipIf(isLiveBackend())(
     });
 
     // A conditional push would make the entry count a private predicate's
-    // shadow. The two `?:` live in the pure pad helpers, both arms constant.
+    // shadow. The pads' two `?:` live in `math/UintN`, both arms `Field`
+    // arithmetic.
     it('should keep the extension free of branches and loops', () => {
       const branching = codeLines(EXTENSION_SOURCE).filter(
         (line) => /\bif\s*\(/.test(line) || /\bfor\s*\(/.test(line),

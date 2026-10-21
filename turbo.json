@@ -65,7 +65,12 @@
       "outputs": ["artifacts/**/"]
     },
     "compile:token": {
-      "dependsOn": ["^build", "compile:utils", "compile:crypto"],
+      "dependsOn": [
+        "^build",
+        "compile:utils",
+        "compile:crypto",
+        "compile:math"
+      ],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": ["src/token/**/*.compact"],
       "outputLogs": "new-only",

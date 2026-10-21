@@ -38,8 +38,9 @@ pragma language_version >= 0.26.0;
  *   into `e` and never written; it is a public constant of the composer.
  * - Hiding: with a uniform mask the pad is perfect, so `valueCt` and
  *   `nonceCt` carry nothing about the plaintext, whatever its width or
- *   distribution below `2^248`. The mask's uniformity is `EcdhMask`'s
- *   assumption: hashed ElGamal, CDH in the random-oracle model.
+ *   distribution below `2^248` (`UintN<248>.MODULUS`). The mask's
+ *   uniformity is `EcdhMask`'s assumption: hashed ElGamal, CDH in the
+ *   random-oracle model.
  *
  * @notice Security:
  * - The nonce is the spend capability and the pads are one-time, so a
@@ -103,6 +104,7 @@ module ConfidentialNoteFungibleTokenDelivery {
   import CompactStandardLibrary;
   import "../../crypto/Ecdh" prefix Ecdh_;
   import "../../crypto/EcdhMask" prefix EcdhMask_;
+  import { wrappingAdd, wrappingSub } from "../../math/UintN"<248> prefix U248_;
 
   /**
    * @description One output note, encrypted to its owner. Public once written;
@@ -111,6 +113,10 @@ module ConfidentialNoteFungibleTokenDelivery {
    * identity.
    * @type {Uint<248>} valueCt - `(value + kdf(S, "CNFT:delivery:value")) mod 2^248`.
    * @type {Uint<248>} nonceCt - `(nonce + kdf(S, "CNFT:delivery:nonce")) mod 2^248`.
+   *
+   * @dev The `Uint<248>` pads keep both ciphertext atoms below 32 bytes. The
+   * generated `List` accessors (`head`, `popFront`) throw `exceeded structure
+   * bounds` on an entry with a full-width field atom.
    */
   export struct Delivery {
     ephemeralPk: JubjubPoint;
@@ -171,43 +177,6 @@ module ConfidentialNoteFungibleTokenDelivery {
   witness wit_ConfidentialNoteDeliveryRandomness(): Bytes<32>;
 
   /**
-   * @description `(m + mask) mod 2^248`: the pad, over the mask's own width
-   * so the ciphertext is uniform and never exceeds it.
-   *
-   * @dev The wrap test is `m > MAX - mask`, which needs no wider integer; the
-   * arithmetic runs in `Field` so the untaken arm cannot fail.
-   *
-   * @dev Reducing modulo the mask's width also keeps every ledger atom below
-   * 32 bytes. The generated `List` accessors (`head`, `popFront`) throw
-   * `exceeded structure bounds` on an entry with a full-width field atom.
-   *
-   * @param {Uint<248>} m - The plaintext.
-   * @param {Uint<248>} mask - The `kdf` output.
-   * @return {Uint<248>} - The ciphertext.
-   */
-  pure circuit padAdd(m: Uint<248>, mask: Uint<248>): Uint<248> {
-    const MAX_UINT248 = 452312848583266388373324160190187140051835877600158453279131187530910662655;
-    const wraps = m > MAX_UINT248 - mask;
-    return ((m as Field) + (mask as Field)
-            - (wraps ? 452312848583266388373324160190187140051835877600158453279131187530910662656 as Field
-                     : 0 as Field)) as Uint<248>;
-  }
-
-  /**
-   * @description `(ct - mask) mod 2^248`: the inverse of `padAdd`.
-   *
-   * @param {Uint<248>} ct - The ciphertext.
-   * @param {Uint<248>} mask - The `kdf` output.
-   * @return {Uint<248>} - The plaintext.
-   */
-  pure circuit padSub(ct: Uint<248>, mask: Uint<248>): Uint<248> {
-    const borrows = ct < mask;
-    return ((ct as Field) - (mask as Field)
-            + (borrows ? 452312848583266388373324160190187140051835877600158453279131187530910662656 as Field
-                       : 0 as Field)) as Uint<248>;
-  }
-
-  /**
    * @description Publishes `(value, nonce)` encrypted to `encPk`: one ECDH
    * under a nonce-bound ephemeral, two modular `EcdhMask` pads, one
    * `_deliveries` entry. Call it beside the core's note creation, once per
@@ -252,10 +221,10 @@ module ConfidentialNoteFungibleTokenDelivery {
     const paddedNonce = nonce as Uint<248>;
     const delivery = Delivery {
       ephemeralPk: shared.ephemeralPk,
-      valueCt: padAdd(value as Uint<248>,
-                      EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
-      nonceCt: padAdd(paddedNonce,
-                      EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
+      valueCt: U248_wrappingAdd(value as Uint<248>,
+                                EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
+      nonceCt: U248_wrappingAdd(paddedNonce,
+                                EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
     };
     _deliveries.pushFront(disclose(delivery));
   }
@@ -287,10 +256,10 @@ module ConfidentialNoteFungibleTokenDelivery {
            "ConfidentialNoteFungibleTokenDelivery: identity ephemeral");
     const sShared = Ecdh_recoverShared(delivery.ephemeralPk, ekScalar);
     return RecoveredNote {
-      value: padSub(delivery.valueCt,
-                    EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
-      nonce: padSub(delivery.nonceCt,
-                    EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
+      value: U248_wrappingSub(delivery.valueCt,
+                              EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
+      nonce: U248_wrappingSub(delivery.nonceCt,
+                              EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
     };
   }
 }
