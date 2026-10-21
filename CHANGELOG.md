@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add the `math/UintN<N>` module: `wrappingAdd` and `wrappingSub` compute `(a ± b) mod 2^N` on `Uint<N>` for any width and never fail, and `MODULUS` returns `2^N` as a `Field`.
+- Add the `math/UintN<N>` module: `wrappingAdd` and `wrappingSub` compute `(a ± b) mod 2^N` on `Uint<N>` for any width and never fail, and `MODULUS` returns `2^N` as a `Field`. (#1189)
 
 ### Changed
 
