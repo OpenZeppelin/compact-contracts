@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (math/UintN.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module UintN
+ * @description Wrapping arithmetic on `Uint<N>` for any width `N`: results
+ * are reduced modulo `2^N`, and no input fails. Instantiate with a width, e.g.
+ * `UintN<64>`, `UintN<248>`.
+ *
+ * @dev Names and semantics follow Rust's `wrapping_add` and `wrapping_sub`.
+ * The `Field` shape follows Noir's `WrappingAdd` and `WrappingSub`, with
+ * arkworks' `UInt<N>` as the generic-width precedent. Noir's `as` truncates,
+ * but `as Uint<N>` fails out of range. Each circuit therefore reduces
+ * explicitly, selects between two `Field` arms, and casts once, outside the
+ * select.
+ *
+ * @dev The `Field` arithmetic is exact while `a + b` stays below the field
+ * modulus, which holds for `N <= 253` and so for every width `Uint<N>` admits.
+ *
+ * Supported Operations:
+ * - MODULUS(): `2^N` as a `Field`.
+ * - wrappingAdd(a, b): `(a + b) mod 2^N`.
+ * - wrappingSub(a, b): `(a - b) mod 2^N`.
+ */
+module UintN<#N> {
+  /**
+   * @description `2^N` as a `Field`: the modulus of every circuit in this
+   * module.
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Field} `2^N`.
+   */
+  export pure circuit MODULUS(): Field {
+    return fold((acc: Field, _bit: Boolean): Field => acc * 2,
+                1 as Field,
+                default<Vector<N, Boolean>>);
+  }
+
+  /**
+   * @description Wrapping (modular) addition. Computes `a + b`, wrapping
+   * around at the boundary of the type.
+   *
+   * @dev The wrap test is `a > MAX - b`, which needs no `Uint<N + 1>`.
+   *
+   * @constraints depends on N:
+   * - UintN<8>: k=9, rows=98 (zkir-v2), k=9, rows=85 (zkir-v3)
+   * - UintN<64>: k=9, rows=308 (zkir-v2), k=9, rows=133 (zkir-v3)
+   * - UintN<248>: k=10, rows=980 (zkir-v2), k=9, rows=307 (zkir-v3)
+   *
+   * @param {Uint<N>} a - The first operand.
+   * @param {Uint<N>} b - The second operand.
+   * @returns {Uint<N>} `(a + b) mod 2^N`.
+   */
+  export pure circuit wrappingAdd(a: Uint<N>, b: Uint<N>): Uint<N> {
+    const modulus = MODULUS();
+    const wraps = a > ((modulus - 1) as Uint<N>) - b;
+    const sum = (a as Field) + (b as Field);
+    return (wraps ? sum - modulus : sum) as Uint<N>;
+  }
+
+  /**
+   * @description Wrapping (modular) subtraction. Computes `a - b`, wrapping
+   * around at the boundary of the type.
+   *
+   * @constraints depends on N:
+   * - UintN<8>: k=9, rows=84 (zkir-v2), k=9, rows=73 (zkir-v3)
+   * - UintN<64>: k=9, rows=273 (zkir-v2), k=9, rows=118 (zkir-v3)
+   * - UintN<248>: k=10, rows=885 (zkir-v2), k=9, rows=274 (zkir-v3)
+   *
+   * @param {Uint<N>} a - The minuend.
+   * @param {Uint<N>} b - The subtrahend.
+   * @returns {Uint<N>} `(a - b) mod 2^N`.
+   */
+  export pure circuit wrappingSub(a: Uint<N>, b: Uint<N>): Uint<N> {
+    const diff = (a as Field) - (b as Field);
+    return (a < b ? diff + MODULUS() : diff) as Uint<N>;
+  }
+}
