@@ -35,6 +35,9 @@ pragma language_version >= 0.26.0;
  * requires authority visibility into balances and is therefore out of scope
  * for the single-receiver base.
  *
+ * @dev Initialization. Every exported circuit except `initialize` asserts the
+ * contract is initialized.
+ *
  * @dev Trust model for witnesses.
  *
  * Witness implementations live in the user's wallet (TypeScript frontend) and
@@ -630,13 +633,18 @@ module ConfidentialFungibleToken {
    * getter grants nothing, the spend path (`transferFrom`/`burnFrom`) gates on
    * `_escrow` membership independently, so a non-existent allowance is unspendable.
    *
-   * @constraints k=10, rows=936
+   * @constraints k=10, rows=938
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
    * @return {EscrowEntry} - The encrypted escrow entry (encrypted-zero if none).
    */
   export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
+    assertInitialized();
     if (!_escrow.member(disclose(owner)) ||
         !_escrow.lookup(disclose(owner)).member(disclose(spender))) {
       const id = constructJubjubPoint(0 as Field, 1 as Field);
@@ -656,12 +664,17 @@ module ConfidentialFungibleToken {
   /**
    * @description Returns whether `account` has registered an encryption key.
    *
-   * @constraints k=9, rows=303
+   * @constraints k=9, rows=305
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @param {Bytes<32>} account - The account to query.
    * @return {Boolean} - True if `account` is registered.
    */
   export circuit isRegistered(account: Bytes<32>): Boolean {
+    assertInitialized();
     return _encryptionKeys.member(disclose(account));
   }
 
@@ -812,6 +825,12 @@ module ConfidentialFungibleToken {
    * `sum(balances) == totalSupply` invariant. Pair it with a debit (as `transfer`
    * does) or a supply increase (as a supply layer's `mint` does).
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `account` is non-zero and registered.
+   *
    * @param account - The recipient account id.
    * @param value - The amount to credit.
    */
@@ -928,7 +947,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @constraints k=16, rows=41623
+   * @constraints k=16, rows=41621
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -946,7 +965,6 @@ module ConfidentialFungibleToken {
    * @return {Bytes<32>} - The caller's (sender's) accountId.
    */
   export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-    assertInitialized();
     // Derive the sender from the same authentication `_debit` uses, so the
     // returned id is exactly the account whose funds moved.
     const senderId = _debit(value);
@@ -966,7 +984,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @constraints k=16, rows=41612
+   * @constraints k=16, rows=41610
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -992,7 +1010,6 @@ module ConfidentialFungibleToken {
    * @return {Bytes<32>} - The caller's accountId (for caller-side gating).
    */
   export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-    assertInitialized();
     const senderId = _debit(value);
     _credit(to, value);
     return senderId;
@@ -1125,7 +1142,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @constraints k=17, rows=68920
+   * @constraints k=17, rows=68918
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1146,7 +1163,6 @@ module ConfidentialFungibleToken {
                    to: Bytes<32>,
                    value: Uint<128>
                    ): Bytes<32> {
-    assertInitialized();
     _assertValueInBound(value);
     assert(to != default<Bytes<32>>,
            "ConfidentialFungibleToken: invalid receiver");
@@ -1298,6 +1314,13 @@ module ConfidentialFungibleToken {
    * for learning how much a partial spend left them; without it the owner could
    * not prove the post-refund balance on a later re-approve/revoke. See the
    * `EscrowEntry` field doc.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `fromAddress` has an escrow for the caller, and its spender copy decrypts
+   *   to at least `value`.
    *
    * @param fromAddress - The owner whose escrow the caller (spender) draws on.
    * @param value - The amount to consume from the allowance.
