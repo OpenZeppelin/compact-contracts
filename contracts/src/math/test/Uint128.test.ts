@@ -439,6 +439,23 @@ describe('Uint128', () => {
         'failed assert: Uint128: addition overflow',
       );
     });
+
+    testDryOnly('should call no witness', async () => {
+      const honest = Uint128Witnesses().wit_divUint128;
+      let calls = 0;
+      uint128Simulator.overrideWitness('wit_divUint128', (context, a, b) => {
+        calls++;
+        return honest(context, a, b);
+      });
+      expect(await uint128Simulator.addChecked(2n ** 127n, 2n ** 64n)).toBe(
+        2n ** 127n + 2n ** 64n,
+      );
+      await expectRejection(
+        uint128Simulator.addChecked(MAX_UINT128, 1n),
+        'failed assert: Uint128: addition overflow',
+      );
+      expect(calls).toBe(0);
+    });
   });
 
   describe('addCheckedU128', () => {
@@ -456,6 +473,26 @@ describe('Uint128', () => {
         uint128Simulator.addCheckedU128(a, b),
         'failed assert: Uint128: addition overflow',
       );
+    });
+
+    testDryOnly('should call no witness', async () => {
+      const honest = Uint128Witnesses().wit_divUint128;
+      let calls = 0;
+      uint128Simulator.overrideWitness('wit_divUint128', (context, a, b) => {
+        calls++;
+        return honest(context, a, b);
+      });
+      expect(
+        await uint128Simulator.addCheckedU128(
+          u128(2n ** 127n),
+          u128(MAX_UINT64),
+        ),
+      ).toBe(2n ** 127n + MAX_UINT64);
+      await expectRejection(
+        uint128Simulator.addCheckedU128(u128(MAX_UINT128), u128(1n)),
+        'failed assert: Uint128: addition overflow',
+      );
+      expect(calls).toBe(0);
     });
   });
 

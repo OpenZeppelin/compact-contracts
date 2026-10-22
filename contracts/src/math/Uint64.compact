@@ -217,6 +217,10 @@ module Uint64 {
   /**
    * @description Adds two `Uint<64>` numbers with overflow checking, returning a `Uint<64>` result.
    *
+   * @notice Uses the native `+` operator. The native form `(a + b) as Uint<64>`
+   * fails with a generic cast error. This circuit fails with the message of the
+   * module.
+   *
    * @constraints k=9, rows=296 (zkir-v2)
    * @constraints k=9, rows=123 (zkir-v3)
    *
@@ -236,6 +240,10 @@ module Uint64 {
 
   /**
    * @description Subtracts `b` from `a`, checking for underflow to ensure the result is non-negative.
+   *
+   * @notice Uses the native `-` operator. The native form `a - b` fails with
+   * "result of subtraction would be negative". This circuit fails with the message
+   * of the module.
    *
    * @constraints k=9, rows=210 (zkir-v2)
    * @constraints k=9, rows=103 (zkir-v3)
@@ -269,6 +277,10 @@ module Uint64 {
 
   /**
    * @description Multiplies two `Uint<64>` values with overflow checking, returning a `Uint<64>` result.
+   *
+   * @notice Uses the native `*` operator. The native form `(a * b) as Uint<64>`
+   * fails with a generic cast error. This circuit fails with the message of the
+   * module.
    *
    * @constraints k=9, rows=296 (zkir-v2)
    * @constraints k=9, rows=123 (zkir-v3)
