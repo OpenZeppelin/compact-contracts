@@ -1,5 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["src/archive/", "src/**/*.test.ts"],
+  "exclude": [
+    "src/archive/",
+    "src/**/*.test.ts",
+    "src/math/test/witnesses/MathConsumerWitnesses.ts"
+  ],
   "compilerOptions": {}
 }

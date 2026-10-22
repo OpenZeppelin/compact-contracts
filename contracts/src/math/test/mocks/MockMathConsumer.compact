@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: MIT
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Do not deploy this example in a production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { sqrt } from "../../Uint128" prefix Uint128_;
+
+export ledger liquidity: Uint<64>;
+
+export circuit update(reserve0: Uint<64>, reserve1: Uint<64>): Uint<64> {
+  const root = Uint128_sqrt(reserve0 * reserve1);
+  liquidity = disclose(root);
+  return disclose(root);
+}
