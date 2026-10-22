@@ -10,15 +10,25 @@ pragma language_version >= 0.26.0;
  * Deposits accumulate at the contract (no atomic forward); the operator
  * drains coins by presenting the `(parent, opSecret)` preimage at drain
  * time. The drained coin is sent as a shielded note to the parent key, so
- * the parent stays hidden on-chain. The parent is deliberately a coin public
- * key and not a contract address: a shielded send to a contract publishes
- * that contract's address in cleartext, which would defeat the guarantee.
+ * the parent never appears on the ledger. The parent is deliberately a coin
+ * public key and not a contract address: a shielded send to a contract
+ * publishes that contract's address in cleartext, which would defeat the
+ * guarantee.
+ *
+ * @notice The commitment hides the parent from the public, not from a
+ * depositor. A contract-owned coin's nullifier is a hash of the coin and the
+ * contract address, and `sendShielded` derives the nonces of the sent coin
+ * and of the change from a public hash of the spent coin's nonce. Whoever
+ * knows a deposited coin can therefore find the drain that spends it, recover
+ * the drained amount (on a partial drain the change commitment has the value
+ * as its only unknown), and test candidate parent keys against the sent
+ * coin's commitment. A depositor who can guess the parent can confirm it.
  *
  * Knowledge of the preimage is the sole authorization gate — there is
  * no signer set and no nullifier scheme. The operational secret is
  * held off-chain; the contract never sees it except during a drain.
  * Two forwarders bound to the same parent with different operational
- * secrets produce different commitments and are unlinkable on-chain.
+ * secrets produce different commitments, so the ledger does not link them.
  *
  * Underscore-prefixed circuits have no access control beyond the
  * preimage check inside `_drain`. State access is gated by the
@@ -103,7 +113,8 @@ module ForwarderPrivate {
    * @description Spends a previously-deposited shielded coin to the parent,
    * a coin public key. The caller proves knowledge of `(parent, opSecret)`
    * matching the stored commitment; the coin is sent as a plain shielded note,
-   * so the parent stays hidden on-chain. If `coin.value` exceeds `value`,
+   * so the parent stays hidden from anyone who holds no deposited coin (see the
+   * module notice). If `coin.value` exceeds `value`,
    * `sendShielded` routes the change back to this contract as a self-owned
    * output; `_drain` returns it untouched via `result.change`. The
    * implementing contract chooses what to do with it: leave it dwelling at
