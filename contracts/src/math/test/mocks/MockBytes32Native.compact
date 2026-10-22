@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: MIT
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Do not deploy this contract in a production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { U128, U256 } from "../../Types";
+
+ledger _invocations: Counter;
+
+export circuit packNative(vec: Vector<32, Uint<8>>): Bytes<32> {
+  _invocations.increment(1);
+  return vec as Bytes<32>;
+}
+
+export circuit eqNative(a: Bytes<32>, b: Bytes<32>): Boolean {
+  _invocations.increment(1);
+  return a == b;
+}
+
+export circuit isZeroNative(a: Bytes<32>): Boolean {
+  _invocations.increment(1);
+  return a == default<Bytes<32>>;
+}
+
+export circuit vectorToU256Native(vec: Vector<32, Uint<8>>): U256 {
+  _invocations.increment(1);
+  return U256 { low: U128 { low: vec[0] +
+                                 vec[1] * 0x100 +
+                                 vec[2] * 0x10000 +
+                                 vec[3] * 0x1000000 +
+                                 vec[4] * 0x100000000 +
+                                 vec[5] * 0x10000000000 +
+                                 vec[6] * 0x1000000000000 +
+                                 vec[7] * 0x100000000000000,
+                            high: vec[8] +
+                                  vec[9] * 0x100 +
+                                  vec[10] * 0x10000 +
+                                  vec[11] * 0x1000000 +
+                                  vec[12] * 0x100000000 +
+                                  vec[13] * 0x10000000000 +
+                                  vec[14] * 0x1000000000000 +
+                                  vec[15] * 0x100000000000000 },
+                high: U128 { low: vec[16] +
+                                  vec[17] * 0x100 +
+                                  vec[18] * 0x10000 +
+                                  vec[19] * 0x1000000 +
+                                  vec[20] * 0x100000000 +
+                                  vec[21] * 0x10000000000 +
+                                  vec[22] * 0x1000000000000 +
+                                  vec[23] * 0x100000000000000,
+                             high: vec[24] +
+                                   vec[25] * 0x100 +
+                                   vec[26] * 0x10000 +
+                                   vec[27] * 0x1000000 +
+                                   vec[28] * 0x100000000 +
+                                   vec[29] * 0x10000000000 +
+                                   vec[30] * 0x1000000000000 +
+                                   vec[31] * 0x100000000000000 } };
+}

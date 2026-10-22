@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Do not deploy this contract in a production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+
+import { U128, U256 } from "../../Types";
+
+ledger _invocations: Counter;
+
+export circuit addNative(a: Uint<64>, b: Uint<64>): Uint<128> {
+  _invocations.increment(1);
+  return a + b;
+}
+
+export circuit mulNative(a: Uint<64>, b: Uint<64>): Uint<128> {
+  _invocations.increment(1);
+  return a * b;
+}
+
+export circuit minNative(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return a < b ? a : b;
+}
+
+export circuit maxNative(a: Uint<64>, b: Uint<64>): Uint<64> {
+  _invocations.increment(1);
+  return a > b ? a : b;
+}
