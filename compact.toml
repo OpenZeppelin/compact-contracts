@@ -21,6 +21,12 @@ proof_server = "http://127.0.0.1:6300"
 signing_key_file = "deploy/local.signingkey"
 private_state_id = "{name}-ps"
 
+# MockUint128 has 42 circuits. A deploy transaction with all 42 verifier keys
+# exceeds the block limit when the wallet computes its fee, so the deployer
+# splits the deploy into transactions of at most 14 circuits.
+[contracts.MockUint128]
+circuits_per_tx = 14
+
 [contracts."src/multisig/examples/*"]
 signing_key_file = "deploy/local.signingkey"
 private_state_id = "{name}-ps"

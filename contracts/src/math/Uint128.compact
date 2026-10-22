@@ -1,0 +1,1204 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (math/Uint128.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Uint128
+ * @description Mathematical operations for 128-bit unsigned integers using the U128 struct,
+ * which represents numbers as high * 2⁶⁴ + low, where high and low are 64-bit unsigned
+ * integers (Uint<64>) in [0, 2⁶⁴ - 1]. Operations are provided in dual forms: one for
+ * Uint<128> inputs with conversions to/from U128, and another for direct U128 inputs.
+ *
+ * @dev Supported Operations:
+ * - Constants:
+ *   - DivResultU128: Struct with quotient and remainder from division.
+ *   - MODULUS(): Returns 2⁶⁴.
+ *   - ZERO_U128(): Returns zero U128 struct.
+ *   - MAX_U128(): Returns maximum U128 (2¹²⁸ - 1).
+ *   - MAX_UINT128(): Returns 2¹²⁸ - 1.
+ * - Conversion:
+ *   - toU128(value): Converts Uint<128> to U128 struct.
+ *   - toUint128(value): Converts U128 struct to Uint<128>.
+ * - Comparison:
+ *   - eq(a, b): Compares two values for equality (Uint<128> and U128 variants).
+ *   - lt(a, b): Checks if one value is less than another (Uint<128> and U128 variants).
+ *   - lte(a, b): Checks if one value is less than or equal to another (Uint<128> and U128 variants).
+ *   - gt(a, b): Checks if one value is greater than another (Uint<128> and U128 variants).
+ *   - gte(a, b): Checks if one value is greater than or equal to another (Uint<128> and U128 variants).
+ * - Arithmetic:
+ *   - add(a, b): Adds two values, returning a `U256` result to handle potential overflow (Uint<128> and U128 variants).
+ *   - addChecked(a, b): Adds two values with overflow checking, returning a `Uint<128>` result (Uint<128> and U128 variants).
+ *   - sub(a, b): Subtracts one value from another, checking for underflow (Uint<128> and U128 variants).
+ *   - mul(a, b): Multiplies two values, returning a `U256` result (Uint<128> and U128 variants).
+ *   - mulChecked(a, b): Multiplies two values with overflow checking, returning a `Uint<128>` result (Uint<128> and U128 variants).
+ * - Division:
+ *   - div(a, b): Computes the quotient of dividing one value by another (Uint<128> and U128 variants).
+ *   - rem(a, b): Computes the remainder of dividing one value by another (Uint<128> and U128 variants).
+ *   - divRem(a, b): Computes both quotient and remainder of a division (Uint<128> and U128 variants).
+ * - Square Root:
+ *   - sqrt(radicand): Computes the floor of the square root (Uint<128> and U128 variants).
+ * - Utility:
+ *   - isZero(a): Checks if a value is zero (Uint<128> and U128 variants).
+ *   - isMultiple(a, b): Checks if one value is a multiple of another (Uint<128> and U128 variants).
+ *   - min(a, b): Returns the smaller of two values (Uint<128> and U128 variants).
+ *   - max(a, b): Returns the larger of two values (Uint<128> and U128 variants).
+ *
+ * TODO: Missing operations (available in other math modules):
+ * - Conversions:
+ *   - TODO: toBytes(value): Convert Uint<128>/U128 to Bytes<16> (little-endian).
+ *   - TODO: toUnpackedBytes(value): Convert Uint<128>/U128 to Vector<16, Uint<8>> (little-endian).
+ */
+module Uint128 {
+  import { U128, U256 } from "./Types";
+
+  import { MAX_UINT64 } from "./Uint64" prefix Uint64_;
+
+  ////////////////////////////////////////////////////////////////
+  // Constants
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description A struct representing the result of a division operation on U128 values.
+   */
+  export struct DivResultU128 {
+    /**
+     * @description The quotient result of the division operation
+     */
+    quotient: U128,
+    /**
+     * @description The remainder result of the division operation
+     */
+    remainder: U128
+  }
+
+  /**
+   * @description Computes division of two U128 values locally (off-chain).
+   *
+   * @param a The number to divide.
+   * @param b The number to divide by.
+   * @returns DivResultU128 The quotient and remainder of the division as U128 values.
+   */
+  export witness wit_divU128(a: U128, b: U128): DivResultU128;
+
+  /**
+   * @description Computes division of two Uint<128> values locally (off-chain).
+   *
+   * @param a The number to divide.
+   * @param b The number to divide by.
+   * @returns DivResultU128 The quotient and remainder of the division as U128 values.
+   */
+  export witness wit_divUint128(a: Uint<128>, b: Uint<128>): DivResultU128;
+
+  /**
+   * @description Computes the square root of a U128 value locally (off-chain).
+   *
+   * @param radicand The U128 value to compute the square root of.
+   * @returns Uint<64> The square root of radicand.
+   */
+  export witness wit_sqrtU128(radicand: U128): Uint<64>;
+
+  /**
+   * @description A pure circuit that returns the modulus value of U128 (2⁶⁴).
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Uint<65>} The value 2⁶⁴ (0x10000000000000000).
+   */
+  export pure circuit MODULUS(): Uint<65> {
+    // 2^64 as a Uint<65> literal: Compact has no exponentiation operator.
+    return 0x10000000000000000; // 2⁶⁴
+  }
+
+  /**
+   * @description A pure circuit that returns a zero U128 struct.
+   *
+   * @constraints k=6, rows=43 (zkir-v2)
+   * @constraints k=6, rows=51 (zkir-v3)
+   *
+   * @returns {U128} A U128 struct with low and high fields set to 0.
+   */
+  export pure circuit ZERO_U128(): U128 {
+    return U128 { low: 0, high: 0 };
+  }
+
+  /**
+   * @description Returns the maximum value for a U128 struct, where both low and high
+   * fields are set to the maximum 64-bit value (2⁶⁴ - 1).
+   *
+   * @constraints k=6, rows=44 (zkir-v2)
+   * @constraints k=6, rows=52 (zkir-v3)
+   *
+   * @returns {U128} A U128 struct representing 2¹²⁸ - 1.
+   */
+  export pure circuit MAX_U128(): U128 {
+    return U128 { low: Uint64_MAX_UINT64(), high: Uint64_MAX_UINT64() };
+  }
+
+  /**
+   * @description Returns the maximum value for a 128-bit unsigned integer (2¹²⁸ - 1).
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Uint<128>} The value 340,282,366,920,938,463,463,374,607,431,768,211,455
+   * (0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF).
+   */
+  export pure circuit MAX_UINT128(): Uint<128> {
+    return 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Conversions
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Converts Uint<128> to U128 struct by splitting into 64-bit parts.
+   *
+   * @dev Splits value ∈ [0, 2¹²⁸ - 1] into value = high · 2⁶⁴ + low, where low, high ∈ [0, 2⁶⁴ - 1].
+   *
+   * Mathematical Steps:
+   * 1. Compute low = value mod 2⁶⁴, high = ⌊value / 2⁶⁴⌋
+   * 2. Verify high · 2⁶⁴ + low = value
+   * 3. Return U128 {low, high}
+   *
+   * @constraints k=9, rows=439 (zkir-v2)
+   * @constraints k=8, rows=159 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness limbs must recompose to the value. Fails with "Uint128: conversion invalid".
+   *
+   * @param {Uint<128>} value - The Uint<128> value to convert.
+   * @returns {U128} A U128 struct representing the 128-bit value.
+   */
+  export circuit toU128(value: Uint<128>): U128 {
+    const result = wit_divUint128(value, MODULUS());
+    const high = result.quotient.low;
+    const low = result.remainder.low;
+
+    // Verify that value = high * 2⁶⁴ + low
+    const highShifted = (high as Uint<128>) * MODULUS(); // high * 2⁶⁴
+    const reconstructed = highShifted + (low as Uint<128>); // high * 2⁶⁴ + low
+
+    // Verify reconstruction matches value
+    assert(reconstructed == value, "Uint128: conversion invalid");
+
+    return U128 { low: low, high: high };
+  }
+
+  /**
+   * @description Converts U128 struct to Uint<128>.
+   *
+   * @dev Reconstructs N = n_h · 2⁶⁴ + n_l, where n_l, n_h ∈ [0, 2⁶⁴ - 1].
+   *
+   * @constraints k=9, rows=304 (zkir-v2)
+   * @constraints k=7, rows=121 (zkir-v3)
+   *
+   * @param {U128} value - The U128 value to convert.
+   * @returns {Uint<128>} A Uint<128> value representing the 128-bit value.
+   */
+  export pure circuit toUint128(value: U128): Uint<128> {
+    const highShifted = (value.high as Uint<128>) * MODULUS();
+    const result = highShifted + (value.low as Uint<128>);
+    return result as Uint<128>;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Comparisons
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Compares two Uint<128> values for equality.
+   *
+   * @constraints k=9, rows=304 (zkir-v2)
+   * @constraints k=7, rows=121 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Boolean} True if a is equal to b, false otherwise.
+   */
+  export pure circuit eq(a: Uint<128>, b: Uint<128>): Boolean {
+    return a == b;
+  }
+
+  /**
+   * @description Compares two U128 values for equality.
+   *
+   * @constraints k=9, rows=331 (zkir-v2)
+   * @constraints k=8, rows=148 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {Boolean} True if a is equal b, false otherwise.
+   */
+  export pure circuit eq(a: U128, b: U128): Boolean {
+    return a.low == b.low && a.high == b.high;
+  }
+
+  /**
+   * @description Checks if one Uint<128> value is less than another.
+   *
+   * @constraints k=9, rows=355 (zkir-v2)
+   * @constraints k=9, rows=136 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Boolean} True if a is less than b, false otherwise.
+   */
+  export pure circuit lt(a: Uint<128>, b: Uint<128>): Boolean {
+    return a < b;
+  }
+
+  /**
+   * @description Checks if one Uint<128> value is less than or equal to another.
+   *
+   * @constraints k=9, rows=358 (zkir-v2)
+   * @constraints k=9, rows=137 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Boolean} True if a is less than or equal to b, false otherwise.
+   */
+  export pure circuit lte(a: Uint<128>, b: Uint<128>): Boolean {
+    return a <= b;
+  }
+
+  /**
+   * @description Checks if one U128 value is less than another.
+   *
+   * @constraints k=9, rows=390 (zkir-v2)
+   * @constraints k=9, rows=169 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {Boolean} True if a is less than b, false otherwise.
+   */
+  export pure circuit lt(a: U128, b: U128): Boolean {
+    return a.high < b.high || (a.high == b.high && a.low < b.low);
+  }
+
+  /**
+   * @description Checks if one U128 value is less than or equal to another.
+   *
+   * @constraints k=9, rows=393 (zkir-v2)
+   * @constraints k=9, rows=171 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {Boolean} True if a is less than or equal to b, false otherwise.
+   */
+  export pure circuit lte(a: U128, b: U128): Boolean {
+    return !lt(b, a);
+  }
+
+  /**
+   * @description Checks if one Uint<128> value is greater than another.
+   *
+   * @constraints k=9, rows=355 (zkir-v2)
+   * @constraints k=9, rows=136 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Boolean} True if a is greater than b, false otherwise.
+   */
+  export pure circuit gt(a: Uint<128>, b: Uint<128>): Boolean {
+    return a > b;
+  }
+
+  /**
+   * @description Checks if one Uint<128> value is greater than or equal to another.
+   *
+   * @constraints k=9, rows=358 (zkir-v2)
+   * @constraints k=9, rows=137 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Boolean} True if a is greater than or equal to b, false otherwise.
+   */
+  export pure circuit gte(a: Uint<128>, b: Uint<128>): Boolean {
+    return a >= b;
+  }
+
+  /**
+   * @description Checks if one U128 value is greater than another.
+   *
+   * @constraints k=9, rows=390 (zkir-v2)
+   * @constraints k=9, rows=169 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {Boolean} True if a is greater than b, false otherwise.
+   */
+  export pure circuit gt(a: U128, b: U128): Boolean {
+    return lt(b, a);
+  }
+
+  /**
+   * @description Checks if one U128 value is greater than or equal to another.
+   *
+   * @constraints k=9, rows=393 (zkir-v2)
+   * @constraints k=9, rows=171 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {Boolean} True if a is greater than or equal to b, false otherwise.
+   */
+  export pure circuit gte(a: U128, b: U128): Boolean {
+    return !lt(a, b);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Arithmetic
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Adds two U128 values, returning a U256.
+   *
+   * @dev Computes S = a + b for a, b ∈ [0, 2¹²⁸ - 1], returning S ∈ [0, 2¹²⁹ - 2] as U256.
+   * Let a = a_h · 2⁶⁴ + a_l and b = b_h · 2⁶⁴ + b_l, where a_l, a_h, b_l, b_h ∈ [0, 2⁶⁴ - 1].
+   *
+   * Mathematical Steps:
+   * 1. Lower 64-bit Addition:
+   *    s_l = a_l + b_l ∈ [0, 2⁶⁵ - 2]
+   *    result_l = s_l mod 2⁶⁴, carry_0 = ⌊s_l / 2⁶⁴⌋ ∈ {0, 1}
+   *
+   * 2. Upper 64-bit Addition:
+   *    s_h = a_h + b_h + carry_0 ∈ [0, 2⁶⁵ - 1]
+   *    result_h = s_h mod 2⁶⁴, carry_1 = ⌊s_h / 2⁶⁴⌋ ∈ {0, 1}
+   *
+   * 3. Result Assembly:
+   *    S_low = result_h · 2⁶⁴ + result_l (bits 0-127)
+   *    S_high = carry_1 (bit 128)
+   *    Return U256 {low: S_low, high: {carry_1, 0}}
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {U256} The sum of a and b.
+   */
+  circuit _add(a: U128, b: U128): U256 {
+    const lowSumFull = a.low + b.low;
+    const lowSumFullU128 = toU128(lowSumFull);
+
+    const carry = lowSumFullU128.high;
+    const highSumIntermediate = a.high + b.high;
+    const highSumFull = highSumIntermediate + carry;
+    const highSumFullU128 = toU128(highSumFull);
+    const carryHigh = highSumFullU128.high;
+
+    return U256 { low: U128 { low: lowSumFullU128.low, high: highSumFullU128.low },
+                  high: U128 { low: carryHigh, high: 0 } };
+  }
+
+  /**
+   * @description Adds two Uint<128> values.
+   *
+   * @constraints k=11, rows=1407 (zkir-v2)
+   * @constraints k=9, rows=456 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {U256} The sum of a and b.
+   */
+  export circuit add(a: Uint<128>, b: Uint<128>): U256 {
+    const aU128 = toU128(a);
+    const bU128 = toU128(b);
+    return _add(aU128, bU128);
+  }
+
+  /**
+   * @description Adds two U128 values.
+   *
+   * @dev Result is returned as `U256` to handle potential overflow.
+   *
+   * @constraints k=10, rows=899 (zkir-v2)
+   * @constraints k=9, rows=334 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {U256} The sum of a and b.
+   */
+  export circuit add(a: U128, b: U128): U256 {
+    return _add(a, b);
+  }
+
+  /**
+   * @description Adds two Uint<128> values with overflow checking.
+   *
+   * @constraints k=11, rows=1498 (zkir-v2)
+   * @constraints k=9, rows=451 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The sum of `a` and `b` must not exceed 2^128 - 1. Fails with "Uint128: addition overflow".
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Uint<128>} The sum of a and b.
+   */
+  export circuit addChecked(a: Uint<128>, b: Uint<128>): Uint<128> {
+    const sum = add(a, b); // U256 { low: U128, high: U128 }
+
+    // If high != 0 then a+b exceeded 2¹²⁸-1
+    assert(isZero(sum.high), "Uint128: addition overflow");
+
+    return toUint128(sum.low);
+  }
+
+  /**
+   * @description Adds two U128 values with overflow checking.
+   *
+   * @constraints k=10, rows=990 (zkir-v2)
+   * @constraints k=9, rows=329 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The sum of `a` and `b` must not exceed 2^128 - 1. Fails with "Uint128: addition overflow".
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {Uint<128>} The sum of a and b.
+   */
+  export circuit addChecked(a: U128, b: U128): Uint<128> {
+    const sum = _add(a, b); // U256 { low: U128, high: U128 }
+
+    // If high != 0 then a+b exceeded 2¹²⁸-1
+    assert(isZero(sum.high), "Uint128: addition overflow");
+
+    return toUint128(sum.low);
+  }
+
+  /**
+   * @description Subtracts one Uint<128> value from another.
+   *
+   * @constraints k=9, rows=362 (zkir-v2)
+   * @constraints k=9, rows=141 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `a` must be greater than or equal to `b`. Fails with "Uint128: subtraction underflow".
+   *
+   * @param {Uint<128>} a - The Uint<128> value to subtract from (minuend).
+   * @param {Uint<128>} b - The Uint<128> value to subtract (subtrahend).
+   * @returns {Uint<128>} The difference between a and b.
+   */
+  export pure circuit sub(a: Uint<128>, b: Uint<128>): Uint<128> {
+    assert(a >= b, "Uint128: subtraction underflow");
+    return a - b;
+  }
+
+  /**
+   * @description Subtracts one U128 from another with borrow handling.
+   *
+   * @dev Computes D = a - b for a, b ∈ [0, 2¹²⁸ - 1] where a ≥ b.
+   * Let a = a_h · 2⁶⁴ + a_l and b = b_h · 2⁶⁴ + b_l.
+   *
+   * Mathematical Steps:
+   * 1. Underflow Check: Assert a ≥ b
+   * 2. Borrow: borrow = 1 if a_l < b_l, else 0
+   * 3. High Part: high_diff = a_h - (b_h + borrow)
+   * 4. Low Part: low_diff = a_l + borrow · 2⁶⁴ - b_l (no branch)
+   * 5. Return U128 {low: low_diff, high: high_diff}
+   *
+   * @constraints k=10, rows=550 (zkir-v2)
+   * @constraints k=9, rows=246 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `a` must be greater than or equal to `b`. Fails with "Uint128: subtraction underflow".
+   *
+   * @param {U128} a - The U128 value to subtract from.
+   * @param {U128} b - The U128 value to subtract.
+   * @returns {U128} The difference between a and b.
+   */
+  export pure circuit sub(a: U128, b: U128): U128 {
+    // General case
+    assert(!lt(a, b), "Uint128: subtraction underflow");
+
+    const borrow = a.low < b.low ? 1 as Uint<64> : 0 as Uint<64>;
+    const highWithBorrow = b.high + borrow;
+    const highDiff = a.high - highWithBorrow;
+
+    // Branchless low limb. A circuit contains both branches of an `if`, and
+    // compilers before 0.31.1 range-check a downcast in the branch that is
+    // not taken, so a branch with `as Uint<64>` made valid inputs unprovable.
+    // borrow = 0: lowDiff = a.low - b.low (below 2^64, since a.low >= b.low).
+    // borrow = 1: lowDiff = a.low + 2^64 - b.low (below 2^64, since a.low < b.low).
+    const lowDiff = a.low + borrow * MODULUS() - b.low;
+    return U128 { low: lowDiff as Uint<64>, high: highDiff };
+  }
+
+  /**
+   * @description Multiplies two U128 values, returning the full 256-bit result.
+   *
+   * @dev Computes P = a · b for a, b ∈ [0, 2¹²⁸ - 1], returning P as U256 {low: U128, high: U128}.
+   * Uses schoolbook multiplication by aligning 64-bit partial products to their
+   * respective word positions and accumulating each word in a single operation.
+   * For a = a_h · 2⁶⁴ + a_l and b = b_h · 2⁶⁴ + b_l:
+   * P = a · b = hh · 2¹²⁸ + (hl + lh) · 2⁶⁴ + ll, where ll = a_l·b_l, hl = a_h·b_l,
+   * lh = a_l·b_h, hh = a_h·b_h.
+   *
+   * Mathematical Steps:
+   * 1. Partial Products (each a U128 spanning 2 of the 4 result words):
+   *    - ll = a_l · b_l → occupies words [0, 1]
+   *    - hl = a_h · b_l → occupies words [1, 2]
+   *    - lh = a_l · b_h → occupies words [1, 2]
+   *    - hh = a_h · b_h → occupies words [2, 3]
+   *
+   * 2. Word-Aligned Accumulation:
+   *    - Word 0: ll.low (no additions needed)
+   *    - Word 1: offset1 = ll.high + hl.low + lh.low (carry → word 2)
+   *    - Word 2: offset2 = offset1.high + hl.high + lh.high + hh.low (carry → word 3)
+   *    - Word 3: offset3 = offset2.high + hh.high (no carry; result fits in 256 bits)
+   *
+   * 3. Result Construction:
+   *    - resultLow  = {low: ll.low,     high: offset1.low}
+   *    - resultHigh = {low: offset2.low, high: offset3.low}
+   *
+   * 4. Overflow Check:
+   *    Max product = (2¹²⁸ - 1)² = 2²⁵⁶ - 2¹²⁹ + 1 < 2²⁵⁶, so offset3.high must be 0.
+   *
+   * Requirements:
+   *
+   * - The product must fit in 256 bits. This is a defensive check with the message
+   *   "Uint128: unexpected multiplication overflow". No input fails it: the product of two
+   *   values below 2^128 is always below 2^256.
+   *
+   * @param {U128} a - The first U128 value to multiply.
+   * @param {U128} b - The second U128 value to multiply.
+   * @returns {U256} The product a * b as a U256 struct.
+   */
+  circuit _mul(a: U128, b: U128): U256 {
+    // Work with 64-bit words
+    // Compute partial products (each is Uint<128> comprising 2 words within a 4-word result)
+    const ll = toU128(a.low * b.low); //  0       || 0        || ll.high  || ll.low
+    const hl = toU128(a.high * b.low); //  0       || hl.high  || hl.low   || 0
+    const lh = toU128(a.low * b.high); //  0       || lh.high  || lh.low   || 0
+    const hh = toU128(a.high * b.high); //  hh.high || hh.low   || 0        || 0
+
+    // add the values at word 1. offset1.high is the carry, which is added to the next word
+    const offset1 = toU128(ll.high + hl.low + lh.low);
+    // add the values at word 2. offset2.high is the carry, which is added to the next word
+    const offset2 = toU128(offset1.high + hl.high + lh.high + hh.low);
+    // add the values at word 3. There should be no carry here since the result fits in 256 bits
+    const offset3 = toU128(offset2.high + hh.high);
+
+    const resultLow = U128 { low: ll.low, high: offset1.low };
+    const resultHigh = U128 { low: offset2.low, high: offset3.low };
+    assert(isZero(offset3.high), "Uint128: unexpected multiplication overflow");
+
+    return U256 { low: resultLow, high: resultHigh };
+  }
+
+  /**
+   * @description Multiplies two Uint<128> values.
+   *
+   * @dev Result is returned as `U256` to handle full product.
+   *
+   * @constraints k=12, rows=2743 (zkir-v2)
+   * @constraints k=10, rows=832 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value to multiply.
+   * @param {Uint<128>} b - The second Uint<128> value to multiply.
+   * @returns {U256} The full product of a and b.
+   */
+  export circuit mul(a: Uint<128>, b: Uint<128>): U256 {
+    const aU128 = toU128(a);
+    const bU128 = toU128(b);
+    return _mul(aU128, bU128);
+  }
+
+  /**
+   * @description Multiplies two U128 values.
+   *
+   * @dev Result is returned as `U256` to handle full product.
+   *
+   * @constraints k=12, rows=2235 (zkir-v2)
+   * @constraints k=10, rows=710 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value to multiply.
+   * @param {U128} b - The second U128 value to multiply.
+   * @returns {U256} The full product of a and b.
+   */
+  export circuit mul(a: U128, b: U128): U256 {
+    return _mul(a, b);
+  }
+
+  /**
+   * @description Internal implementation of checked multiplication for U128 values.
+   *
+   * Requirements:
+   *
+   * - The product of `a` and `b` must not exceed 2^128 - 1. Fails with "Uint128: multiplication overflow".
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {U128} The product of a and b.
+   */
+  circuit _mulChecked(a: U128, b: U128): U128 {
+    const result = _mul(a, b);
+
+    assert(eq(result.high, ZERO_U128()), "Uint128: multiplication overflow");
+
+    return result.low;
+  }
+
+  /**
+   * @description Multiplies two Uint<128> values with overflow checking.
+   *
+   * @constraints k=12, rows=2838 (zkir-v2)
+   * @constraints k=10, rows=829 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The product of `a` and `b` must not exceed 2^128 - 1. Fails with "Uint128: multiplication overflow".
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Uint<128>} The product of a and b.
+   */
+  export circuit mulChecked(a: Uint<128>, b: Uint<128>): Uint<128> {
+    const aU128 = toU128(a);
+    const bU128 = toU128(b);
+    const result = _mulChecked(aU128, bU128);
+    return toUint128(result);
+  }
+
+  /**
+   * @description Multiplies two U128 values with overflow checking.
+   *
+   * @constraints k=12, rows=2330 (zkir-v2)
+   * @constraints k=10, rows=707 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The product of `a` and `b` must not exceed 2^128 - 1. Fails with "Uint128: multiplication overflow".
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {Uint<128>} The product of a and b.
+   */
+  export circuit mulChecked(a: U128, b: U128): Uint<128> {
+    const result = _mulChecked(a, b);
+    return toUint128(result);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Division
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Divides a U128 value by another, returning quotient and remainder.
+   *
+   * @dev Computes quotient q and remainder r satisfying a = q·b + r, where 0 ≤ r < b.
+   * For a, b ∈ [0, 2¹²⁸ - 1] with b > 0, there exist unique q, r ∈ [0, 2¹²⁸ - 1] such that
+   * a = q·b + r and 0 ≤ r < b. Since q·b = a - r < a < 2¹²⁸, the product q·b fits in 128 bits
+   * (productU256.high = {0, 0}).
+   *
+   * Mathematical Steps:
+   * 1. Zero Divisor Check: Verify b ≠ 0
+   * 2. Witness Generation: Compute (q, r) = divmod(a, b) off-chain
+   * 3. Remainder Bounds: Assert r < b
+   * 4. Correctness Verification:
+   *    a) Compute P = q·b (returns U256)
+   *    b) Assert P.high = {0, 0} (P fits in 128 bits)
+   *    c) Assert P.low <= a (a quotient that is too large fails here with "division invalid")
+   *    d) Assert a - P.low = r (using subU128 for efficiency)
+   * 5. Return DivResultU128 {quotient: q, remainder: r}
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {U128} a - The U128 value to divide (dividend).
+   * @param {U128} b - The U128 value to divide by (divisor).
+   * @returns {DivResultU128} A struct containing the quotient and remainder as U128 values.
+   */
+  circuit _div(a: U128, b: U128): DivResultU128 {
+    // Step 1: Verify divisor is non-zero
+    assert(!isZero(b), "Uint128: division by zero");
+
+    // Step 2: General case - get witness for quotient and remainder
+    const result = wit_divU128(a, b);
+
+    // Step 3: Verify remainder bounds (0 ≤ r < b)
+    assert(lt(result.remainder, b), "Uint128: remainder error");
+
+    // Step 4: Verify correctness (a - q*b = r)
+
+    // Compute q * b
+    const productU256 = _mul(result.quotient, b);
+
+    // Since q*b < a < 2¹²⁸, the product must fit in 128 bits
+    assert(eq(productU256.high, ZERO_U128()), "Uint128: division product overflow");
+
+    // A quotient that is too large gives q*b > a. Reject it here with the
+    // division message, before sub can fail with its own message.
+    assert(!lt(a, productU256.low), "Uint128: division invalid");
+
+    // Verify a - q*b = r (using subtraction instead of addition)
+    // This is more efficient: sub returns U128, not U256
+    const diff = sub(a, productU256.low);
+    assert(eq(diff, result.remainder), "Uint128: division invalid");
+
+    return result;
+  }
+
+  /**
+   * @description Divides a Uint<128> a by a Uint<128> b, returning the quotient.
+   *
+   * @dev Uses internal `_div` circuit for computation.
+   *
+   * @constraints k=12, rows=3356 (zkir-v2)
+   * @constraints k=11, rows=1017 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {Uint<128>} a - The Uint<128> value to divide.
+   * @param {Uint<128>} b - The Uint<128> value to divide by.
+   * @returns {Uint<128>} The quotient of the division.
+   */
+  export circuit div(a: Uint<128>, b: Uint<128>): Uint<128> {
+    const aU128 = toU128(a);
+    const bU128 = toU128(b);
+    const quotient = _div(aU128, bU128).quotient;
+    return toUint128(quotient);
+  }
+
+  /**
+   * @description Divides a U128 a by a U128 b, returning the quotient.
+   *
+   * @dev Uses internal `_div` circuit for computation.
+   *
+   * @constraints k=12, rows=2739 (zkir-v2)
+   * @constraints k=10, rows=886 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {U128} a - The U128 value to divide.
+   * @param {U128} b - The U128 value to divide by.
+   * @returns {U128} The quotient of the division.
+   */
+  export circuit div(a: U128, b: U128): U128 {
+    return _div(a, b).quotient;
+  }
+
+  /**
+   * @description Computes the remainder of dividing a Uint<128> a by a Uint<128> b.
+   *
+   * @dev Uses internal `_div` circuit for computation.
+   *
+   * @constraints k=12, rows=3356 (zkir-v2)
+   * @constraints k=11, rows=1017 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {Uint<128>} a - The Uint<128> value to divide.
+   * @param {Uint<128>} b - The Uint<128> value to divide by.
+   * @returns {Uint<128>} The remainder of the division.
+   */
+  export circuit rem(a: Uint<128>, b: Uint<128>): Uint<128> {
+    const aU128 = toU128(a);
+    const bU128 = toU128(b);
+    const remainder = _div(aU128, bU128).remainder;
+    return toUint128(remainder);
+  }
+
+  /**
+   * @description Computes the remainder of dividing a U128 a by a U128 b.
+   *
+   * @dev Uses internal `_div` circuit for computation.
+   *
+   * @constraints k=12, rows=2739 (zkir-v2)
+   * @constraints k=10, rows=886 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {U128} a - The U128 value to divide.
+   * @param {U128} b - The U128 value to divide by.
+   * @returns {U128} The remainder of the division.
+   */
+  export circuit rem(a: U128, b: U128): U128 {
+    return _div(a, b).remainder;
+  }
+
+  /**
+   * @description Divides a Uint<128> a by a Uint<128> b, returning quotient and remainder.
+   *
+   * @dev Uses internal `_div` circuit for computation.
+   *
+   * @constraints k=12, rows=3269 (zkir-v2)
+   * @constraints k=11, rows=1026 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {Uint<128>} a - The Uint<128> value to divide.
+   * @param {Uint<128>} b - The Uint<128> value to divide by.
+   * @returns {DivResultU128} A struct containing the quotient and remainder.
+   */
+  export circuit divRem(a: Uint<128>, b: Uint<128>): DivResultU128 {
+    const aU128 = toU128(a);
+    const bU128 = toU128(b);
+    return _div(aU128, bU128);
+  }
+
+  /**
+   * @description Divides a U128 a by a U128 b, returning quotient and remainder.
+   *
+   * @dev Uses internal `_div` circuit for computation.
+   *
+   * @constraints k=12, rows=2761 (zkir-v2)
+   * @constraints k=10, rows=908 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {U128} a - The U128 value to divide.
+   * @param {U128} b - The U128 value to divide by.
+   * @returns {DivResultU128} A struct containing the quotient and remainder.
+   */
+  export circuit divRem(a: U128, b: U128): DivResultU128 {
+    return _div(a, b);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Square Root
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Computes the floor of the square root of a U128 value.
+   *
+   * @dev This circuit calculates R = ⌊√N⌋ for a 128-bit unsigned integer N, where R ∈ [0, 2⁶⁴ − 1]
+   * satisfies R² ≤ N < (R + 1)².
+   *
+   * Mathematical Steps:
+   * 1. Witness Generation:
+   *    Compute R = ⌊√N⌋ off-chain using wit_sqrtU128, where R ∈ [0, 2⁶⁴ - 1].
+   *
+   * 2. Lower Bound Verification (R² ≤ N):
+   *    - Represent R as U128: R_u128 = {low: R, high: 0}
+   *    - Compute S = R² using multiplication circuit
+   *    - Since R ≤ 2⁶⁴ - 1, we have S < 2¹²⁸, thus S fits in U128 (S.high = 0)
+   *    - Verify S.low ≤ N (ensures R is not an overestimate)
+   *
+   * 3. Upper Bound Verification ((R+1)² > N):
+   *    Instead of computing (R+1)² directly, use the identity:
+   *    (R+1)² = R² + 2R + 1
+   *
+   *    This avoids a second expensive multiplication.
+   *
+   *    Computation:
+   *    a) We already have S = R² from step 2
+   *    b) Compute T = 2R (simple left shift: multiply by 2)
+   *       Represent T as U128: T_u128 = {low: 2R mod 2⁶⁴, high: ⌊2R / 2⁶⁴⌋}
+   *       Note: 2R ≤ 2(2⁶⁴ - 1) = 2⁶⁵ - 2 < 2⁶⁵, so T fits in 65 bits
+   *    c) Compute (R+1)² = S + T + 1
+   *       - First compute intermediate sum: S + T (using addU128, returns U256)
+   *       - Then add 1 to the result
+   *
+   * 4. Overflow Handling:
+   *    Since (R+1)² ≤ (2⁶⁴)² = 2¹²⁸, the result either:
+   *    - Fits in 128 bits (when R < 2⁶⁴ - 1), or
+   *    - Equals exactly 2¹²⁸ (when R = 2⁶⁴ - 1)
+   *
+   *    In the latter case, (R+1)² = 2¹²⁸ = {low: {0, 0}, high: {1, 0}} in U256.
+   *    This is valid and indicates N is very close to its maximum value.
+   *
+   * 5. Final Verification:
+   *    Let Q = (R+1)² computed as above.
+   *    - If Q.high ≠ 0, then Q > 2¹²⁸ - 1 ≥ N, so verification passes
+   *    - If Q.high = 0, then verify Q.low > N
+   *    - This ensures (R+1)² > N, confirming R is not an underestimate
+   *
+   * 6. Result:
+   *    Return R ∈ [0, 2⁶⁴ - 1].
+   *
+   * Requirements:
+   *
+   * - The witness root R must satisfy R^2 <= radicand. Fails with "Uint128: sqrt overestimate".
+   * - The witness root R must satisfy (R + 1)^2 > radicand. Fails with "Uint128: sqrt underestimate".
+   *
+   * @param {U128} radicand - The U128 value to compute the square root of.
+   * @returns {Uint<64>} The floor of the square root of radicand.
+   */
+  circuit _sqrt(radicand: U128): Uint<64> {
+    // Step 1: Get witness for the square root
+    const root = wit_sqrtU128(radicand);
+
+    // Step 2: Verify lower bound (root² ≤ radicand)
+    const rootU128 = U128 { low: root, high: 0 };
+    const rootSquareU256 = _mul(rootU128, rootU128);
+
+    const rootSquareU128 = rootSquareU256.low;
+
+    // Verify root² ≤ radicand
+    assert(!gt(rootSquareU128, radicand), "Uint128: sqrt overestimate");
+
+    // Step 3: Verify upper bound ((root+1)² > radicand)
+    // Use identity: (root+1)² = root² + 2·root + 1
+
+    // Compute 2·root using addU128 (returns U256)
+    // Since root ≤ 2⁶⁴ - 1, we have 2·root ≤ 2⁶⁵ - 2 < 2¹²⁸
+    const twoRootU256 = add(rootU128, rootU128);
+
+    const twoRootU128 = twoRootU256.low;
+
+    // Compute root² + 2·root (returns U256)
+    const sumU256 = add(rootSquareU128, twoRootU128);
+
+    // Only need to check if both additions don't overflow
+    // If either overflows, (root+1)² > 2¹²⁸ - 1 ≥ radicand automatically
+    if (isZero(sumU256.high)) {
+      // root² + 2·root fits in 128 bits, add 1 to get (root+1)²
+      const one = U128 { low: 1, high: 0 };
+      const nextSquareU256 = add(sumU256.low, one);
+
+      // Only assert if the final result fits in 128 bits
+      if (isZero(nextSquareU256.high)) {
+        // (root+1)² fits in 128 bits, compare directly with radicand
+        assert(gt(nextSquareU256.low, radicand), "Uint128: sqrt underestimate");
+      }
+      // If adding 1 caused overflow: (root+1)² = 2¹²⁸ > radicand, verification passes
+    }
+    // If root² + 2·root overflowed: (root+1)² > 2¹²⁸ - 1 ≥ radicand, verification passes
+
+    return root;
+  }
+
+  /**
+   * @description Computes the square root of a Uint<128> value.
+   *
+   * @dev Uses internal `_sqrt` circuit for computation.
+   *
+   * @constraints k=13, rows=4125 (zkir-v2)
+   * @constraints k=11, rows=1206 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness root R must satisfy R^2 <= radicand. Fails with "Uint128: sqrt overestimate".
+   * - The witness root R must satisfy (R + 1)^2 > radicand. Fails with "Uint128: sqrt underestimate".
+   *
+   * @param {Uint<128>} radicand - The Uint<128> value to compute the square root of.
+   * @returns {Uint<64>} The floor of the square root of radicand.
+   */
+  export circuit sqrt(radicand: Uint<128>): Uint<64> {
+    const radicandU128 = toU128(radicand);
+    return _sqrt(radicandU128);
+  }
+
+  /**
+   * @description Computes the square root of a U128 value.
+   *
+   * @dev Uses internal `_sqrt` circuit for computation.
+   *
+   * @constraints k=12, rows=3861 (zkir-v2)
+   * @constraints k=11, rows=1135 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness root R must satisfy R^2 <= radicand. Fails with "Uint128: sqrt overestimate".
+   * - The witness root R must satisfy (R + 1)^2 > radicand. Fails with "Uint128: sqrt underestimate".
+   *
+   * @param {U128} radicand - The U128 value to compute the square root of.
+   * @returns {Uint<64>} The floor of the square root of radicand.
+   */
+  export circuit sqrt(radicand: U128): Uint<64> {
+    return _sqrt(radicand);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Utilities
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Checks if a Uint<128> value equals zero.
+   *
+   * @constraints k=8, rows=175 (zkir-v2)
+   * @constraints k=7, rows=87 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The Uint<128> value to check.
+   * @returns {Boolean} True if a equals zero, false otherwise.
+   */
+  export pure circuit isZero(a: Uint<128>): Boolean {
+    return a == 0;
+  }
+
+  /**
+   * @description Checks if a U128 value equals zero.
+   *
+   * @constraints k=8, rows=181 (zkir-v2)
+   * @constraints k=7, rows=92 (zkir-v3)
+   *
+   * @param {U128} a - The U128 value to check.
+   * @returns {Boolean} True if a equals zero (a.low = a.high = 0), false otherwise.
+   */
+  export pure circuit isZero(a: U128): Boolean {
+    return a.low == 0 && a.high == 0;
+  }
+
+  /**
+   * @description Checks if a U128 value is a multiple of another (a mod b = 0).
+   *
+   * @dev Determines if a is divisible by b with no remainder for a, b ∈ [0, 2¹²⁸ - 1].
+   * Returns true if there exists an integer k such that a = k · b.
+   * Let a = a_h · 2⁶⁴ + a_l and b = b_h · 2⁶⁴ + b_l.
+   *
+   * Mathematical Steps:
+   * 1. Zero Check: Verify b ≠ 0 (b_h > 0 or b_l > 0)
+   * 2. Division: Compute (quotient, remainder) where a = quotient · b + remainder
+   * 3. Remainder Check: Verify remainder = 0 (remainder_h = 0 and remainder_l = 0)
+   * 4. Return true if remainder = 0, false otherwise
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {U128} a - The U128 value to check.
+   * @param {U128} b - The U128 value to test against.
+   * @returns {Boolean} True if a is a multiple of b, false otherwise.
+   */
+  circuit _isMultiple(a: U128, b: U128): Boolean {
+    const result = _div(a, b);
+    return eq(result.remainder, ZERO_U128());
+  }
+
+  /**
+   * @description Checks if a Uint<128> value is a multiple of another.
+   *
+   * @dev Uses internal `_isMultiple` circuit for computation.
+   *
+   * @constraints k=12, rows=3233 (zkir-v2)
+   * @constraints k=10, rows=992 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {Uint<128>} a - The Uint<128> value to check.
+   * @param {Uint<128>} b - The Uint<128> b to test against.
+   * @returns {Boolean} True if value is a multiple of b, false otherwise.
+   */
+  export circuit isMultiple(a: Uint<128>, b: Uint<128>): Boolean {
+    const aU128 = toU128(a);
+    const bU128 = toU128(b);
+    return _isMultiple(aU128, bU128);
+  }
+
+  /**
+   * @description Checks if a U128 value is a multiple of another.
+   *
+   * @dev Uses internal `_isMultiple` circuit for computation.
+   *
+   * @constraints k=12, rows=2725 (zkir-v2)
+   * @constraints k=10, rows=870 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint128: division by zero".
+   * - The witness remainder must be less than `b`. Fails with "Uint128: remainder error".
+   * - The witness quotient times `b` must fit in 128 bits. Fails with "Uint128: division product overflow".
+   * - The witness quotient times `b` must not exceed `a`, and `a` minus that product must equal the witness remainder. Fails with "Uint128: division invalid".
+   *
+   * @param {U128} a - The U128 value to check.
+   * @param {U128} b - The U128 b to test against.
+   * @returns {Boolean} True if value is a multiple of b, false otherwise.
+   */
+  export circuit isMultiple(a: U128, b: U128): Boolean {
+    return _isMultiple(a, b);
+  }
+
+  /**
+   * @description Returns the minimum of two Uint<128> values.
+   *
+   * @constraints k=9, rows=358 (zkir-v2)
+   * @constraints k=9, rows=137 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Uint<128>} The smaller of a and b.
+   */
+  export pure circuit min(a: Uint<128>, b: Uint<128>): Uint<128> {
+    return lte(a, b) ? a : b;
+  }
+
+  /**
+   * @description Returns the minimum of two U128 values.
+   *
+   * @constraints k=9, rows=417 (zkir-v2)
+   * @constraints k=9, rows=193 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {U128} The smaller of a and b.
+   */
+  export pure circuit min(a: U128, b: U128): U128 {
+    return lte(a, b) ? a : b;
+  }
+
+  /**
+   * @description Returns the maximum of two Uint<128> values.
+   *
+   * @constraints k=9, rows=358 (zkir-v2)
+   * @constraints k=9, rows=137 (zkir-v3)
+   *
+   * @param {Uint<128>} a - The first Uint<128> value.
+   * @param {Uint<128>} b - The second Uint<128> value.
+   * @returns {Uint<128>} The larger of a and b.
+   */
+  export pure circuit max(a: Uint<128>, b: Uint<128>): Uint<128> {
+    return gte(a, b) ? a : b;
+  }
+
+  /**
+   * @description Returns the maximum of two U128 values.
+   *
+   * @constraints k=9, rows=417 (zkir-v2)
+   * @constraints k=9, rows=193 (zkir-v3)
+   *
+   * @param {U128} a - The first U128 value.
+   * @param {U128} b - The second U128 value.
+   * @returns {U128} The larger of a and b.
+   */
+  export pure circuit max(a: U128, b: U128): U128 {
+    return gte(a, b) ? a : b;
+  }
+}
