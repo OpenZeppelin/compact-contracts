@@ -1,0 +1,499 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (math/Uint64.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Uint64
+ * @description A utility module providing mathematical operations for unsigned integers. Functions operate on
+ * `Uint<64>` values in the range [0, 2^64 - 1]. The module supports arithmetic, division, square root,
+ * and utility functions with overflow and underflow checks where applicable.
+ *
+ * @dev Supported Operations:
+ * - Constants:
+ *   - DivResultU64: Struct with quotient and remainder from division.
+ *   - MAX_UINT8(): Returns 2^8 - 1 (255).
+ *   - MAX_UINT16(): Returns 2^16 - 1 (65,535).
+ *   - MAX_UINT32(): Returns 2^32 - 1 (4,294,967,295).
+ *   - MAX_UINT64(): Returns 2^64 - 1 (18,446,744,073,709,551,615).
+ * - Conversions:
+ *   - toBytes(value): Converts Uint<64> to Bytes<8> (little-endian)
+ *   - toUnpackedBytes(value): Converts Uint<64> to Vector<8, Uint<8>> (little-endian)
+ * - Arithmetic:
+ *   - add(a, b): Adds two `Uint<64>` numbers, returning a `Uint<128>` result to handle potential overflow.
+ *   - addChecked(a, b): Adds two `Uint<64>` numbers with overflow checking, returning a `Uint<64>` result.
+ *   - sub(a, b): Subtracts one `Uint<64>` number from another, checking for underflow.
+ *   - mul(a, b): Multiplies two `Uint<64>` numbers, returning a `Uint<128>` result.
+ *   - mulChecked(a, b): Multiplies two `Uint<64>` numbers with overflow checking, returning a `Uint<64>` result.
+ * - Division:
+ *   - div(a, b): Computes the quotient of dividing one `Uint<64>` number by another.
+ *   - rem(a, b): Computes the remainder of dividing one `Uint<64>` number by another.
+ *   - divRem(a, b): Computes both quotient and remainder of a division.
+ * - Square Root:
+ *   - sqrt(radicand): Computes the floor of the square root of a `Uint<64>` number.
+ * - Utility:
+ *   - isMultiple(a, b): Checks if one `Uint<64>` number is a multiple of another.
+ *   - min(a, b): Returns the smaller of two `Uint<64>` numbers.
+ *   - max(a, b): Returns the larger of two `Uint<64>` numbers.
+ *
+ * TODO: Missing operations (available in other math modules):
+ * - Comparisons:
+ *   - TODO: eq(a, b): Check if two Uint<64> values are equal.
+ *   - TODO: lt(a, b): Check if one Uint<64> value is less than another.
+ *   - TODO: lte(a, b): Check if one Uint<64> value is less than or equal to another.
+ *   - TODO: gt(a, b): Check if one Uint<64> value is greater than another.
+ *   - TODO: gte(a, b): Check if one Uint<64> value is greater than or equal to another.
+ * - Utilities:
+ *   - TODO: isZero(a): Check if a Uint<64> value equals zero.
+ */
+module Uint64 {
+  import { toUint64, pack } from "./Bytes8" prefix Bytes8_;
+
+  ////////////////////////////////////////////////////////////////
+  // Constants
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Struct containing the quotient and remainder from a division operation
+   */
+  export struct DivResultU64 {
+    /**
+     * @description The quotient result from the division operation
+     */
+    quotient: Uint<64>,
+    /**
+     * @description The remainder result from the division operation
+     */
+    remainder: Uint<64>
+  }
+
+  /**
+   * @description Computes division of two Uint<64> values locally (off-chain).
+   *
+   * @param {Uint<64>} a - The number to divide.
+   * @param {Uint<64>} b - The number to divide by.
+   * @returns {DivResultU64} The quotient and remainder of the division.
+   */
+  witness wit_divUint64(a: Uint<64>, b: Uint<64>): DivResultU64;
+
+  /**
+   * @description Computes the square root of a Uint<64> value locally (off-chain).
+   *
+   * @param {Uint<64>} radicand - The number to compute the square root of.
+   * @returns {Uint<32>} The square root of radicand.
+   */
+  witness wit_sqrtUint64(radicand: Uint<64>): Uint<32>;
+
+  /**
+   * @description Converts a Uint<64> into 8 individual bytes off-chain.
+   *
+   * @param {Uint<64>} value - The value to convert.
+   * @returns {Vector<8, Uint<8>>} The 8 bytes of `value` (element 0 is the LSB).
+   */
+  witness wit_uint64ToUnpackedBytes(value: Uint<64>): Vector<8, Uint<8>>;
+
+  /**
+   * @description Returns the maximum value for an 8-bit unsigned integer (2^8 - 1).
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Uint<8>} The value 255 (0xFF).
+   */
+  export pure circuit MAX_UINT8(): Uint<8> {
+    return 0xFF;
+  }
+
+  /**
+   * @description Returns the maximum value for a 16-bit unsigned integer (2^16 - 1).
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Uint<16>} The value 65,535 (0xFFFF).
+   */
+  export pure circuit MAX_UINT16(): Uint<16> {
+    return 0xFFFF;
+  }
+
+  /**
+   * @description Returns the maximum value for a 32-bit unsigned integer (2^32 - 1).
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Uint<32>} The value 4,294,967,295 (0xFFFFFFFF).
+   */
+  export pure circuit MAX_UINT32(): Uint<32> {
+    return 0xFFFFFFFF;
+  }
+
+  /**
+   * @description Returns the maximum value for a 64-bit unsigned integer (2^64 - 1).
+   *
+   * @constraints k=5, rows=23 (zkir-v2)
+   * @constraints k=6, rows=31 (zkir-v3)
+   *
+   * @returns {Uint<64>} The value 18,446,744,073,709,551,615 (0xFFFFFFFFFFFFFFFF).
+   */
+  export pure circuit MAX_UINT64(): Uint<64> {
+    return 0xFFFFFFFFFFFFFFFF;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Conversions
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Converts a Uint<64> to a Bytes<8> using little-endian byte ordering.
+   *
+   * @dev This circuit converts a 64-bit unsigned integer to an 8-byte array.
+   * The conversion is done by first converting to unpacked bytes via `toUnpackedBytes`,
+   * then packing to `Bytes<8>` via `Bytes8.pack`.
+   *
+   * @constraints k=12, rows=2431 (zkir-v2)
+   * @constraints k=9, rows=187 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must equal `value`. Fails with "Uint64: toUnpackedBytes verification failed".
+   *
+   * @param {Uint<64>} value - The 64-bit value to convert.
+   * @returns {Bytes<8>} The 8-byte array representation.
+   */
+  export circuit toBytes(value: Uint<64>): Bytes<8> {
+    const vec = toUnpackedBytes(value);
+    return Bytes8_pack(vec);
+  }
+
+  /**
+   * @description Converts a Uint<64> to individual bytes as a Vector<8, Uint<8>>.
+   *
+   * @dev This circuit converts a 64-bit unsigned integer into a vector of 8 individual bytes
+   * using little-endian byte ordering. The conversion is performed off-chain via a witness,
+   * then verified on-chain by packing the bytes back and checking equality.
+   *
+   * Uses `Bytes8_toUint64` for the packing verification.
+   *
+   * @constraints k=9, rows=265 (zkir-v2)
+   * @constraints k=8, rows=177 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness result must equal `value`. Fails with "Uint64: toUnpackedBytes verification failed".
+   *
+   * @param {Uint<64>} value - The 64-bit value to convert.
+   * @returns {Vector<8, Uint<8>>} The vector of 8 individual bytes [b0, b1, b2, b3, b4, b5, b6, b7].
+   */
+  export circuit toUnpackedBytes(value: Uint<64>): Vector<8, Uint<8>> {
+    // Get bytes from witness as its cheaper
+    const vec = wit_uint64ToUnpackedBytes(value);
+
+    // Verify by packing back using arithmetic
+    const reconstructed = Bytes8_toUint64(vec);
+    assert(reconstructed == value, "Uint64: toUnpackedBytes verification failed");
+
+    return vec;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Arithmetic
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Adds two `Uint<64>` numbers, returning a `Uint<128>` result to accommodate potential overflow.
+   *
+   * @constraints k=8, rows=175 (zkir-v2)
+   * @constraints k=7, rows=88 (zkir-v3)
+   *
+   * @param {Uint<64>} a - The first unsigned 64-bit integer.
+   * @param {Uint<64>} b - The second unsigned 64-bit integer.
+   * @returns {Uint<128>} The sum of `a` and `b` as a `Uint<128>` value.
+   */
+  export pure circuit add(a: Uint<64>, b: Uint<64>): Uint<128> {
+    return a + b;
+  }
+
+  /**
+   * @description Adds two `Uint<64>` numbers with overflow checking, returning a `Uint<64>` result.
+   *
+   * @constraints k=9, rows=296 (zkir-v2)
+   * @constraints k=9, rows=123 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The sum of `a` and `b` must not exceed `MAX_UINT64` (2^64 - 1). Fails with "Uint64: addition overflow".
+   *
+   * @param {Uint<64>} a - The first unsigned 64-bit integer.
+   * @param {Uint<64>} b - The second unsigned 64-bit integer.
+   * @returns {Uint<64>} The sum of `a` and `b` as a `Uint<64>` value.
+   */
+  export pure circuit addChecked(a: Uint<64>, b: Uint<64>): Uint<64> {
+    const sum: Uint<128> = a + b;
+    assert(sum <= MAX_UINT64(), "Uint64: addition overflow");
+    return sum as Uint<64>;
+  }
+
+  /**
+   * @description Subtracts `b` from `a`, checking for underflow to ensure the result is non-negative.
+   *
+   * @constraints k=9, rows=210 (zkir-v2)
+   * @constraints k=9, rows=103 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `a` must be greater than or equal to `b`. Fails with "Uint64: subtraction underflow".
+   *
+   * @param {Uint<64>} a - The unsigned 64-bit integer to subtract from (minuend).
+   * @param {Uint<64>} b - The unsigned 64-bit integer to subtract (subtrahend).
+   * @returns {Uint<64>} The difference `a - b` as a `Uint<64>` value.
+   */
+  export pure circuit sub(a: Uint<64>, b: Uint<64>): Uint<64> {
+    assert(a >= b, "Uint64: subtraction underflow");
+    return a - b;
+  }
+
+  /**
+   * @description Multiplies two `Uint<64>` values, returning a `Uint<128>` result to handle large products.
+   *
+   * @constraints k=8, rows=175 (zkir-v2)
+   * @constraints k=7, rows=88 (zkir-v3)
+   *
+   * @param {Uint<64>} a - The first unsigned 64-bit integer (multiplicand).
+   * @param {Uint<64>} b - The second unsigned 64-bit integer (multiplier).
+   * @returns {Uint<128>} The product of `a` and `b` as a `Uint<128>` value.
+   */
+  export pure circuit mul(a: Uint<64>, b: Uint<64>): Uint<128> {
+    return a * b;
+  }
+
+  /**
+   * @description Multiplies two `Uint<64>` values with overflow checking, returning a `Uint<64>` result.
+   *
+   * @constraints k=9, rows=296 (zkir-v2)
+   * @constraints k=9, rows=123 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The product of `a` and `b` must not exceed `MAX_UINT64` (2^64 - 1). Fails with "Uint64: multiplication overflow".
+   *
+   * @param {Uint<64>} a - The first unsigned 64-bit integer (multiplicand).
+   * @param {Uint<64>} b - The second unsigned 64-bit integer (multiplier).
+   * @returns {Uint<64>} The product of `a` and `b` as a `Uint<64>` value.
+   */
+  export pure circuit mulChecked(a: Uint<64>, b: Uint<64>): Uint<64> {
+    const product: Uint<128> = a * b;
+    assert(product <= MAX_UINT64(), "Uint64: multiplication overflow");
+    return product as Uint<64>;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Division
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Internal circuit to divide a Uint<64> number by another, returning quotient and remainder.
+   *
+   * @dev This circuit computes the quotient and remainder of dividing a 64-bit unsigned integer a by another b,
+   * both represented as Uint<64> values in [0, 2^64 - 1]. It returns a DivResultU64 struct containing the
+   * quotient and remainder, satisfying a = quotient * b + remainder, where 0 <= remainder < b.
+   *
+   * Mathematical Steps:
+   * 1. Check for division by zero.
+   * 2. Division Computation:
+   *    - Compute result = (quotient, remainder) using wit_divUint64, where quotient = floor(a / b)
+   *      and remainder = a mod b.
+   * 3. Verification:
+   *    - Assert remainder < b, ensuring 0 <= remainder < b.
+   *    - Assert quotient * b + remainder = a, ensuring correctness.
+   * 4. Result:
+   *    - Return DivResultU64 { quotient, remainder }.
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint64: division by zero".
+   * - The witness `remainder` must be less than `b`. Fails with "Uint64: remainder error".
+   * - The witness `quotient * b + remainder` must equal `a`. Fails with "Uint64: division invalid".
+   *
+   * @param {Uint<64>} a - The Uint<64> value to divide (dividend).
+   * @param {Uint<64>} b - The Uint<64> value to divide by (divisor).
+   * @returns {DivResultU64} A struct containing the quotient and remainder as Uint<64> values.
+   */
+  circuit _div(a: Uint<64>, b: Uint<64>): DivResultU64 {
+    assert(b != 0, "Uint64: division by zero");
+
+    const result = wit_divUint64(a, b);
+    assert(result.remainder < b, "Uint64: remainder error");
+    const sum: Uint<128> = result.quotient * b + result.remainder;
+    assert(sum == a, "Uint64: division invalid");
+    return result;
+  }
+
+  /**
+   * @description Divides a `Uint<64>` number `a` by `b`, returning the quotient.
+   *
+   * @dev Uses the internal `_div` circuit for computation.
+   *
+   * @constraints k=9, rows=345 (zkir-v2)
+   * @constraints k=9, rows=142 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint64: division by zero".
+   * - The witness `remainder` must be less than `b`. Fails with "Uint64: remainder error".
+   * - The witness `quotient * b + remainder` must equal `a`. Fails with "Uint64: division invalid".
+   *
+   * @param {Uint<64>} a - The unsigned 64-bit integer to divide (dividend).
+   * @param {Uint<64>} b - The unsigned 64-bit integer to divide by (divisor).
+   * @returns {Uint<64>} The quotient of `a` divided by `b` as a `Uint<64>` value.
+   */
+  export circuit div(a: Uint<64>, b: Uint<64>): Uint<64> {
+    return _div(a, b).quotient;
+  }
+
+  /**
+   * @description Computes the remainder of dividing a `Uint<64>` number `a` by `b`.
+   *
+   * @dev Uses the internal `_div` circuit for computation.
+   *
+   * @constraints k=9, rows=345 (zkir-v2)
+   * @constraints k=9, rows=142 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint64: division by zero".
+   * - The witness `remainder` must be less than `b`. Fails with "Uint64: remainder error".
+   * - The witness `quotient * b + remainder` must equal `a`. Fails with "Uint64: division invalid".
+   *
+   * @param {Uint<64>} a - The unsigned 64-bit integer to divide (dividend).
+   * @param {Uint<64>} b - The unsigned 64-bit integer to divide by (divisor).
+   * @returns {Uint<64>} The remainder of `a` divided by `b` as a `Uint<64>` value.
+   */
+  export circuit rem(a: Uint<64>, b: Uint<64>): Uint<64> {
+    return _div(a, b).remainder;
+  }
+
+  /**
+   * @description Divides a Uint<64> number by another, returning both quotient and remainder.
+   *
+   * @dev Uses the internal `_div` circuit for computation.
+   *
+   * @constraints k=9, rows=366 (zkir-v2)
+   * @constraints k=9, rows=163 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint64: division by zero".
+   * - The witness `remainder` must be less than `b`. Fails with "Uint64: remainder error".
+   * - The witness `quotient * b + remainder` must equal `a`. Fails with "Uint64: division invalid".
+   *
+   * @param {Uint<64>} a - The Uint<64> value to divide (dividend).
+   * @param {Uint<64>} b - The Uint<64> value to divide by (divisor).
+   * @returns {DivResultU64} A struct containing the quotient and remainder as Uint<64> values.
+   */
+  export circuit divRem(a: Uint<64>, b: Uint<64>): DivResultU64 {
+    return _div(a, b);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Square Root
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Computes the floor of the square root of a Uint<64> value.
+   *
+   * @dev This circuit calculates the floor of the square root R = floor(sqrt(N)) of a 64-bit unsigned integer
+   * N, provided as a Uint<64> value in [0, 2^64 - 1]. The result is a Uint<32> value R in [0, 2^32 - 1],
+   * such that R^2 <= N < (R + 1)^2. It computes R off-chain with the `wit_sqrtUint64` witness and
+   * verifies R in the circuit.
+   *
+   * Mathematical Steps:
+   * 1. Witness Computation:
+   *    - Compute R = floor(sqrt(N)) using wit_sqrtUint64, where R is in [0, 2^32 - 1].
+   * 2. Root Verification:
+   *    - Compute rootSquare = R * R using mul.
+   *    - Assert rootSquare <= N, ensuring R^2 <= N.
+   * 3. Next Value Verification:
+   *    - Compute next = R + 1, where next is in [1, 2^32].
+   *    - Compute nextSquare = next * next using mul.
+   *    - Assert nextSquare > N, ensuring (R + 1)^2 > N.
+   * 4. Result:
+   *    - Return R as Uint<32>.
+   *
+   * @constraints k=9, rows=240 (zkir-v2)
+   * @constraints k=9, rows=114 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - The witness root R must satisfy R^2 <= radicand. Fails with "Uint64: sqrt overestimate".
+   * - The witness root R must satisfy (R + 1)^2 > radicand. Fails with "Uint64: sqrt underestimate".
+   *
+   * @param {Uint<64>} radicand - The Uint<64> value to compute the square root of.
+   * @returns {Uint<32>} The floor of the square root of radicand.
+   */
+  export circuit sqrt(radicand: Uint<64>): Uint<32> {
+    const root = wit_sqrtUint64(radicand);
+    const rootSquare = mul(root, root);
+    assert(rootSquare <= radicand, "Uint64: sqrt overestimate");
+
+    const next = root + 1;
+    const nextSquare = mul(next, next);
+    assert(nextSquare > radicand, "Uint64: sqrt underestimate");
+
+    return root;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // Utilities
+  ////////////////////////////////////////////////////////////////
+
+  /**
+   * @description Checks if a `Uint<64>` number is a multiple of another.
+   *
+   * @dev Uses the `rem` circuit to check if the remainder is zero.
+   *
+   * @constraints k=9, rows=347 (zkir-v2)
+   * @constraints k=9, rows=144 (zkir-v3)
+   *
+   * Requirements:
+   *
+   * - `b` must not be zero. Fails with "Uint64: division by zero".
+   * - The witness `remainder` must be less than `b`. Fails with "Uint64: remainder error".
+   * - The witness `quotient * b + remainder` must equal `a`. Fails with "Uint64: division invalid".
+   *
+   * @param {Uint<64>} a - The unsigned 64-bit integer to check.
+   * @param {Uint<64>} b - The unsigned 64-bit integer divisor.
+   * @returns {Boolean} `true` if `a` is a multiple of `b`, `false` otherwise.
+   */
+  export circuit isMultiple(a: Uint<64>, b: Uint<64>): Boolean {
+    return rem(a, b) == 0;
+  }
+
+  /**
+   * @description Returns the minimum of two Uint<64> values.
+   *
+   * @constraints k=9, rows=206 (zkir-v2)
+   * @constraints k=9, rows=99 (zkir-v3)
+   *
+   * @param {Uint<64>} a - The first unsigned 64-bit integer.
+   * @param {Uint<64>} b - The second unsigned 64-bit integer.
+   * @returns {Uint<64>} The smaller of `a` and `b` as a `Uint<64>` value.
+   */
+  export pure circuit min(a: Uint<64>, b: Uint<64>): Uint<64> {
+    return a < b ? a : b;
+  }
+
+  /**
+   * @description Returns the maximum of two Uint<64> values.
+   *
+   * @constraints k=9, rows=206 (zkir-v2)
+   * @constraints k=9, rows=99 (zkir-v3)
+   *
+   * @param {Uint<64>} a - The first unsigned 64-bit integer.
+   * @param {Uint<64>} b - The second unsigned 64-bit integer.
+   * @returns {Uint<64>} The larger of `a` and `b` as a `Uint<64>` value.
+   */
+  export pure circuit max(a: Uint<64>, b: Uint<64>): Uint<64> {
+    return a > b ? a : b;
+  }
+}

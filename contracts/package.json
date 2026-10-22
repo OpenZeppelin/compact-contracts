@@ -41,7 +41,7 @@
     "test:harness": "vitest run --project harness",
     "test:harness:live": "MIDNIGHT_BACKEND=live vitest run --project harness-live",
     "test:scripts": "vitest run --project scripts",
-    "types": "tsc -p tsconfig.json --noEmit",
+    "types": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.math-test.json",
     "clean": "git clean -fXd"
   },
   "engines": {
