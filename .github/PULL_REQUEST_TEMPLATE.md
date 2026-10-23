@@ -24,7 +24,7 @@ Fixes #??? <!-- Fill in with issue number -->
 <!-- Feel free to submit a PR or Draft PR even if some items are pending. -->
 <!-- Some of the items may not apply. -->
 
-- [ ] I have read the [Contributing Guide](../CONTRIBUTING.md#your-first-code-contribution)
+- [ ] I have read the [Contributing Guide](../CONTRIBUTING.md#a-typical-workflow)
 - [ ] I have added tests that prove my fix is effective or that my feature works. See [GUIDELINES.md#testing](../GUIDELINES.md#testing) for more information.
 - [ ] I have added documentation for new methods or changes to existing method behavior. See [GUIDELINES.md#documentation](../GUIDELINES.md#documentation) for more information.
 - [ ] CI Workflows Are Passing
