@@ -8,10 +8,10 @@ pragma language_version >= 0.26.0;
  * @description Token-agnostic proposal lifecycle management for multisig
  * governance contracts.
  *
- * Supports shielded and unshielded proposals through a unified
- * Recipient type with a RecipientKind tag. Typed helper circuits
- * provide safe construction of recipients without exposing the
- * internal Bytes<32> representation to consumers.
+ * Supports shielded and unshielded proposals through the `Recipient` type
+ * and its `RecipientKind` tag, declared in `RecipientTypes` and re-exported
+ * here. Typed helper circuits provide safe construction of recipients
+ * without exposing the internal Bytes<32> representation to consumers.
  *
  * @warning PROPOSALS ARE PUBLIC. `_proposals` is exported ledger state, so
  * every proposal's recipient address, token color, amount, and state is
@@ -30,6 +30,9 @@ pragma language_version >= 0.26.0;
  */
 module ProposalManager {
   import CompactStandardLibrary;
+  import "./RecipientTypes";
+
+  export { Recipient, RecipientKind };
 
   // ─── Types ──────────────────────────────────────────────────────
 
@@ -49,34 +52,6 @@ module ProposalManager {
     Executed,
     Cancelled,
     Expired
-  }
-
-  /**
-   * @description What a `Recipient`'s bytes are and which rail accepts them.
-   *
-   * - `ShieldedUser`: a Zswap coin public key. `toShieldedRecipient` only.
-   * - `UnshieldedUser`: a user address. `toUnshieldedRecipient` only.
-   * - `Contract`: a contract address. Accepted by both.
-   *
-   * @warning `toShieldedRecipient` rejects `UnshieldedUser` and
-   * `toUnshieldedRecipient` rejects `ShieldedUser`, both at execution rather
-   * than at creation. That mismatch is the hazard noted in `_createProposal`.
-   */
-  export enum RecipientKind {
-    ShieldedUser,
-    UnshieldedUser,
-    Contract
-  }
-
-  /**
-   * @description A transfer target.
-   *
-   * @warning `address` is raw 32 bytes. `kind` alone decides whether they are
-   * read as a Zswap coin public key, a user address, or a contract address.
-   */
-  export struct Recipient {
-    kind: RecipientKind,
-    address: Bytes<32>
   }
 
   /**

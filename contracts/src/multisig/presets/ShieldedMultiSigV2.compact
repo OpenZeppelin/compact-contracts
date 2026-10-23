@@ -37,13 +37,11 @@ module ShieldedMultiSigV2<#t> {
   import "../Secp256k1EcdsaMultisig"<t> prefix Secp256k1EcdsaMultisig_;
   import "../../crypto/Eip712" prefix Eip712_;
   import "../../utils/EvmAbi" prefix EvmAbi_;
-  import "../ProposalManager" prefix Proposal_;
+  import "../RecipientTypes";
   import "../ShieldedTreasuryStateless" prefix Treasury_;
 
-  // Implementing contracts need this for the re-exported `execute` signature.
-  // Importing `ProposalManager` again instead would give them a second,
-  // unwritten copy of its state.
-  export { Proposal_Recipient };
+  // Implementing contracts need these for the re-exported `execute` signature.
+  export { Recipient, RecipientKind };
 
   /**
    * @description Monotonic operation counter. `execute` reads it as that
@@ -175,7 +173,7 @@ module ShieldedMultiSigV2<#t> {
    * - `to.kind` must be `ShieldedUser`.
    * - Coin value must be >= amount.
    *
-   * @param {Proposal_Recipient} to - The recipient.
+   * @param {Recipient} to - The recipient.
    * @param {Uint<128>} amount - The amount to send.
    * @param {QualifiedShieldedCoinInfo} coin - The coin to spend (from operator's pool).
    * @param {Vector<t, Secp256k1Point>} pubkeys - Public keys of approving signers.
@@ -184,7 +182,7 @@ module ShieldedMultiSigV2<#t> {
    * @returns {ShieldedSendResult} The send result including any change.
    */
   export circuit execute(
-    to: Proposal_Recipient,
+    to: Recipient,
     amount: Uint<128>,
     coin: QualifiedShieldedCoinInfo,
     pubkeys: Vector<t, Secp256k1Point>,
@@ -211,7 +209,7 @@ module ShieldedMultiSigV2<#t> {
     Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
     assert(
-      to.kind == Proposal_RecipientKind.ShieldedUser,
+      to.kind == RecipientKind.ShieldedUser,
       "ShieldedMultiSigV2: recipient must be a coin public key"
     );
     const recipient = left<ZswapCoinPublicKey, ContractAddress>(

@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (multisig/RecipientTypes.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module RecipientTypes
+ * @description The transfer-target types shared by the multisig modules.
+ *
+ * This module holds no ledger state. Importing a module allocates every
+ * ledger field it declares, so a contract that needs only the recipient
+ * types imports this module rather than `ProposalManager`, which would add
+ * a `_nextProposalId` and `_proposals` the contract never writes.
+ * `ProposalManager` re-exports both types and provides the typed helper
+ * circuits that build and route recipients.
+ */
+module RecipientTypes {
+  import CompactStandardLibrary;
+
+  /**
+   * @description What a `Recipient`'s bytes are and which rail accepts them.
+   *
+   * - `ShieldedUser`: a Zswap coin public key. `ProposalManager.toShieldedRecipient` only.
+   * - `UnshieldedUser`: a user address. `ProposalManager.toUnshieldedRecipient` only.
+   * - `Contract`: a contract address. Accepted by both.
+   *
+   * @warning `toShieldedRecipient` rejects `UnshieldedUser` and
+   * `toUnshieldedRecipient` rejects `ShieldedUser`, both at execution rather
+   * than at creation. That mismatch is the hazard noted in
+   * `ProposalManager._createProposal`.
+   */
+  export enum RecipientKind {
+    ShieldedUser,
+    UnshieldedUser,
+    Contract
+  }
+
+  /**
+   * @description A transfer target.
+   *
+   * @warning `address` is raw 32 bytes. `kind` alone decides whether they are
+   * read as a Zswap coin public key, a user address, or a contract address.
+   */
+  export struct Recipient {
+    kind: RecipientKind,
+    address: Bytes<32>
+  }
+}

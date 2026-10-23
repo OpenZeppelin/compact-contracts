@@ -158,6 +158,29 @@ describe('ShieldedMultiSigV2', () => {
       );
       expect(await multisig.isSigner(unknown)).toEqual(false);
     });
+
+    // Importing a module allocates every ledger field it declares, so the
+    // preset takes `Recipient` from `RecipientTypes` rather than
+    // `ProposalManager`; the latter would add `_nextProposalId` and
+    // `_proposals`, which nothing here writes. `ledger()` only surfaces
+    // re-exported fields, so the raw state array is where that shows.
+    it.skipIf(isLiveBackend())(
+      'allocates only the slots the preset writes (dry only)',
+      async () => {
+        multisig = await freshMultisig();
+        const slots = (await multisig.getContractState()).asArray() ?? [];
+        // `_nonce`, `_domainSeparator`, and the signer registry:
+        // `_instanceSalt`, `_signers`, `_signerCount`, `_threshold`.
+        expect(slots.map((slot) => slot.type())).toStrictEqual([
+          'cell',
+          'cell',
+          'cell',
+          'map',
+          'cell',
+          'cell',
+        ]);
+      },
+    );
   });
 
   describe('when initialized', () => {

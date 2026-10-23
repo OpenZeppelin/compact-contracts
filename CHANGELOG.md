@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** Move `Recipient` and `RecipientKind` into the new types-only `multisig/RecipientTypes` module (#???)
+  - `ProposalManager` re-exports both types, so `Proposal_Recipient` and `Proposal_RecipientKind` are unchanged for its consumers
+  - `ShieldedMultiSigV2` imports `RecipientTypes` instead of `ProposalManager`, dropping the unused `_nextProposalId` and `_proposals` from its state. Ledger slot indices change, so fresh deploys only.
+  - `ShieldedMultiSigV2` exports `Recipient` and `RecipientKind`; implementing contracts name `execute`'s recipient `ShieldedMultiSigV2_Recipient` rather than `ShieldedMultiSigV2_Proposal_Recipient`
 - **Breaking:** `ShieldedAccessControl`: revoking or renouncing a `(role, accountId)` pairing that was never granted reverts with `role was never granted`, so a nullifier can only exist for a granted pairing (#1116)
 
 ## 0.4.0-alpha.6 (2026-10-06)
