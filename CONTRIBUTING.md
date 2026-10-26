@@ -11,32 +11,27 @@ We really appreciate and value contributions to OpenZeppelin Contracts for Compa
 [I don't want to read this whole thing, I just have a question!!!](#i-dont-want-to-read-this-whole-thing-i-just-have-a-question)
 
 [What should I know before I get started?](#what-should-i-know-before-i-get-started)
-
-* [What Is OpenZeppelin Contracts for Compact](#what-is-openzeppelin-contracts-for-compact)
-* [Compact Contracts Design Decisions](#compact-contracts-design-decisions)
+- [What Is OpenZeppelin Contracts for Compact](#what-is-openzeppelin-contracts-for-compact)
+- [Compact Contracts Design Decisions](#compact-contracts-design-decisions)
 
 [How Can I Contribute?](#how-can-i-contribute)
-
-* [Reporting Bugs](#reporting-bugs)
-* [Suggesting Enhancements](#suggesting-enhancements)
-* [Your First Code Contribution](#your-first-code-contribution)
-* [Pull Requests](#pull-requests)
-* [Opening an Issue](#opening-an-issue)
+- [Reporting Bugs](#reporting-bugs)
+- [Suggesting Enhancements](#suggesting-enhancements)
+- [Your First Code Contribution](#your-first-code-contribution)
+- [Pull Requests](#pull-requests)
+- [Opening an Issue](#opening-an-issue)
 
 [Running Tests](#running-tests)
-
-* [Unit Tests](#unit-tests)
-* [Integration Tests](#integration-tests)
-* [Live Tests](#live-tests)
+- [Unit Tests](#unit-tests)
+- [Integration Tests](#integration-tests)
+- [Live Tests](#live-tests)
 
 [Styleguides](#styleguides)
-
-* [Git Commit Messages](#git-commit-messages)
-* [TypeScript Styleguide](#typescript-styleguide)
+- [Git Commit Messages](#git-commit-messages)
+- [TypeScript Styleguide](#typescript-styleguide)
 
 [Additional Notes](#additional-notes)
-
-* [Issue and Pull Request Labels](#issue-and-pull-request-labels)
+- [Issue and Pull Request Labels](#issue-and-pull-request-labels)
 
 ## Code of Conduct
 
@@ -49,8 +44,7 @@ Please report unacceptable behavior to [contact@openzeppelin.com](contact@openze
 > **Note:** Please don't file an issue to ask a question. You'll get faster results by using the resources below.
 
 We have an official message board where the community chimes in with helpful advice if you have questions.
-
-* [Github Discussions](https://github.com/OpenZeppelin/compact-contracts/discussions)
+- [Github Discussions](https://github.com/OpenZeppelin/compact-contracts/discussions)
 
 ## What should I know before I get started?
 
@@ -80,25 +74,23 @@ Before creating bug reports, please check [this list](#before-submitting-a-bug-r
 
 #### Before Submitting A Bug Report
 
-* **Check the [discussions](https://github.com/OpenZeppelin/compact-contracts/discussions)** for a list of common questions and problems.
-* **Perform a [cursory search](https://github.com/search?q=repo%3AOpenZeppelin%2Fcompact-contracts%20is%3Aissue&type=issues)** to see if the problem has already been reported. If it has **and the issue is still open**, add a comment to the existing issue instead of opening a new one.
+- **Check the [discussions](https://github.com/OpenZeppelin/compact-contracts/discussions)** for a list of common questions and problems.
+- **Perform a [cursory search](https://github.com/search?q=repo%3AOpenZeppelin%2Fcompact-contracts%20is%3Aissue&type=issues)** to see if the problem has already been reported. If it has **and the issue is still open**, add a comment to the existing issue instead of opening a new one.
 
 #### How Do I Submit A (Good) Bug Report?
 
 Bugs are tracked as [GitHub issues](https://guides.github.com/features/issues/). Create an issue and provide the following information by filling in [the template](https://github.com/OpenZeppelin/compact-contracts/issues/new?template=01_BUG_REPORT.yml).
 
 Explain the problem and include additional details to help maintainers reproduce the problem:
-
-* **Use a clear and descriptive title** for the issue to identify the problem.
-* **Describe the exact steps which reproduce the problem** in as many details as possible. When listing steps, **don't just say what you did, but explain how you did it**.
-* **Provide specific examples to demonstrate the steps**. Include links to files or GitHub projects, or copy/pasteable snippets, which you use in those examples. If you're providing snippets in the issue, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
-* **Describe the behavior you observed after following the steps** and point out what exactly is the problem with that behavior.
-* **Explain which behavior you expected to see instead and why.**
-* **Include screenshots and animated GIFs** which show you following the described steps and clearly demonstrate the problem.
+- **Use a clear and descriptive title** for the issue to identify the problem.
+- **Describe the exact steps which reproduce the problem** in as many details as possible. When listing steps, **don't just say what you did, but explain how you did it**.
+- **Provide specific examples to demonstrate the steps**. Include links to files or GitHub projects, or copy/pasteable snippets, which you use in those examples. If you're providing snippets in the issue, use [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
+- **Describe the behavior you observed after following the steps** and point out what exactly is the problem with that behavior.
+- **Explain which behavior you expected to see instead and why.**
+- **Include screenshots and animated GIFs** which show you following the described steps and clearly demonstrate the problem.
 
 Include details about your configuration and environment:
-
-* **Which version of compactc are you using?** You can get the exact version by running `compactc --version` in your terminal.
+- **Which version of compactc are you using?** You can get the exact version by running `compactc --version` in your terminal.
 
 ### Suggesting Enhancements
 
@@ -108,53 +100,49 @@ Before creating enhancement suggestions, please check [this list](#before-submit
 
 #### Before Submitting An Enhancement Suggestion
 
-* **Check if you're using the latest version of contracts**
-* **Perform a [cursory search](https://github.com/search?q=+is%3Aissue+user%3AOpenZeppelin)** to see if the enhancement has already been suggested. If it has, add a comment to the existing issue instead of opening a new one.
+- **Check if you're using the latest version of contracts**
+- **Perform a [cursory search](https://github.com/search?q=+is%3Aissue+user%3AOpenZeppelin)** to see if the enhancement has already been suggested. If it has, add a comment to the existing issue instead of opening a new one.
 
 #### How Do I Submit A (Good) Enhancement Suggestion?
 
 Enhancement suggestions are tracked as [GitHub issues](https://guides.github.com/features/issues/). Create an issue and provide the following information:
-
-* **Use a clear and descriptive title** for the issue to identify the suggestion.
-* **Provide a step-by-step description of the suggested enhancement** in as many details as possible.
-* **Provide specific examples to demonstrate the steps**. Include copy/pasteable snippets which you use in those examples, as [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
-* **Describe the current behavior** and **explain which behavior you expected to see instead** and why.
-* **Include screenshots and animated GIFs** which help you demonstrate the steps or point out the part of the contracts library the suggestion is related to.
-* **Explain why this enhancement would be useful** to most OpenZeppelin contracts users
-* **Specify which version of Compact you're using.** You can get the exact version by running `compactc --version` in your terminal
+- **Use a clear and descriptive title** for the issue to identify the suggestion.
+- **Provide a step-by-step description of the suggested enhancement** in as many details as possible.
+- **Provide specific examples to demonstrate the steps**. Include copy/pasteable snippets which you use in those examples, as [Markdown code blocks](https://help.github.com/articles/markdown-basics/#multiple-lines).
+- **Describe the current behavior** and **explain which behavior you expected to see instead** and why.
+- **Include screenshots and animated GIFs** which help you demonstrate the steps or point out the part of the contracts library the suggestion is related to.
+- **Explain why this enhancement would be useful** to most OpenZeppelin contracts users
+- **Specify which version of Compact you're using.** You can get the exact version by running `compactc --version` in your terminal
 
 ### Your First Code Contribution
 
 Unsure where to begin contributing to Compact Contracts? You can start by looking through these `beginner` and `help-wanted` issues:
-
-* [Beginner issues][beginner] - issues which should only require a few lines of code, and a test or two.
-* [Help wanted issues][help-wanted] - issues which should be a bit more involved than `beginner` issues.
+- [Beginner issues][beginner] - issues which should only require a few lines of code, and a test or two.
+- [Help wanted issues][help-wanted] - issues which should be a bit more involved than `beginner` issues.
 
 Both issue lists are sorted by total number of comments. While not perfect, number of comments is a reasonable proxy for impact a given change will have.
 
 ### Pull Requests
 
 The process described here has several goals:
-
-* Maintain Compact Contracts quality.
-* Fix problems that are important to users.
-* Engage the community in working toward the best possible Compact smart contracts library.
-* Enable a sustainable system for Compact Contract's maintainers to review contributions.
+- Maintain Compact Contracts quality.
+- Fix problems that are important to users.
+- Engage the community in working toward the best possible Compact smart contracts library.
+- Enable a sustainable system for Compact Contract's maintainers to review contributions.
 
 Any non-trivial code contribution must be first discussed with the maintainers in an issue (see [Opening an issue](#opening-an-issue)). Only very minor changes are accepted without prior discussion.
 
 Please follow these steps to have your contribution considered by the maintainers:
-
 1. [Open an issue](#opening-an-issue).
 2. Fork the repository and create a new branch.
 3. Follow all instructions in [the template](.github/PULL_REQUEST_TEMPLATE.md)
 4. Follow the [engineering guidelines](./GUIDELINES.md).
 5. Follow the [styleguides](#styleguides)
 6. If the PR includes non-trivial changes, additions, or deletions (especially in Compact modules and/or witnesses),
-add an entry to the [CHANGELOG](./CHANGELOG.md).
+   add an entry to the [CHANGELOG](./CHANGELOG.md).
 7. After you submit your pull request, verify that all [status checks](https://help.github.com/articles/about-status-checks/) are passing. <details><summary>What if the status checks are failing?</summary>
-If a status check is failing, and you believe that the failure is unrelated to your change, please leave a comment on the pull request explaining why you believe the failure is unrelated.
-A maintainer will re-run the status check for you. If we conclude that the failure was a false positive, then we will open an issue to track that problem with our status check suite.</details>
+   If a status check is failing, and you believe that the failure is unrelated to your change, please leave a comment on the pull request explaining why you believe the failure is unrelated.
+   A maintainer will re-run the status check for you. If we conclude that the failure was a false positive, then we will open an issue to track that problem with our status check suite.</details>
 
 While the prerequisites above must be satisfied prior to having your pull request reviewed, the reviewer(s) may ask you to complete additional design work, tests, or other changes before your pull request can be ultimately accepted.
 
@@ -200,9 +188,8 @@ yarn test:live --list        # the live targets, as the CI matrix reads them
 > **Note:** the `integration` live target is the harness capability plus a boundary check, not functional coverage. As of ledger v8 the composed contract does not deploy: its circuits' IR overruns the per-tx block byte budget, and the spec asserts that rejection rather than skipping. A ledger bump can move the budget, so a red spec there means the deploy now fits and the functional specs are worth porting to live.
 
 If any files fail, a second round re-runs just those files on a fresh node with one worker, to separate a real failure from an environment flake:
-
-* Fails round 1, passes round 2 → **FLAKY** (exit 0, reported loudly).
-* Fails both rounds → **REAL** (exit non-zero).
+- Fails round 1, passes round 2 → **FLAKY** (exit 0, reported loudly).
+- Fails both rounds → **REAL** (exit non-zero).
 
 Scope the same mechanism to one target, or a subset within it. The first argument
 names the target (a category, or `integration`). Any further argument is a
@@ -232,13 +219,13 @@ The runner owns the stack: it starts it (`make env-up`, itself a reset) and stop
 
 Environment knobs:
 
-| Variable | Default | Effect |
-| --- | --- | --- |
-| `MIDNIGHT_LIVE_WORKERS` | 3 | Parallel spec files under `unit-live` (max 3, one genesis-funded deployer each). |
-| `MIDNIGHT_LIVE_ALLOW_DIRTY` | unset | `1` skips the freshness check (run against a dirty node). |
-| `MIDNIGHT_LIVE_MAX_COIN_EVENTS` | 0 | Coin events beyond genesis tolerated before "not fresh". |
-| `MIDNIGHT_LIVE_MAX_SCAN_BLOCKS` | 3600 | Above this indexer head, the guard asks you to `env:up` rather than scan. |
-| `MIDNIGHT_LIVE_KEEP_ENV` | unset | `1` leaves the stack running after the run instead of tearing it down. |
+| Variable                        | Default | Effect                                                                           |
+| ------------------------------- | ------- | -------------------------------------------------------------------------------- |
+| `MIDNIGHT_LIVE_WORKERS`         | 3       | Parallel spec files under `unit-live` (max 3, one genesis-funded deployer each). |
+| `MIDNIGHT_LIVE_ALLOW_DIRTY`     | unset   | `1` skips the freshness check (run against a dirty node).                        |
+| `MIDNIGHT_LIVE_MAX_COIN_EVENTS` | 0       | Coin events beyond genesis tolerated before "not fresh".                         |
+| `MIDNIGHT_LIVE_MAX_SCAN_BLOCKS` | 3600    | Above this indexer head, the guard asks you to `env:up` rather than scan.        |
+| `MIDNIGHT_LIVE_KEEP_ENV`        | unset   | `1` leaves the stack running after the run instead of tearing it down.           |
 
 `integration-live` runs one worker (only the deployer wallet is in play). `unit-live` runs up to 3 workers in parallel, so their output interleaves. It is tagged per worker: a `▶ live worker N/3 ready` banner when a worker's wallets are funded, a `[wN] ❯ <file>` line as each spec file starts, and a `[wN] ✓ <test> (<ms>) [done/total]` line per test — showing the worker, the result, and overall progress through the run. Each worker also writes a detailed log to `logs/live-harness-wN.log`.
 
@@ -253,10 +240,9 @@ Environment knobs:
 #### Live tests in CI
 
 The live suite is too slow for the regular PR checks (hours, not minutes), so [`live.yml`](./.github/workflows/live.yml) runs it separately and is never a required check:
-
-* **Nightly** on `main`, as the regression safety net. A failed nightly opens (or comments on) a `live-nightly` tracking issue, which closes automatically on the next green run.
-* **On demand**: run `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`), optionally scoped with the `target` and `filter` inputs.
-* **On a PR**: apply a `live-tests:<target>` label (e.g. `live-tests:multisig`), or `live-tests:all` for every target. Re-apply the label for a fresh run after new pushes. The bare `live-tests` label is rejected by the plan job — with one job per spec file it would queue 60+ checks on the PR, so the full fan-out has to be spelled out.
+- **Nightly** on `main`, as the regression safety net. A failed nightly opens (or comments on) a `live-nightly` tracking issue, which closes automatically on the next green run.
+- **On demand**: run `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`), optionally scoped with the `target` and `filter` inputs.
+- **On a PR**: apply a `live-tests:<target>` label (e.g. `live-tests:multisig`), or `live-tests:all` for every target. Re-apply the label for a fresh run after new pushes. The bare `live-tests` label is rejected by the plan job — with one job per spec file it would queue 60+ checks on the PR, so the full fan-out has to be spelled out.
 
 The run is one pipeline per live target. A plan job asks the runner which live targets exist (the same list `yarn test:live --list` prints) and which spec files each one holds. Each target then gets a `compile-<target>` job that builds its contract slice once with real ZK keys and uploads it, feeding a `live-<target>` matrix with one job per **spec file** that downloads that build and runs its one file on its own runner, stack, and 6-hour job budget.
 
@@ -305,7 +291,7 @@ This section lists the labels we use to help us track and manage issues and pull
 [GitHub search](https://help.github.com/articles/searching-issues/) makes it easy to use labels for finding groups of issues or pull requests you're interested in.
 For example, you might be interested in [open issues across `OpenZeppelin` and all OpenZeppelin-owned packages which are labeled as bugs, but still need to be reliably reproduced](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Abug) or perhaps [open pull requests in `OpenZeppelin/compact-contracts` which haven't been reviewed yet](https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+comments%3A0).
 To help you find issues and pull requests, each label is listed with search links for finding open items with that label in `OpenZeppelin/compact-contracts` only and also across all OpenZeppelin repositories.
-We  encourage you to read about [other search filters](https://help.github.com/articles/searching-issues/) which will help you write more focused queries.
+We encourage you to read about [other search filters](https://help.github.com/articles/searching-issues/) which will help you write more focused queries.
 
 The labels are loosely grouped by their purpose, but it's not required that every issue has a label from every group or that an issue can't have more than one label from the same group.
 
@@ -313,39 +299,39 @@ Please open an issue on `OpenZeppelin/compact-contracts` if you have suggestions
 
 #### Type of Issue and Issue State
 
-| Label name | `OpenZeppelin/compact-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
-| --- | --- | --- | --- |
-| `enhancement` | [search][search-OpenZeppelin-repo-label-enhancement] | [search][search-OpenZeppelin-org-label-enhancement] | Feature requests. |
-| `bug` | [search][search-OpenZeppelin-repo-label-bug] | [search][search-OpenZeppelin-org-label-bug] | Confirmed bugs or reports that are very likely to be bugs. |
-| `question` | [search][search-OpenZeppelin-repo-label-question] | [search][search-OpenZeppelin-org-label-question] | Questions more than bug reports or feature requests (e.g. how do I do X). |
-| `feedback` | [search][search-OpenZeppelin-repo-label-feedback] | [search][search-OpenZeppelin-org-label-feedback] | General feedback more than bug reports or feature requests. |
-| `help-wanted` | [search][search-OpenZeppelin-repo-label-help-wanted] | [search][search-OpenZeppelin-org-label-help-wanted] | The OpenZeppelin core team would appreciate help from the community in resolving these issues. |
-| `beginner` | [search][search-OpenZeppelin-repo-label-beginner] | [search][search-OpenZeppelin-org-label-beginner] | Less complex issues which would be good first issues to work on for users who want to contribute to OpenZeppelin. |
-| `more-information-needed` | [search][search-OpenZeppelin-repo-label-more-information-needed] | [search][search-OpenZeppelin-org-label-more-information-needed] | More information needs to be collected about these problems or feature requests (e.g. steps to reproduce). |
-| `needs-reproduction` | [search][search-OpenZeppelin-repo-label-needs-reproduction] | [search][search-OpenZeppelin-org-label-needs-reproduction] | Likely bugs, but haven't been reliably reproduced. |
-| `blocked` | [search][search-OpenZeppelin-repo-label-blocked] | [search][search-OpenZeppelin-org-label-blocked] | Issues blocked on other issues. |
-| `duplicate` | [search][search-OpenZeppelin-repo-label-duplicate] | [search][search-OpenZeppelin-org-label-duplicate] | Issues which are duplicates of other issues, i.e. they have been reported before. |
-| `wontfix` | [search][search-OpenZeppelin-repo-label-wontfix] | [search][search-OpenZeppelin-org-label-wontfix] | The OpenZeppelin core team has decided not to fix these issues for now, either because they're working as intended or for some other reason. |
-| `invalid` | [search][search-OpenZeppelin-repo-label-invalid] | [search][search-OpenZeppelin-org-label-invalid] | Issues which aren't valid (e.g. user errors). |
+| Label name                | `OpenZeppelin/compact-contracts` :mag_right:                     | `OpenZeppelin`‑org :mag_right:                                  | Description                                                                                                                                  |
+| ------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enhancement`             | [search][search-OpenZeppelin-repo-label-enhancement]             | [search][search-OpenZeppelin-org-label-enhancement]             | Feature requests.                                                                                                                            |
+| `bug`                     | [search][search-OpenZeppelin-repo-label-bug]                     | [search][search-OpenZeppelin-org-label-bug]                     | Confirmed bugs or reports that are very likely to be bugs.                                                                                   |
+| `question`                | [search][search-OpenZeppelin-repo-label-question]                | [search][search-OpenZeppelin-org-label-question]                | Questions more than bug reports or feature requests (e.g. how do I do X).                                                                    |
+| `feedback`                | [search][search-OpenZeppelin-repo-label-feedback]                | [search][search-OpenZeppelin-org-label-feedback]                | General feedback more than bug reports or feature requests.                                                                                  |
+| `help-wanted`             | [search][search-OpenZeppelin-repo-label-help-wanted]             | [search][search-OpenZeppelin-org-label-help-wanted]             | The OpenZeppelin core team would appreciate help from the community in resolving these issues.                                               |
+| `beginner`                | [search][search-OpenZeppelin-repo-label-beginner]                | [search][search-OpenZeppelin-org-label-beginner]                | Less complex issues which would be good first issues to work on for users who want to contribute to OpenZeppelin.                            |
+| `more-information-needed` | [search][search-OpenZeppelin-repo-label-more-information-needed] | [search][search-OpenZeppelin-org-label-more-information-needed] | More information needs to be collected about these problems or feature requests (e.g. steps to reproduce).                                   |
+| `needs-reproduction`      | [search][search-OpenZeppelin-repo-label-needs-reproduction]      | [search][search-OpenZeppelin-org-label-needs-reproduction]      | Likely bugs, but haven't been reliably reproduced.                                                                                           |
+| `blocked`                 | [search][search-OpenZeppelin-repo-label-blocked]                 | [search][search-OpenZeppelin-org-label-blocked]                 | Issues blocked on other issues.                                                                                                              |
+| `duplicate`               | [search][search-OpenZeppelin-repo-label-duplicate]               | [search][search-OpenZeppelin-org-label-duplicate]               | Issues which are duplicates of other issues, i.e. they have been reported before.                                                            |
+| `wontfix`                 | [search][search-OpenZeppelin-repo-label-wontfix]                 | [search][search-OpenZeppelin-org-label-wontfix]                 | The OpenZeppelin core team has decided not to fix these issues for now, either because they're working as intended or for some other reason. |
+| `invalid`                 | [search][search-OpenZeppelin-repo-label-invalid]                 | [search][search-OpenZeppelin-org-label-invalid]                 | Issues which aren't valid (e.g. user errors).                                                                                                |
 
 #### Topic Categories
 
-| Label name | `OpenZeppelin/compact-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description |
-| --- | --- | --- | --- |
-| `documentation` | [search][search-OpenZeppelin-repo-label-documentation] | [search][search-OpenZeppelin-org-label-documentation] | Improvements or additions to documentation. |
-| `performance` | [search][search-OpenZeppelin-repo-label-performance] | [search][search-OpenZeppelin-org-label-performance] | Improvements related to circuit size, gas optimization, or code efficiency. |
-| `security` | [search][search-OpenZeppelin-repo-label-security] | [search][search-OpenZeppelin-org-label-security] | Related to security. |
+| Label name         | `OpenZeppelin/compact-contracts` :mag_right:              | `OpenZeppelin`‑org :mag_right:                           | Description                                                                     |
+| ------------------ | --------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `documentation`    | [search][search-OpenZeppelin-repo-label-documentation]    | [search][search-OpenZeppelin-org-label-documentation]    | Improvements or additions to documentation.                                     |
+| `performance`      | [search][search-OpenZeppelin-repo-label-performance]      | [search][search-OpenZeppelin-org-label-performance]      | Improvements related to circuit size, gas optimization, or code efficiency.     |
+| `security`         | [search][search-OpenZeppelin-repo-label-security]         | [search][search-OpenZeppelin-org-label-security]         | Related to security.                                                            |
 | `deprecation-help` | [search][search-OpenZeppelin-repo-label-deprecation-help] | [search][search-OpenZeppelin-org-label-deprecation-help] | Issues for helping package authors remove usage of deprecated APIs in packages. |
 
 #### Pull Request Labels
 
-| Label name | `OpenZeppelin/compact-contracts` :mag_right: | `OpenZeppelin`‑org :mag_right: | Description
-| --- | --- | --- | --- |
-| `work-in-progress` | [search][search-OpenZeppelin-repo-label-work-in-progress] | [search][search-OpenZeppelin-org-label-work-in-progress] | Pull requests which are still being worked on, more changes will follow. |
-| `needs-review` | [search][search-OpenZeppelin-repo-label-needs-review] | [search][search-OpenZeppelin-org-label-needs-review] | Pull requests which need code review, and approval from maintainers or OpenZeppelin core team. |
-| `under-review` | [search][search-OpenZeppelin-repo-label-under-review] | [search][search-OpenZeppelin-org-label-under-review] | Pull requests being reviewed by maintainers or OpenZeppelin core team. |
-| `requires-changes` | [search][search-OpenZeppelin-repo-label-requires-changes] | [search][search-OpenZeppelin-org-label-requires-changes] | Pull requests which need to be updated based on review comments and then reviewed again. |
-| `needs-testing` | [search][search-OpenZeppelin-repo-label-needs-testing] | [search][search-OpenZeppelin-org-label-needs-testing] | Pull requests which need manual testing. |
+| Label name         | `OpenZeppelin/compact-contracts` :mag_right:              | `OpenZeppelin`‑org :mag_right:                           | Description                                                                                    |
+| ------------------ | --------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `work-in-progress` | [search][search-OpenZeppelin-repo-label-work-in-progress] | [search][search-OpenZeppelin-org-label-work-in-progress] | Pull requests which are still being worked on, more changes will follow.                       |
+| `needs-review`     | [search][search-OpenZeppelin-repo-label-needs-review]     | [search][search-OpenZeppelin-org-label-needs-review]     | Pull requests which need code review, and approval from maintainers or OpenZeppelin core team. |
+| `under-review`     | [search][search-OpenZeppelin-repo-label-under-review]     | [search][search-OpenZeppelin-org-label-under-review]     | Pull requests being reviewed by maintainers or OpenZeppelin core team.                         |
+| `requires-changes` | [search][search-OpenZeppelin-repo-label-requires-changes] | [search][search-OpenZeppelin-org-label-requires-changes] | Pull requests which need to be updated based on review comments and then reviewed again.       |
+| `needs-testing`    | [search][search-OpenZeppelin-repo-label-needs-testing]    | [search][search-OpenZeppelin-org-label-needs-testing]    | Pull requests which need manual testing.                                                       |
 
 [search-OpenZeppelin-repo-label-enhancement]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aenhancement
 [search-OpenZeppelin-org-label-enhancement]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aenhancement
@@ -369,7 +355,6 @@ Please open an issue on `OpenZeppelin/compact-contracts` if you have suggestions
 [search-OpenZeppelin-org-label-performance]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Aperformance
 [search-OpenZeppelin-repo-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Asecurity
 [search-OpenZeppelin-org-label-security]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Asecurity
-
 [search-OpenZeppelin-repo-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Ablocked
 [search-OpenZeppelin-org-label-blocked]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ablocked
 [search-OpenZeppelin-repo-label-duplicate]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aduplicate
@@ -380,7 +365,6 @@ Please open an issue on `OpenZeppelin/compact-contracts` if you have suggestions
 [search-OpenZeppelin-org-label-invalid]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Ainvalid
 [search-OpenZeppelin-repo-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Adeprecation-help
 [search-OpenZeppelin-org-label-deprecation-help]: https://github.com/search?q=is%3Aopen+is%3Aissue+user%3AOpenZeppelin+label%3Adeprecation-help
-
 [search-OpenZeppelin-repo-label-work-in-progress]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Awork-in-progress
 [search-OpenZeppelin-org-label-work-in-progress]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Awork-in-progress
 [search-OpenZeppelin-repo-label-needs-review]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aneeds-review
@@ -391,7 +375,5 @@ Please open an issue on `OpenZeppelin/compact-contracts` if you have suggestions
 [search-OpenZeppelin-org-label-requires-changes]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Arequires-changes
 [search-OpenZeppelin-repo-label-needs-testing]: https://github.com/search?q=is%3Aopen+is%3Apr+repo%3AOpenZeppelin%2Fcompact-contracts+label%3Aneeds-testing
 [search-OpenZeppelin-org-label-needs-testing]: https://github.com/search?q=is%3Aopen+is%3Apr+user%3AOpenZeppelin+label%3Aneeds-testing
-
-[beginner]:https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abeginner+label%3Ahelp-wanted+user%3AOpenZeppelin+sort%3Acomments-desc
-[help-wanted]:https://github.com/search?q=is%3Aopen+is%3Aissue+label%3Ahelp-wanted+user%3AOpenZeppelin+sort%3Acomments-desc+-label%3Abeginner
-
+[beginner]: https://github.com/search?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abeginner+label%3Ahelp-wanted+user%3AOpenZeppelin+sort%3Acomments-desc
+[help-wanted]: https://github.com/search?q=is%3Aopen+is%3Aissue+label%3Ahelp-wanted+user%3AOpenZeppelin+sort%3Acomments-desc+-label%3Abeginner

@@ -1,12 +1,12 @@
 # WARNING: Insecure default credentials below. For local development only — do not use in production.
 services:
   proof-server:
-    image: 'midnightntwrk/proof-server:9.0.0-rc.6'
-    command: ['midnight-proof-server -v']
+    image: "midnightntwrk/proof-server:9.0.0-rc.6"
+    command: ["midnight-proof-server -v"]
     ports:
-      - '6300:6300'
+      - "6300:6300"
     environment:
-      RUST_BACKTRACE: 'full'
+      RUST_BACKTRACE: "full"
     # No healthcheck: this image is a minimal Nix build with no shell and no
     # curl/wget, so any in-container HTTP probe fails with "executable not found"
     # and `docker compose up --wait` aborts even though the server is serving
@@ -20,25 +20,25 @@ services:
     # Pinned: `latest` drifted to the Cardano-bridge indexer line, whose config
     # requires an `infra.spo_node.blockfrost_id` not set here, so it crash-loops
     # on boot. This is the ledger-9 line matching node 2.0.0-rc.4.
-    image: 'midnightntwrk/indexer-standalone:4.4.0-rc.2'
+    image: "midnightntwrk/indexer-standalone:4.4.0-rc.2"
     ports:
-      - '8088:8088'
+      - "8088:8088"
     environment:
-      RUST_LOG: 'indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info'
-      APP__INFRA__NODE__URL: 'ws://node:9944'
-      APP__APPLICATION__NETWORK_ID: 'undeployed'
-      APP__INFRA__STORAGE__PASSWORD: 'indexer'
-      APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
-      APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
-      APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+      RUST_LOG: "indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info"
+      APP__INFRA__NODE__URL: "ws://node:9944"
+      APP__APPLICATION__NETWORK_ID: "undeployed"
+      APP__INFRA__STORAGE__PASSWORD: "indexer"
+      APP__INFRA__PUB_SUB__PASSWORD: "indexer"
+      APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: "indexer"
+      APP__INFRA__SECRET: "303132333435363738393031323334353637383930313233343536373839303132"
       # The spo-indexer subprocess dials spo_node.url, which defaults to
       # ws://localhost:9944 (nothing inside the container) and takes the whole
       # process down. Point it at the node; blockfrost_id only needs to be
       # non-empty when SPO features are unused.
-      APP__INFRA__SPO_NODE__URL: 'ws://node:9944'
-      APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'unused-local-devnet'
+      APP__INFRA__SPO_NODE__URL: "ws://node:9944"
+      APP__INFRA__SPO_NODE__BLOCKFROST_ID: "unused-local-devnet"
     healthcheck:
-      test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
+      test: ["CMD-SHELL", "cat /var/run/indexer-standalone/running"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -49,13 +49,13 @@ services:
     logging:
       driver: local
       options:
-        max-size: '10m'
-        max-file: '3'
+        max-size: "10m"
+        max-file: "3"
 
   node:
-    image: 'midnightntwrk/midnight-node:2.0.0-rc.4'
+    image: "midnightntwrk/midnight-node:2.0.0-rc.4"
     ports:
-      - '9944:9944'
+      - "9944:9944"
     healthcheck:
       # Healthy once a block past genesis is finalized: the indexer's SPO
       # sub-process fetches block 1 on boot and exits the whole indexer if
@@ -72,10 +72,10 @@ services:
       retries: 30
       start_period: 5s
     environment:
-      CFG_PRESET: 'dev'
-      SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'
+      CFG_PRESET: "dev"
+      SIDECHAIN_BLOCK_BENEFICIARY: "04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e"
     logging:
       driver: local
       options:
-        max-size: '10m'
-        max-file: '3'
+        max-size: "10m"
+        max-file: "3"

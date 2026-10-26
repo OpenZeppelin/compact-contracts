@@ -93,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** (#906)
   - `ShieldedMultiSigV2`
     - Sign `execute` as EIP-712 typed data instead of
-    a `persistentHash` digest
+      a `persistentHash` digest
 
   - `ShieldedMultiSigV3`
     - Sign `mint` and `burn` as EIP-712 typed data instead of `persistentHash` digests

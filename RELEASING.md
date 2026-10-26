@@ -20,7 +20,7 @@ There is no long-lived per-version branch: a version bump is just a PR into
 
 ## How it works
 
-1. Run **Prepare release** (`prepare-release.yml`) via *Actions → Run workflow*:
+1. Run **Prepare release** (`prepare-release.yml`) via _Actions → Run workflow_:
    pick the branch, type the exact target version. It opens a `chore/bump-<version>`
    PR into that branch.
 2. Review and merge the bump PR.
