@@ -54,7 +54,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * @description Spends a previously-deposited shielded coin to the parent,
  * a coin public key. The caller proves knowledge of `(parent, opSecret)`
  * matching the stored commitment; the coin is sent as a shielded note, so the
- * parent stays hidden on-chain. If the input coin's value exceeds `value`,
+ * parent stays hidden from anyone who holds no deposited coin (see the
+ * `ForwarderPrivate` module notice). If the input coin's value exceeds `value`,
  * change is re-emitted back to the contract for future drains.
  *
  * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
