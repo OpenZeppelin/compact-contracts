@@ -82,13 +82,13 @@ module ShieldedTreasury {
    * The coin is then merged with any existing coin of the same color,
    * or inserted as a new entry if no coin of that color exists.
    *
-   * Zero-value deposits are permitted and are not always a no-op. On a color the
-   * treasury does not yet hold, a zero-value coin is inserted and occupies that
-   * color's single slot until a later deposit merges into it; if a coin of that
-   * color already exists, the zero merges into it via `mergeCoinImmediate` and
-   * the stored value is unchanged. They may serve as signaling mechanisms when
-   * events are supported. They are not useful as privacy decoys, this
-   * treasury's holdings are public (see the module header).
+   * @warning Every deposit of a color replaces the coin that `_send` reads for
+   * that color, so a deposit that lands first invalidates every `_send` of the
+   * same color still waiting to be applied. A consumer that exposes `_deposit`
+   * without access control lets any depositor delay authorized sends for as
+   * long as they keep depositing; the sends must then be re-proven. No funds are
+   * lost. A zero-value coin is rejected, so each deposit costs at least one unit
+   * of the token plus the transaction fee.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -96,6 +96,7 @@ module ShieldedTreasury {
    *
    * Requirements:
    *
+   * - The coin's value must be non-zero.
    * - Deposit must not cause received total overflow.
    *
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin descriptor.
@@ -103,6 +104,8 @@ module ShieldedTreasury {
    * @returns {[]} Empty tuple.
    */
   export circuit _deposit(coin: ShieldedCoinInfo): [] {
+    assert(coin.value != 0, "ShieldedTreasury: zero value");
+
     const currentReceived = getReceivedTotal(coin.color);
     assert(currentReceived <= Utils_UINT128_MAX() - coin.value, "ShieldedTreasury: overflow");
 

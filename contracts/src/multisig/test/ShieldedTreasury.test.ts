@@ -112,10 +112,21 @@ describe('ShieldedTreasury', () => {
       expect(await treasury.getTokenBalance(COLOR2)).toEqual(AMOUNT * 2n);
     });
 
-    it('should allow zero value deposit', async () => {
-      await treasury._deposit(makeCoin(COLOR, 0n));
+    it('should reject a zero value deposit on an untouched color', async () => {
+      await expect(treasury._deposit(makeCoin(COLOR, 0n))).rejects.toThrow(
+        'ShieldedTreasury: zero value',
+      );
       expect(await treasury.getTokenBalance(COLOR)).toEqual(0n);
       expect(await treasury.getReceivedTotal(COLOR)).toEqual(0n);
+    });
+
+    it('should reject a zero value deposit on a held color', async () => {
+      await treasury._deposit(makeCoin(COLOR, AMOUNT));
+      await expect(
+        treasury._deposit(makeCoin(COLOR, 0n, new Uint8Array(32).fill(2))),
+      ).rejects.toThrow('ShieldedTreasury: zero value');
+      expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT);
+      expect(await treasury.getReceivedTotal(COLOR)).toEqual(AMOUNT);
     });
 
     it('should maintain receivedMinusSent consistency', async () => {
