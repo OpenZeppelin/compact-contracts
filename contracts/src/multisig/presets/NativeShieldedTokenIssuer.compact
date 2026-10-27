@@ -183,7 +183,10 @@ pragma language_version >= 0.26.0;
  * Mint and burn only. No send, transfer or execute circuit exists, so
  * contract-held coins (from `mintToSelf` or `burnFromSelf` change) leave only
  * through `burnFromSelf`, supplied by the operator as
- * `QualifiedShieldedCoinInfo`. Coins minted to users are ordinary
+ * `QualifiedShieldedCoinInfo`. Moving such a coin anywhere else needs a
+ * custody module composed by the consumer that records the coin without
+ * claiming it a second time; `ShieldedTreasury._deposit` is not that module
+ * today (compact-contracts#1112). Coins minted to users are ordinary
  * Zswap coins the contract neither tracks nor restricts; a holder redeems by
  * paying the coin into a `burn` tx. No supply accounting.
  *
