@@ -22,12 +22,12 @@ pragma language_version >= 0.26.0;
  * canonicalized in `balanceOf` and `allowance`. `_spendAllowance` canonicalizes
  * independently to ensure consistent lookups before delegating to `_approve`.
  *
- * @notice At the moment Midnight does not support contract-to-contract (C2C) communication, but
- * there are ongoing efforts to enable this in the future. Thus, the main circuits of this module
- * (`transfer`, `transferFrom`, `_transfer`, `_mint`) reject `ContractAddress` recipients via an
- * `isContract` guard, because a contract that receives tokens currently cannot move them back out.
- * Developers who need to experiment with contract recipients can use the `_unsafe` variants, which
- * skip the guard (the caller accepts that such tokens are stranded until C2C lands).
+ * @notice This library has not yet migrated to contract-to-contract (C2C) calls. Thus, the main
+ * circuits of this module (`transfer`, `transferFrom`, `_transfer`, `_mint`) reject
+ * `ContractAddress` recipients via an `isContract` guard, because a contract that receives tokens
+ * currently cannot move them back out. Developers who need to experiment with contract recipients
+ * can use the `_unsafe` variants, which skip the guard (the caller accepts that such tokens are
+ * stranded until the C2C migration lands).
  *
  * @dev Migration plan (safe -> C2C-capable transfers)
  *
@@ -39,9 +39,9 @@ pragma language_version >= 0.26.0;
  * which is the only kind of upgrade the CMA supports. Widening the types later would instead force
  * a ledger-layout rewrite, which the CMA cannot perform.
  *
- * When C2C lands, an already-deployed token migrates without changing its address or ledger state.
- * Below, `FN` stands for each guarded circuit (`transfer`, `transferFrom`, `_transfer`, `_mint`)
- * and `_unsafeFN` for its unsafe counterpart:
+ * When the C2C migration lands, an already-deployed token migrates without changing its address or
+ * ledger state. Below, `FN` stands for each guarded circuit (`transfer`, `transferFrom`,
+ * `_transfer`, `_mint`) and `_unsafeFN` for its unsafe counterpart:
  *
  * - Minor release: mark `_unsafeFN` deprecated (and emit a warning if possible); keep its
  *   implementation intact so existing callers continue to work.
@@ -269,8 +269,8 @@ module FungibleToken {
    *
    * @constraints k=13, rows=3743
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from
+   * @notice Transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * Requirements:
@@ -300,9 +300,10 @@ module FungibleToken {
    *
    * @constraints k=13, rows=3740
    *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * @warning Transfers to contract addresses are considered unsafe because this library has not yet
+   * migrated to contract-to-contract calls.
+   * Tokens sent to a contract address may become irretrievable.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * Requirements:
    *
@@ -385,8 +386,8 @@ module FungibleToken {
    *
    * @constraints k=13, rows=4906
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from
+   * @notice Transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * Requirements:
@@ -419,9 +420,10 @@ module FungibleToken {
    *
    * @constraints k=13, rows=4903
    *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * @warning Transfers to contract addresses are considered unsafe because this library has not yet
+   * migrated to contract-to-contract calls.
+   * Tokens sent to a contract address may become irretrievable.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * Requirements:
    *
@@ -456,8 +458,8 @@ module FungibleToken {
    *
    * @constraints k=12, rows=2125
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from
+   * @notice Transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * Requirements:
@@ -489,9 +491,10 @@ module FungibleToken {
    *
    * @constraints k=12, rows=2122
    *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * @warning Transfers to contract addresses are considered unsafe because this library has not yet
+   * migrated to contract-to-contract calls.
+   * Tokens sent to a contract address may become irretrievable.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * Requirements:
    *
@@ -567,8 +570,8 @@ module FungibleToken {
    *
    * @constraints k=11, rows=1328
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from
+   * @notice Transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * Requirements:
@@ -593,9 +596,10 @@ module FungibleToken {
    *
    * @constraints k=11, rows=1325
    *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * @warning Transfers to contract addresses are considered unsafe because this library has not yet
+   * migrated to contract-to-contract calls.
+   * Tokens sent to a contract address may become irretrievable.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * Requirements:
    *

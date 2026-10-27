@@ -49,8 +49,8 @@ pragma language_version >= 0.26.0;
  * Since this module does not offer mint or transfer batching,
  * balance batching is also not included at this time.
  *
- * 3. Introspection - Compact currently cannot support contract-to-contract
- * queries for introspection. ERC165 (or an equivalent thereof) is NOT
+ * 3. Introspection - This library has not yet migrated to contract-to-contract
+ * calls, so there are no introspection queries. ERC165 (or an equivalent thereof) is NOT
  * included in the contract.
  *
  * 4. Safe transfers - The lack of an introspection mechanism means
@@ -93,7 +93,7 @@ pragma language_version >= 0.26.0;
  * an `isContract` guard, because a contract that receives tokens currently cannot move them back
  * out. The `_unsafe` variants (`_unsafeTransferFrom`, `_unsafeTransfer`, `_unsafeMint`) skip the
  * guard for callers who need contract recipients (accepting that such tokens are stranded until
- * C2C lands).
+ * the C2C migration lands).
  *
  * The recipient type is the final `Either<Bytes<32>, ContractAddress>` from day one, in both
  * circuit signatures and ledger maps. This is deliberate. Midnight's upgrade mechanism, the
@@ -103,7 +103,8 @@ pragma language_version >= 0.26.0;
  * which is the only kind of upgrade the CMA supports. Widening the types later would instead force
  * a ledger-layout rewrite, which the CMA cannot perform.
  *
- * When C2C lands, an already-deployed token migrates without changing its address or ledger state:
+ * When the C2C migration lands, an already-deployed token migrates without changing its address or
+ * ledger state:
  *
  * - Minor release: mark the `_unsafe` variants deprecated (and emit a warning if possible); keep
  *   their implementation intact so existing callers continue to work.
@@ -120,7 +121,7 @@ pragma language_version >= 0.26.0;
  *
  * - Consider changing the underscore in the internal methods to `unsafe` or
  * adopting dot notation for prefixing imports.
- * - Revise logic once contract-to-contract interactions are available on midnight.
+ * - Revise logic once this library migrates to contract-to-contract calls.
  */
 module MultiToken {
   import CompactStandardLibrary;
@@ -328,8 +329,8 @@ module MultiToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_MultiTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from
+   * @notice Transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * @constraints k=13, rows=4833
@@ -365,8 +366,8 @@ module MultiToken {
    * Does not impose restrictions on the caller, making it suitable for composition
    * in higher-level contract logic.
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from
+   * @notice Transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * @constraints k=12, rows=2381
@@ -458,9 +459,10 @@ module MultiToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_MultiTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * @warning Transfers to contract addresses are considered unsafe because this library has not yet
+   * migrated to contract-to-contract calls.
+   * Tokens sent to a contract address may become irretrievable.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * @constraints k=13, rows=4832
    *
@@ -500,9 +502,10 @@ module MultiToken {
    * Does not impose restrictions on the caller, making it suitable as a low-level
    * building block for advanced contract logic.
    *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * @warning Transfers to contract addresses are considered unsafe because this library has not yet
+   * migrated to contract-to-contract calls.
+   * Tokens sent to a contract address may become irretrievable.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * @constraints k=12, rows=2380
    *
@@ -563,8 +566,8 @@ module MultiToken {
   /**
    * @description Creates a `value` amount of tokens of type `id`, and assigns them to `to`.
    *
-   * @notice Transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact. This restriction prevents assets from
+   * @notice Transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
    * @constraints k=11, rows=1449
@@ -592,9 +595,10 @@ module MultiToken {
   /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
    *
-   * @warning Transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported. Tokens sent to a contract address may become irretrievable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * @warning Transfers to contract addresses are considered unsafe because this library has not yet
+   * migrated to contract-to-contract calls.
+   * Tokens sent to a contract address may become irretrievable.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * @constraints k=11, rows=1448
    *

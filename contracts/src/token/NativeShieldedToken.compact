@@ -62,7 +62,7 @@ pragma language_version >= 0.26.0;
  * shared-`Initializable`-flag "one `initialize` per contract" limit no longer
  * applies.)
  *
- * @notice Out of scope (phase two, pending contract-to-contract support):
+ * @notice Out of scope (phase two, pending this library's contract-to-contract migration):
  * `balanceOf`, `allowance`, and transfer mediation are not representable for
  * native shielded UTXOs — once a user holds a coin, the contract cannot observe
  * or restrict its movement.
