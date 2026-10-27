@@ -80,12 +80,16 @@ every amount that changes it. `*PublicSupply` extensions add one where auditabil
 
 **Identity.** The modules read no sender address: a caller proves identity in-circuit from secrets
 its witnesses supply. Transparent modules expose a pseudonymous account id the consumer treats as
-public, the `msg.sender` analogue. Shielded modules commit to a salted, per-instance identity.
+public, the `msg.sender` analogue. `ShieldedAccessControl`, `ZOwnablePK` and
+`ConfidentialNoteFungibleToken` commit to a salted, per-instance identity instead;
+`ConfidentialFungibleToken` keeps the transparent account id, and the native shielded tokens hold
+no identity at all, only coins.
 
 **Witnesses are untrusted.** Each witness value is bound in-circuit to public state or used so a
-hostile value cannot break the module's claim; `ownPublicKey()` is a witness too. Confidentiality
-still needs the wallet to keep keys secret and randomness fresh. The repository's witnesses are
-unpublished test doubles; consumers write and audit their own.
+hostile value cannot break the module's claim; `ownPublicKey()` is a witness too. Keys and
+randomness are the exception: no circuit can check that a seed is fresh or a key secret, so
+confidentiality rests on the wallet supplying both. The repository's witnesses are unpublished
+test doubles; consumers write and audit their own.
 
 **Disclosure is explicit.** Shielded module headers list what a transaction publishes, what state
 is public and what stays private. `disclose()` only permits a flow; the ledger write or effect
@@ -128,9 +132,9 @@ frozen; a change orphans old state.
 
 The suite mirrors the module map: each domain's `test/` holds mocks that expose internals,
 simulators and test witnesses, and presets keep their specs beside them. The same specs run dry on
-the simulator and live on a local Midnight stack. Integration specs compose modules into one
-contract to pin init-state isolation, supply conservation and privacy. The live harness and the CI
-scripts have their own dry tests.
+the simulator and, except the witness-only ones, live on a local Midnight stack. Integration specs
+compose modules into one contract to pin init-state isolation, supply conservation and privacy.
+The live harness and the CI scripts have their own dry tests.
 
 Beyond behaviour, specs pin invariants, properties, concurrency, compatibility and privacy.
 Compatibility specs pin digests, ledger slots and the circuit surface; a failure there is a
