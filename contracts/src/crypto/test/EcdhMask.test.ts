@@ -263,6 +263,28 @@ describe('EcdhMask', () => {
       );
     });
 
+    it('should equal kdfFromDigest over pointDigest', async () => {
+      const digest = await contract.pointDigest(PK);
+
+      expect(await contract.kdfFromDigest(digest, DOMAIN)).toBe(
+        await contract.kdf(PK, DOMAIN),
+      );
+    });
+
+    it('should digest distinct points to distinct digests', async () => {
+      expect(await contract.pointDigest(PK)).not.toStrictEqual(
+        await contract.pointDigest(ecMulGenerator(222n)),
+      );
+    });
+
+    it('should derive distinct masks from one digest under distinct domains', async () => {
+      const digest = await contract.pointDigest(PK);
+
+      expect(await contract.kdfFromDigest(digest, domain('a'))).not.toBe(
+        await contract.kdfFromDigest(digest, domain('b')),
+      );
+    });
+
     it('produces a mask below 2^248 (hiding-margin regression)', async () => {
       // The pad must cover the whole Uint<248> plaintext range, and the
       // module's hiding bounds are stated for [0, 2^248), the

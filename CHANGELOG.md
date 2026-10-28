@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `EcdhMask.kdf` is `kdfFromDigest(pointDigest(S), domain)`, both exported, so a consumer deriving several masks from one shared point digests it once. Masks are unchanged. (#1183)
 - `EcdhMask.encrypt` takes a `Uint<248>` value instead of a `Uint<128>`, the full range of its 248-bit pad. Ciphertexts for `Uint<128>` values are unchanged. The hiding margin shrinks with the value's width and is gone at the full 248 bits. (#1150)
 - `ElGamal.encryptPoint` takes its ephemeral and mask from `Ecdh.deriveShared`, so its weak-input guards now read `Ecdh: identity pk` / `Ecdh: zero ephemeral` instead of `ElGamal: identity pk` / `ElGamal: zero randomness`. Ciphertexts are unchanged. (#1110)
 

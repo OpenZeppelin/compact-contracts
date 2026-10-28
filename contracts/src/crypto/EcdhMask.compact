@@ -28,6 +28,9 @@ pragma language_version >= 0.26.0;
  * - `S = pk^e = g^{ek*e}`: the shared point, from `crypto/Ecdh` [`w = u^β`].
  * - `mask = KDF(S, domain)`: the domain-separated field mask, see `kdf`
  *   [`k = H(w)`]. E_EG hashes `(v, w)`; E'_EG hashes `w` alone, as here.
+ *   `kdf` is `kdfFromDigest(pointDigest(S), domain)`, a one-step hash KDF
+ *   (the `H(Z ‖ FixedInfo)` shape of NIST SP 800-56C §4, one block, 248-bit
+ *   output); a consumer deriving several masks from one `S` digests it once.
  * - `ct = value + mask`: the field one-time pad [`c = E_s(k, m)`].
  * - `Ciphertext { ephemeralPk: E, ct }`: the ciphertext [`(v, c)`].
  * - Recipient recovers `S = E^ek`, `mask = KDF(S, domain)`, `value = ct - mask`.
@@ -172,7 +175,7 @@ module EcdhMask {
    * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
    * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.
    *
-   * @constraints k=13, rows=7917 (zkir-v3)
+   * @constraints k=13, rows=7914 (zkir-v3)
    *
    * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
    *                  `E^ek` for the recipient; equal by construction).
@@ -180,9 +183,36 @@ module EcdhMask {
    * @return The field mask.
    */
   export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
-    const pointHash = persistentHash<JubjubPoint>(sShared);
+    return kdfFromDigest(pointDigest(sShared), domain);
+  }
+
+  /**
+   * @description `H(sShared)`, the secret input of `kdf`. A consumer deriving
+   * several masks from one shared point digests it once and calls
+   * `kdfFromDigest` per tag.
+   *
+   * @constraints k=13, rows=4098 (zkir-v3)
+   *
+   * @param sShared - The ECDH shared secret point.
+   * @return The point's digest, secret while `sShared` is.
+   */
+  export pure circuit pointDigest(sShared: JubjubPoint): Bytes<32> {
+    return persistentHash<JubjubPoint>(sShared);
+  }
+
+  /**
+   * @description The mask for `domain` from a point digest:
+   * `kdf(S, domain) == kdfFromDigest(pointDigest(S), domain)`.
+   *
+   * @constraints k=13, rows=3956 (zkir-v3)
+   *
+   * @param digest - `pointDigest` of the shared point.
+   * @param domain - The consumer's domain-separation tag.
+   * @return The field mask.
+   */
+  export pure circuit kdfFromDigest(digest: Bytes<32>, domain: Bytes<32>): Field {
     return degradeToTransient(
-      persistentHash<Vector<2, Bytes<32>>>([pointHash, domain])
+      persistentHash<Vector<2, Bytes<32>>>([digest, domain])
     );
   }
 
