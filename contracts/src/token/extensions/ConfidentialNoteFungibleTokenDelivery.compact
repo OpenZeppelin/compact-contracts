@@ -15,7 +15,8 @@ pragma language_version >= 0.26.0;
  * @dev Notation, on top of the core's:
  * - `encPk = g^ekScalar`: the owner's Jubjub encryption key, paired with the
  *   spend identity `pk` out of band.
- * - `e = Hf(seed, "CNFT:delivery:e", slot, nonce)`: the ephemeral scalar.
+ * - `e = Hf(seed, "CNFT:delivery:e", slot, nonce, encPk)`: the ephemeral
+ *   scalar.
  * - `E = g^e` and `S = encPk^e = E^ekScalar`: the `crypto/Ecdh` exchange.
  * - `valueCt = (value + kdf(S, "CNFT:delivery:value")) mod 2^248` and
  *   `nonceCt = (nonce + kdf(S, "CNFT:delivery:nonce")) mod 2^248`: one-time
@@ -44,11 +45,12 @@ pragma language_version >= 0.26.0;
  *
  * @notice Security:
  * - The nonce is the spend capability and the pads are one-time, so a
- *   repeated `e` to one key opens both notes. `e` binds the nonce: two
- *   committed notes never share a pad even under a reused seed, since
- *   `_issuedNonces` keeps nonces unique. The seed MUST still be fresh and
- *   secret per call. `e` is secret only while the seed or the nonce is, and a
- *   known `e` opens the entry to everyone.
+ *   repeated `e` to one key opens both notes. `e` binds the nonce and the
+ *   key: two committed notes never share a pad even under a reused seed,
+ *   since `_issuedNonces` keeps nonces unique, and one note to two keys
+ *   never shares `E`. The seed MUST still be fresh and secret per call. `e`
+ *   is secret only while the seed or the nonce is, and a known `e` opens the
+ *   entry to everyone.
  * - No authentication: the pads are malleable and nothing binds an entry to a
  *   leaf. A wallet accepts a recovered note only once `commitOf(note, pk)` is
  *   in the tree (see Client-side duties).
@@ -67,9 +69,9 @@ pragma language_version >= 0.26.0;
  * - Call `_deliver` once per output and per intended key, zero-value change
  *   included, never under a condition on private data: the entry count per
  *   entry point must stay constant.
- * - `slot` separates deliveries of one note to several keys. Under a reused
- *   seed, the same note to two keys with one slot shares `E`, which links the
- *   two entries without opening either; distinct slots remove the link.
+ * - `slot` separates repeated deliveries of one note to one key. Under a
+ *   reused seed, the same note to the same key with one slot repeats the
+ *   entry byte for byte; distinct slots give each delivery its own `E`.
  * - Nothing to initialize and no ledger read: `_deliver` runs from the
  *   composer's constructor, which is how a constructor-time mint reaches its
  *   owner.
@@ -97,8 +99,9 @@ pragma language_version >= 0.26.0;
  * scans every entry once.
  *
  * @dev Performance:
- * `_deliver` pays one SHA-256 block for `e`, two scalar multiplications, two
- * `kdf` calls, each hashing the point and its tag, and the two modular pads.
+ * `_deliver` pays one SHA-256 over the ephemeral preimage, two scalar
+ * multiplications, two `kdf` calls, each hashing the point and its tag, and
+ * the two modular pads.
  */
 module ConfidentialNoteFungibleTokenDelivery {
   import CompactStandardLibrary;
@@ -138,19 +141,21 @@ module ConfidentialNoteFungibleTokenDelivery {
   }
 
   /**
-   * @description Preimage of the ephemeral scalar. Same shape as the core's
-   * `NoncePreimage`; the domain tag is what keeps `e` apart from a core nonce
-   * drawn from the same seed.
+   * @description Preimage of the ephemeral scalar: the core's `NoncePreimage`
+   * shape plus the recipient key. The domain tag and the extra field keep `e`
+   * apart from a core nonce drawn from the same seed.
    * @type {Bytes<32>} seed - The caller's per-invocation randomness.
    * @type {Bytes<32>} domain - The ephemeral domain tag.
    * @type {Bytes<32>} slot - The per-output tag.
    * @type {Field} nonce - The delivered note's nonce.
+   * @type {JubjubPoint} encPk - The key the entry is addressed to.
    */
   struct EphemeralPreimage {
     seed: Bytes<32>;
     domain: Bytes<32>;
     slot: Bytes<32>;
     nonce: Field;
+    encPk: JubjubPoint;
   }
 
   /**
@@ -178,19 +183,19 @@ module ConfidentialNoteFungibleTokenDelivery {
 
   /**
    * @description Publishes `(value, nonce)` encrypted to `encPk`: one ECDH
-   * under a nonce-bound ephemeral, two modular `EcdhMask` pads, one
+   * under a key- and nonce-bound ephemeral, two modular `EcdhMask` pads, one
    * `_deliveries` entry. Call it beside the core's note creation, once per
    * output and intended key.
    *
-   * @constraints k=15, rows=26723
+   * @constraints k=15, rows=29285
    *
    * @warning No authorization:
    * The composer gates who may call this.
    *
-   * @dev Nonce-bound ephemeral:
-   * `e = Hf(seed, domain, slot, nonce)`, so an entry repeats only when all of
-   * `(encPk, seed, slot, nonce)` repeat, and a reused seed never pads two
-   * committed notes alike.
+   * @dev Key- and nonce-bound ephemeral:
+   * `e = Hf(seed, domain, slot, nonce, encPk)`, so `e` repeats only when all
+   * of `(seed, slot, nonce, encPk)` repeat: a reused seed never pads two
+   * committed notes alike and never gives two keys one `E`.
    *
    * @dev Constant shape:
    * No branch on the ledger and no ledger read: the transcript is independent
@@ -204,8 +209,8 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @param {JubjubPoint} encPk - The owner's encryption key, `g^ekScalar`.
    * @param {Uint<128>} value - The note's value.
    * @param {Field} nonce - The note's nonce.
-   * @param {Bytes<32>} slot - The per-output tag; distinct per key when one
-   * note goes to several.
+   * @param {Bytes<32>} slot - The per-output tag; distinct per delivery when
+   * one note goes to one key more than once.
    * @return {[]} - Empty tuple.
    */
   export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
@@ -213,7 +218,8 @@ module ConfidentialNoteFungibleTokenDelivery {
       seed: wit_ConfidentialNoteDeliveryRandomness(),
       domain: pad(32, "CNFT:delivery:e"),
       slot: slot,
-      nonce: nonce
+      nonce: nonce,
+      encPk: encPk
     })) as JubjubScalar;
     // The identity-key and zero-ephemeral guards come from `deriveShared`.
     const shared = Ecdh_deriveShared(encPk, e);

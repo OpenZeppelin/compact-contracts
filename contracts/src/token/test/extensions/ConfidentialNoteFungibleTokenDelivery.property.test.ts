@@ -176,9 +176,9 @@ describe('ConfidentialNoteFungibleTokenDelivery property: _deliver', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * The ephemeral is `Hf(seed, tag, slot, nonce)`, so with the seed planted the
- * nonce and the slot are the only inputs left to separate two entries. Each run
- * repeats its first delivery to show the seed held.
+ * The ephemeral is `Hf(seed, tag, slot, nonce, encPk)`, so with the seed
+ * planted the nonce, the slot and the key are the inputs left to separate two
+ * entries. Each run repeats its first delivery to show the seed held.
  */
 describe('ConfidentialNoteFungibleTokenDelivery property: pads under a reused seed', () => {
   beforeEach(async () => {
@@ -229,6 +229,31 @@ describe('ConfidentialNoteFungibleTokenDelivery property: pads under a reused se
 
           expect(repeat).toStrictEqual(first);
           expect(second.ephemeralPk).not.toStrictEqual(first.ephemeralPk);
+        },
+      ),
+      { numRuns: PROPERTY_RUNS },
+    );
+  });
+
+  it('should move the ephemeral for any two distinct keys under one seed, slot and nonce', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        bytes32(),
+        bytes32(),
+        value(),
+        nonce(),
+        scalar(),
+        scalar(),
+        async (seed, slot, v, n, first, second) => {
+          fc.pre(first !== second);
+          token.wallet.deliverySeed = seed;
+          await token._deliver(ecMulGenerator(first), v, n, slot);
+          await token._deliver(ecMulGenerator(second), v, n, slot);
+          await token._deliver(ecMulGenerator(first), v, n, slot);
+          const [repeat, other, mine] = await entries();
+
+          expect(repeat).toStrictEqual(mine);
+          expect(other.ephemeralPk).not.toStrictEqual(mine.ephemeralPk);
         },
       ),
       { numRuns: PROPERTY_RUNS },
