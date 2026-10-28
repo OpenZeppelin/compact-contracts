@@ -62,6 +62,19 @@ export class EcdhMaskSimulator extends EcdhMaskSimulatorBase {
     return this.circuits.impure.kdf(sShared, domain);
   }
 
+  /** @description Digests the shared point, the secret input of `kdf`. */
+  public pointDigest(sShared: JubjubPoint): Promise<Uint8Array> {
+    return this.circuits.impure.pointDigest(sShared);
+  }
+
+  /** @description Derives the mask for `domain` from a point digest. */
+  public kdfFromDigest(
+    digest: Uint8Array,
+    domain: Uint8Array,
+  ): Promise<bigint> {
+    return this.circuits.impure.kdfFromDigest(digest, domain);
+  }
+
   /**
    * @description Masks `value` for `recipientPk` under ephemeral scalar `e`.
    * `e` must be fresh per ciphertext.
