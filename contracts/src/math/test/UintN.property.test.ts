@@ -7,6 +7,9 @@ import { UintNSimulator } from './simulators/UintNSimulator.js';
 // Every run is a transaction on the live backend.
 const PROPERTY_RUNS = isLiveBackend() ? 2 : 100;
 
+// Pure circuits evaluate locally on either backend.
+const PURE_RUNS = 2_000;
+
 const U8 = Array.from({ length: 256 }, (_, i) => BigInt(i));
 
 let uintNSimulator: UintNSimulator;
@@ -77,7 +80,96 @@ describe('UintN property: Uint<8>, exhaustively', () => {
   }
 });
 
-describe('UintN property: generated operands', () => {
+describe('UintN property: Uint<64> and Uint<248>, pure circuits', () => {
+  const PURE_WIDTHS = [
+    {
+      n: 64n,
+      add: pureCircuits.U64_wrappingAdd,
+      sub: pureCircuits.U64_wrappingSub,
+    },
+    {
+      n: 248n,
+      add: pureCircuits.U248_wrappingAdd,
+      sub: pureCircuits.U248_wrappingSub,
+    },
+  ];
+
+  for (const { n, add, sub } of PURE_WIDTHS) {
+    const M = 1n << n;
+    const operand = fc.bigInt({ min: 0n, max: M - 1n });
+
+    describe(`Uint<${n}>`, () => {
+      it(`should reduce a + b modulo 2^${n}`, () => {
+        fc.assert(
+          fc.property(operand, operand, (a, b) => {
+            expect(add(a, b)).toBe((a + b) % M);
+          }),
+          { numRuns: PURE_RUNS },
+        );
+      });
+
+      it(`should reduce a - b modulo 2^${n}`, () => {
+        fc.assert(
+          fc.property(operand, operand, (a, b) => {
+            expect(sub(a, b)).toBe((a - b + M) % M);
+          }),
+          { numRuns: PURE_RUNS },
+        );
+      });
+
+      it('should undo wrappingAdd with wrappingSub', () => {
+        fc.assert(
+          fc.property(operand, operand, (a, b) => {
+            expect(sub(add(a, b), b)).toBe(a);
+          }),
+          { numRuns: PURE_RUNS },
+        );
+      });
+
+      it('should undo wrappingSub with wrappingAdd', () => {
+        fc.assert(
+          fc.property(operand, operand, (a, b) => {
+            expect(add(sub(a, b), b)).toBe(a);
+          }),
+          { numRuns: PURE_RUNS },
+        );
+      });
+
+      it('should commute wrappingAdd', () => {
+        fc.assert(
+          fc.property(operand, operand, (a, b) => {
+            expect(add(a, b)).toBe(add(b, a));
+          }),
+          { numRuns: PURE_RUNS },
+        );
+      });
+
+      it('should map distinct first operands to distinct results', () => {
+        fc.assert(
+          fc.property(operand, operand, operand, (a, other, b) => {
+            fc.pre(a !== other);
+            expect(add(a, b)).not.toBe(add(other, b));
+            expect(sub(a, b)).not.toBe(sub(other, b));
+          }),
+          { numRuns: PURE_RUNS },
+        );
+      });
+
+      it('should map distinct second operands to distinct results', () => {
+        fc.assert(
+          fc.property(operand, operand, operand, (a, b, other) => {
+            fc.pre(b !== other);
+            expect(add(a, b)).not.toBe(add(a, other));
+            expect(sub(a, b)).not.toBe(sub(a, other));
+          }),
+          { numRuns: PURE_RUNS },
+        );
+      });
+    });
+  }
+});
+
+describe('UintN property: Uint<64> and Uint<248>, impure wrappers', () => {
   beforeAll(async () => {
     uintNSimulator = await UintNSimulator.create();
   });
