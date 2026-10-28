@@ -47,6 +47,9 @@ const pad = () => fc.bigInt({ min: 0n, max: U248 - 1n });
 /** A `JubjubScalar` in `[1, L-1]`, so `g^ek` is never the identity. */
 const scalar = () => fc.bigInt({ min: 1n, max: L - 1n });
 
+/** Any `JubjubScalar`, zero included: the recipient side returns for every key. */
+const anyScalar = () => fc.bigInt({ min: 0n, max: L - 1n });
+
 /** `Bytes<32>`, the declared width of a slot and of the delivery seed. */
 const bytes32 = () => fc.uint8Array({ minLength: 32, maxLength: 32 });
 
@@ -77,7 +80,7 @@ const entries = async (): Promise<Delivery[]> => [
 describe('ConfidentialNoteFungibleTokenDelivery property: recoverNote', () => {
   it('should be deterministic for any entry and scalar', () => {
     fc.assert(
-      fc.property(anyEntry(), scalar(), (entry, ek) => {
+      fc.property(anyEntry(), anyScalar(), (entry, ek) => {
         expect(delivery.recoverNote(entry, ek)).toStrictEqual(
           delivery.recoverNote(entry, ek),
         );
@@ -87,7 +90,7 @@ describe('ConfidentialNoteFungibleTokenDelivery property: recoverNote', () => {
 
   it('should return a pair below 2^248 for any entry and scalar, without asserting', () => {
     fc.assert(
-      fc.property(anyEntry(), scalar(), (entry, ek) => {
+      fc.property(anyEntry(), anyScalar(), (entry, ek) => {
         const pair = delivery.recoverNote(entry, ek);
 
         expect(pair.value).toBeLessThan(U248);
@@ -98,7 +101,7 @@ describe('ConfidentialNoteFungibleTokenDelivery property: recoverNote', () => {
 
   it('should not open an identity ephemeral under any scalar, whatever the pads', () => {
     fc.assert(
-      fc.property(pad(), pad(), scalar(), (valueCt, nonceCt, ek) => {
+      fc.property(pad(), pad(), anyScalar(), (valueCt, nonceCt, ek) => {
         const placeholder = {
           ephemeralPk: ecMulGenerator(0n),
           valueCt,

@@ -9,6 +9,7 @@ import {
   type Delivery,
 } from '../simulators/ConfidentialNoteFungibleTokenDeliverySimulator.js';
 import {
+  createNoteWallet,
   INSTANCE_SALT,
   type Note,
 } from '../witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
@@ -26,6 +27,10 @@ const bytes32 = (label: string): Uint8Array => {
 
 const U128 = 1n << 128n;
 const U248 = 1n << 248n;
+
+// Jubjub prime-order subgroup order; the bindings accept scalars in [0, L-1].
+const L =
+  6554484396890773809930967563523245729705921265872317281365359162392183254199n;
 
 // Recipient scalars and the keys they derive, `encPk = g^ek`.
 const EK_ALICE = 111222333444555n;
@@ -100,13 +105,16 @@ describe('ConfidentialNoteFungibleTokenDelivery: _deliver', () => {
   });
 
   // The widest inputs force the wrap arm of the pad and the borrow arm of its
-  // inverse: a nonce of 2^248 - 1 wraps under every non-zero mask.
-  it('should open the widest note and keep both ciphertexts below 2^248', async () => {
+  // inverse: a nonce of 2^248 - 1 wraps under every non-zero mask. `head()`
+  // is the accessor a wider ciphertext atom breaks.
+  it('should open the widest note through head() with both ciphertexts below 2^248', async () => {
     await token._deliver(ENC_ALICE, U128 - 1n, U248 - 1n, SLOT);
-    const [entry] = await entries();
+    const state = await token.getPublicState();
+    const [entry] = [...state.Delivery__deliveries];
 
     expect(entry.valueCt).toBeLessThan(U248);
     expect(entry.nonceCt).toBeLessThan(U248);
+    expect(state.Delivery__deliveries.head().value).toStrictEqual(entry);
     expect(opened(entry, EK_ALICE)).toStrictEqual({
       value: U128 - 1n,
       nonce: U248 - 1n,
@@ -169,6 +177,21 @@ describe('ConfidentialNoteFungibleTokenDelivery: recoverNote', () => {
 
     expect(wrong.value).toBeGreaterThanOrEqual(U128);
     expect(wrong.nonce).not.toBe(NOTE.nonce);
+  });
+
+  // The shared point collapses to the identity; the circuit still returns and
+  // the wallet filter still drops the pair.
+  it('should return under the zero scalar', () => {
+    const wrong = delivery.recoverNote(entry, 0n);
+
+    expect(wrong.value).toBeGreaterThanOrEqual(U128);
+    expect(wrong.nonce).not.toBe(NOTE.nonce);
+  });
+
+  it('should reject a scalar of the group order at the API boundary', () => {
+    expect(() => delivery.recoverNote(entry, L)).toThrow(
+      'expected value of type JubjubScalar',
+    );
   });
 
   it('should not open an entry whose ephemeral is the identity', () => {
@@ -308,6 +331,16 @@ describe('ConfidentialNoteFungibleTokenDelivery: composed with the core', () => 
   const deliveries = async (): Promise<bigint> =>
     (await delivered.getPublicState()).Delivery__deliveries.length();
 
+  /** A deployment whose core and delivery seeds are both planted. */
+  const deployReusingSeeds = () =>
+    ConfidentialNoteFungibleTokenDeliveredSimulator.create({
+      ownerPk: ALICE,
+      ownerEncPk: ENC_ALICE,
+      value: CTOR_VALUE,
+      wallet: { ...createNoteWallet(), nonceSeed: FIXED_SEED },
+      deliveryWallet: { deliverySeed: FIXED_SEED },
+    });
+
   beforeEach(async () => {
     delivered = await ConfidentialNoteFungibleTokenDeliveredSimulator.create({
       ownerPk: ALICE,
@@ -382,6 +415,70 @@ describe('ConfidentialNoteFungibleTokenDelivery: composed with the core', () => 
     spendAs(BOB_SK, unspent(await scan(EK_BOB, BOB)));
     await delivered.burn(ENC_BOB, 300n);
     expect(await deliveries()).toBe(5n);
+  });
+
+  it('should deliver both outputs of a self-transfer to the sender', async () => {
+    spendAs(ALICE_SK, unspent(await scan(EK_ALICE, ALICE)));
+    await delivered.transfer(ALICE, ENC_ALICE, ENC_ALICE, 300n);
+
+    expect(await deliveries()).toBe(3n);
+    expect(values(await scan(EK_ALICE, ALICE))).toStrictEqual([
+      [700n, false],
+      [300n, false],
+      [CTOR_VALUE, true],
+    ]);
+    expect(await scan(EK_BOB, BOB)).toStrictEqual([]);
+
+    const [, out] = await scan(EK_ALICE, ALICE);
+    spendAs(ALICE_SK, { value: out.value, nonce: out.nonce });
+    await delivered.burn(ENC_ALICE, 300n);
+
+    expect(values(await scan(EK_ALICE, ALICE))).toStrictEqual([
+      [0n, false],
+      [700n, false],
+      [300n, true],
+      [CTOR_VALUE, true],
+    ]);
+  });
+
+  // The output nonces bind the spent nullifier and the mint recipient, so a
+  // reused seed still gives every entry its own ephemeral.
+  it('should keep every ephemeral distinct under a reused seed', async () => {
+    delivered = await deployReusingSeeds();
+    spendAs(ALICE_SK, unspent(await scan(EK_ALICE, ALICE)));
+    await delivered.transfer(BOB, ENC_BOB, ENC_ALICE, 300n);
+    spendAs(ALICE_SK, unspent(await scan(EK_ALICE, ALICE)));
+    await delivered.transfer(BOB, ENC_BOB, ENC_ALICE, 200n);
+
+    const feed = [...(await delivered.getPublicState()).Delivery__deliveries];
+    const ephemerals = new Set(
+      feed.map(({ ephemeralPk }) => `${ephemeralPk.x}:${ephemeralPk.y}`),
+    );
+    expect(feed).toHaveLength(5);
+    expect(ephemerals.size).toBe(5);
+    expect(values(await scan(EK_ALICE, ALICE))).toStrictEqual([
+      [500n, false],
+      [700n, true],
+      [CTOR_VALUE, true],
+    ]);
+    expect(values(await scan(EK_BOB, BOB))).toStrictEqual([
+      [200n, false],
+      [300n, false],
+    ]);
+  });
+
+  // The core refuses the repeated nonce before anything is written, so two
+  // committed notes never share a pad.
+  it('should not pad a second note when a reused seed repeats a mint', async () => {
+    delivered = await deployReusingSeeds();
+    await delivered.mint(BOB, ENC_BOB, 10n);
+
+    await expectRejection(
+      delivered.mint(BOB, ENC_BOB, 20n),
+      'ConfidentialNoteFungibleToken: nonce already issued',
+    );
+    expect(await deliveries()).toBe(2n);
+    expect(values(await scan(EK_BOB, BOB))).toStrictEqual([[10n, false]]);
   });
 
   // The pairing of `pk` and `encPk` is the composer's. A note committed to one
