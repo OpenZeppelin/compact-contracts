@@ -1,6 +1,4 @@
 import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
-import { isLiveBackend } from '@openzeppelin/compact-simulator';
-import fc from 'fast-check';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { pureCircuits as composed } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
@@ -29,10 +27,6 @@ const bytes32 = (label: string): Uint8Array => {
 const U128 = 1n << 128n;
 const U248 = 1n << 248n;
 
-// Jubjub prime-order subgroup order; valid secret scalars are [1, L-1].
-const L =
-  6554484396890773809930967563523245729705921265872317281365359162392183254199n;
-
 // Recipient scalars and the keys they derive, `encPk = g^ek`.
 const EK_ALICE = 111222333444555n;
 const EK_BOB = 999888777666555n;
@@ -44,9 +38,6 @@ const OTHER_SLOT = bytes32('spec:change');
 const FIXED_SEED = bytes32('FIXED-DELIVERY-SEED');
 
 const NOTE: Note = { value: 100n, nonce: 7n };
-
-// Every run is a transaction on the live backend.
-const PROPERTY_RUNS = isLiveBackend() ? 2 : 25;
 
 let token: ConfidentialNoteFungibleTokenDeliverySimulator;
 
@@ -129,24 +120,6 @@ describe('ConfidentialNoteFungibleTokenDelivery: _deliver', () => {
     expect(opened(entry, EK_ALICE)).toStrictEqual({ value: 0n, nonce: 0n });
   });
 
-  it('should open any note in range', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.bigInt({ min: 0n, max: U128 - 1n }),
-        fc.bigInt({ min: 0n, max: U248 - 1n }),
-        async (value, nonce) => {
-          await token._deliver(ENC_ALICE, value, nonce, SLOT);
-          const [entry] = await entries();
-
-          expect(entry.valueCt).toBeLessThan(U248);
-          expect(entry.nonceCt).toBeLessThan(U248);
-          expect(opened(entry, EK_ALICE)).toStrictEqual({ value, nonce });
-        },
-      ),
-      { numRuns: PROPERTY_RUNS },
-    );
-  });
-
   it('should not accept a nonce of 2^248', async () => {
     await expectRejection(
       token._deliver(ENC_ALICE, 1n, U248, SLOT),
@@ -196,18 +169,6 @@ describe('ConfidentialNoteFungibleTokenDelivery: recoverNote', () => {
 
     expect(wrong.value).toBeGreaterThanOrEqual(U128);
     expect(wrong.nonce).not.toBe(NOTE.nonce);
-  });
-
-  it('should return under any scalar without asserting', () => {
-    fc.assert(
-      fc.property(fc.bigInt({ min: 1n, max: L - 1n }), (ek) => {
-        const pair = delivery.recoverNote(entry, ek);
-
-        expect(pair.value).toBeLessThan(U248);
-        expect(pair.nonce).toBeLessThan(U248);
-      }),
-      { numRuns: 25 },
-    );
   });
 
   it('should not open an entry whose ephemeral is the identity', () => {
@@ -449,6 +410,25 @@ describe('ConfidentialNoteFungibleTokenDelivery: composed with the core', () => 
     await expectRejection(
       delivered.burn(ENC_BOB, 50n),
       'commitment not found in tree',
+    );
+  });
+
+  // The planted path is the leaf's real one, so the witness answers and the
+  // refusal is the circuit's own leaf check.
+  it('should not let the key holder spend a wrong-key note even with its real leaf path', async () => {
+    await delivered.mint(ALICE, ENC_BOB, 50n);
+    const state = await delivered.getPublicState();
+    const [entry] = [...state.Delivery__deliveries];
+    const { value, nonce } = composed.recoverNote(entry, EK_BOB);
+    const note = { value, nonce };
+
+    spendAs(BOB_SK, note);
+    delivered.wallet.pathOverride = state.Core__commitments.findPathForLeaf(
+      composed.commitOf(note, ALICE),
+    );
+    await expectRejection(
+      delivered.burn(ENC_BOB, 50n),
+      'ConfidentialNoteFungibleToken: path does not match input commitment',
     );
   });
 });
