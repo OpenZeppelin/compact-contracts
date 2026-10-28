@@ -570,9 +570,9 @@ describe.skipIf(isLiveBackend())(
       );
     }, 60_000);
 
-    // The ephemeral does not depend on the key, so under one seed it stays;
-    // the shared point does, so both pads move and nothing else.
-    it('should move only the two pads when the recipient key differs', async () => {
+    // The key is in the ephemeral's preimage, so both coordinates of `E`
+    // move, and the shared point moves both pads; the leaf stays.
+    it('should move only the ephemeral and the two pads when the recipient key differs', async () => {
       await fc.assert(
         fc.asyncProperty(anyScalar(), anyScalar(), async (first, second) => {
           fc.pre(first !== second);
@@ -584,7 +584,7 @@ describe.skipIf(isLiveBackend())(
             await mintTrace(BOB, secondKey, 100n),
           );
 
-          expect(moved).toHaveLength(2);
+          expect(moved).toHaveLength(4);
           expectOpaque(moved, [
             100n,
             BOB,
@@ -638,9 +638,9 @@ describe.skipIf(isLiveBackend())(
       );
     }, 60_000);
 
-    // Only the recipient's leg moves: its leaf (the identity) and its two pads
-    // (the key). The change leg does not, so a watcher cannot tell that the
-    // recipient changed from the sender's side of the transaction.
+    // Only the recipient's leg moves: its leaf (the identity), its ephemeral
+    // and its two pads (the key). The change leg does not, so a watcher cannot
+    // tell that the recipient changed from the sender's side of the transaction.
     it('should move only the recipient leg when the recipient differs', async () => {
       await fc.assert(
         fc.asyncProperty(
@@ -659,7 +659,7 @@ describe.skipIf(isLiveBackend())(
               await transferTrace(secondPk, secondKey, value),
             );
 
-            expect(moved).toHaveLength(3);
+            expect(moved).toHaveLength(5);
             expectOpaque(moved, [
               value,
               ALICE,

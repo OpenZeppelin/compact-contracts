@@ -208,8 +208,9 @@ describe('ConfidentialNoteFungibleTokenDelivery: recoverNote', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * The ephemeral is `Hf(seed, tag, slot, nonce)`, so with the seed pinned the
- * nonce and the slot are the only inputs left to separate two entries.
+ * The ephemeral is `Hf(seed, tag, slot, nonce, encPk)`, so with the seed
+ * pinned the nonce, the slot and the key are the inputs left to separate two
+ * entries.
  */
 describe('ConfidentialNoteFungibleTokenDelivery: pads under a reused seed', () => {
   beforeEach(async () => {
@@ -248,26 +249,16 @@ describe('ConfidentialNoteFungibleTokenDelivery: pads under a reused seed', () =
     expect(opened(second, EK_ALICE)).toStrictEqual(NOTE);
   });
 
-  // One note to two keys under one slot shares `E`: a public link between the
-  // two entries, not a pad reuse, since the shared point differs per key.
-  it('should share the ephemeral but not the pads across two keys under one slot', async () => {
+  // One note to two keys under one slot: nothing links the two entries.
+  it('should move the ephemeral when only the key differs', async () => {
     await token._deliver(ENC_ALICE, NOTE.value, NOTE.nonce, SLOT);
     await token._deliver(ENC_BOB, NOTE.value, NOTE.nonce, SLOT);
     const [toBob, toAlice] = await entries();
 
-    expect(toBob.ephemeralPk).toStrictEqual(toAlice.ephemeralPk);
+    expect(toBob.ephemeralPk).not.toStrictEqual(toAlice.ephemeralPk);
     expect(toBob.valueCt).not.toBe(toAlice.valueCt);
     expect(toBob.nonceCt).not.toBe(toAlice.nonceCt);
     expect(opened(toAlice, EK_ALICE)).toStrictEqual(NOTE);
-    expect(opened(toBob, EK_BOB)).toStrictEqual(NOTE);
-  });
-
-  it('should unlink the two keys under distinct slots', async () => {
-    await token._deliver(ENC_ALICE, NOTE.value, NOTE.nonce, SLOT);
-    await token._deliver(ENC_BOB, NOTE.value, NOTE.nonce, OTHER_SLOT);
-    const [toBob, toAlice] = await entries();
-
-    expect(toBob.ephemeralPk).not.toStrictEqual(toAlice.ephemeralPk);
     expect(opened(toBob, EK_BOB)).toStrictEqual(NOTE);
   });
 });
