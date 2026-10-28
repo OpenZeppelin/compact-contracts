@@ -21,9 +21,9 @@ from the repository root.
    [`README.md`](../../../README.md) and `CONTRIBUTING.md` when they have been filled in for this
    repository.
 3. Report concrete findings with a file and line and a proposed correction. For a convention
-   finding, name the document section it rests on. For a functional defect — a wrong condition,
-   a broken link, a failing test — give the evidence instead: the code path, the failing test or
-   a reproduction; it counts even when no document covers it. Do not present an unwritten
+   finding, name the document section it rests on. For a functional defect (a wrong condition,
+   a broken link, a failing test), give the evidence instead: the code path, the failing test or
+   a reproduction. It counts even when no document covers it. Do not present an unwritten
    preference as a repository rule. If a template TODO still stands in place of a rule,
    identify that gap rather than guessing its content.
 4. If the user asked to improve or fix the code, make the supported corrections, then run the
