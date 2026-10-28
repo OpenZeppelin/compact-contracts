@@ -29,7 +29,7 @@ covers each domain's internal layout and the mocks warning. Dependencies are the
 | `contracts/src/math` | Wrapping arithmetic on `Uint<N>` at any width: pure circuits, no ledger state, no witnesses. Imports nothing. |
 | `contracts/src/multisig` | Signer registry, threshold approvals, proposals, treasuries, forwarders, presets. Imports `utils` and `crypto/Ecdsa`; the presets add `crypto/Eip712` and `utils/EvmAbi`. `presets/NativeShieldedTokenIssuer` is the only multisig file that imports `token`. |
 | `contracts/src/security` | Initialization, pausing, allowlists and blocklists. Imports only the standard library. |
-| `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`. `ConfidentialFungibleToken` imports `crypto/ElGamal` and `crypto/EcdhMask`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
+| `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`. `ConfidentialFungibleToken` imports `crypto/ElGamal` and `crypto/EcdhMask`; `extensions/ConfidentialNoteFungibleTokenDelivery` imports `crypto/Ecdh`, `crypto/EcdhMask` and `math/UintN`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
 | `contracts/src/utils` | Shared helpers and EVM ABI word encoding. Imports only the standard library. |
 | `contracts/src/archive` | Legacy code, excluded from the build and the tests. |
 | `contracts/test-utils` | Live harness, test fixtures and the concurrency replay harness. |
