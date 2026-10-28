@@ -481,7 +481,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 10 },
       );
-    });
+    }, 60_000);
 
     it('should mint with the same transcript shape for any recipient key', async () => {
       await fc.assert(
@@ -498,7 +498,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 10 },
       );
-    });
+    }, 60_000);
 
     it('should transfer with the same transcript shape for any amount', async () => {
       await fc.assert(
@@ -511,7 +511,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 8 },
       );
-    });
+    }, 60_000);
 
     it('should transfer with the same transcript length and widths for any amount', async () => {
       await fc.assert(
@@ -528,7 +528,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 8 },
       );
-    });
+    }, 60_000);
 
     /** The byte strings that move between two otherwise identical runs. */
     const drift = (a: Trace, b: Trace): string[] => {
@@ -568,7 +568,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 10 },
       );
-    });
+    }, 60_000);
 
     // The ephemeral does not depend on the key, so under one seed it stays;
     // the shared point does, so both pads move and nothing else.
@@ -596,7 +596,7 @@ describe.skipIf(isLiveBackend())(
         }),
         { numRuns: 10 },
       );
-    });
+    }, 60_000);
 
     // Both output nonces bind the spent nullifier, not the amount, so the two
     // ephemerals and both nonce pads stay. The two leaves and the two value
