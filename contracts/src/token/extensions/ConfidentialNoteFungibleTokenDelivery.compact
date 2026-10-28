@@ -100,8 +100,8 @@ pragma language_version >= 0.26.0;
  *
  * @dev Performance:
  * `_deliver` pays one SHA-256 over the ephemeral preimage, two scalar
- * multiplications, two `kdf` calls, each hashing the point and its tag, and
- * the two modular pads.
+ * multiplications, one point digest, two masks derived from it and the two
+ * modular pads.
  */
 module ConfidentialNoteFungibleTokenDelivery {
   import CompactStandardLibrary;
@@ -187,7 +187,7 @@ module ConfidentialNoteFungibleTokenDelivery {
    * `_deliveries` entry. Call it beside the core's note creation, once per
    * output and intended key.
    *
-   * @constraints k=15, rows=29285
+   * @constraints k=15, rows=24782
    *
    * @warning No authorization:
    * The composer gates who may call this.
@@ -223,14 +223,16 @@ module ConfidentialNoteFungibleTokenDelivery {
     })) as JubjubScalar;
     // The identity-key and zero-ephemeral guards come from `deriveShared`.
     const shared = Ecdh_deriveShared(encPk, e);
+    // One point digest feeds both pads.
+    const sharedDigest = EcdhMask_pointDigest(shared.sShared);
     // The cast is the width check: a bit above the pad would sit in the clear.
     const paddedNonce = nonce as Uint<248>;
     const delivery = Delivery {
       ephemeralPk: shared.ephemeralPk,
       valueCt: U248_wrappingAdd(value as Uint<248>,
-                                EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:value")) as Uint<248>),
       nonceCt: U248_wrappingAdd(paddedNonce,
-                                EcdhMask_kdf(shared.sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
     };
     _deliveries.pushFront(disclose(delivery));
   }
@@ -238,6 +240,8 @@ module ConfidentialNoteFungibleTokenDelivery {
   /**
    * @description Strips the pads from an entry with the owner's secret scalar.
    * Pure and off-chain: a wallet reads its notes with no proof.
+   *
+   * @constraints k=14, rows=15063
    *
    * @notice Raw result:
    * Nothing derived from `ekScalar` or the recovered pair is checked, so the
@@ -260,12 +264,12 @@ module ConfidentialNoteFungibleTokenDelivery {
   export pure circuit recoverNote(delivery: Delivery, ekScalar: JubjubScalar): RecoveredNote {
     assert(delivery.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
            "ConfidentialNoteFungibleTokenDelivery: identity ephemeral");
-    const sShared = Ecdh_recoverShared(delivery.ephemeralPk, ekScalar);
+    const sharedDigest = EcdhMask_pointDigest(Ecdh_recoverShared(delivery.ephemeralPk, ekScalar));
     return RecoveredNote {
       value: U248_wrappingSub(delivery.valueCt,
-                              EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:value")) as Uint<248>),
+                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:value")) as Uint<248>),
       nonce: U248_wrappingSub(delivery.nonceCt,
-                              EcdhMask_kdf(sShared, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
+                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
     };
   }
 }
