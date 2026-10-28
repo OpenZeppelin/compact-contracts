@@ -68,8 +68,9 @@ addresses but keep `_unsafe` variants; native shielded tokens mint to coin publi
 
 ### Domain separation and instance salts
 
-Shielded modules tag each stored commitment and nullifier with module and purpose, as same-shape
-hashes otherwise share a domain. A fresh `sealed` salt per deployment stops cross-deployment links.
+Most shielded modules tag each stored commitment and nullifier with module and purpose, as
+same-shape hashes otherwise share a domain, and write a fresh `sealed` salt per deployment that
+stops cross-deployment links.
 
 ### Opt-in supply tracking
 
