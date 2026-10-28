@@ -29,8 +29,8 @@ module UintN<#N> {
    * @description `2^N` as a `Field`: the modulus of every circuit in this
    * module.
    *
-   * @constraints k=5, rows=23 (zkir-v2)
-   * @constraints k=6, rows=31 (zkir-v3)
+   * @constraints k=5, rows=23 (zkir-v2, any N)
+   * @constraints k=6, rows=31 (zkir-v3, any N)
    *
    * @returns {Field} `2^N`.
    */
