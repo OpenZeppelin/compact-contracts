@@ -33,7 +33,7 @@ describes the layout of each module directory.
 
 - [multisig examples](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/multisig/examples) and [token examples](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token/examples): deployable contracts, one per preset
 - [Integration tests](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/test/integration): several modules composed into one contract
-- [Documentation site](https://docs.openzeppelin.com/contracts-compact): guides and the API reference for the modules it covers. It does not follow this repository's tags, so for an installed release, read the source at its tag
+- [Documentation site](https://docs.openzeppelin.com/contracts-compact): guides and the API reference for the modules it covers
 
 ## Audits and security
 
