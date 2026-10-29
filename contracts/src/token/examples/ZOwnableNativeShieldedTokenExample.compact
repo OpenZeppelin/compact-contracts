@@ -107,3 +107,15 @@ export circuit totalMinted(): Uint<128> {
 export circuit tokenColor(): Bytes<32> {
   return ZOwnableNativeShieldedToken_tokenColor();
 }
+
+export circuit name(): Opaque<"string"> {
+  return ZOwnableNativeShieldedToken_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return ZOwnableNativeShieldedToken_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return ZOwnableNativeShieldedToken_decimals();
+}

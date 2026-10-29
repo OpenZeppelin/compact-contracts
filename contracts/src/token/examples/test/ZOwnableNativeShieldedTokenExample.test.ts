@@ -99,4 +99,10 @@ describe('ZOwnableNativeShieldedTokenExample', () => {
       buildCommitmentFromId(ownerId, INSTANCE_SALT, INIT_COUNTER),
     );
   });
+
+  it('exposes name, symbol and decimals circuits', async () => {
+    expect(await ex.circuits.impure.name()).toStrictEqual(NAME);
+    expect(await ex.circuits.impure.symbol()).toStrictEqual(SYMBOL);
+    expect(await ex.circuits.impure.decimals()).toStrictEqual(DECIMALS);
+  });
 });
