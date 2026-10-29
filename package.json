@@ -4,8 +4,7 @@
   "private": true,
   "packageManager": "yarn@4.12.0",
   "workspaces": [
-    "contracts/",
-    "packages/*"
+    "contracts/"
   ],
   "scripts": {
     "compile": "turbo run compile --filter=@openzeppelin/compact-contracts --log-prefix=none",
