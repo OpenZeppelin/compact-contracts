@@ -66,7 +66,7 @@ const nonZeroKey = () =>
     .filter((bytes) => bytes.some((b) => b !== 0))
     .map((bytes): ZswapCoinPublicKey => ({ bytes }));
 
-/** `Uint<64>`, the declared width of a mint or burn amount. */
+/** `Uint<64>`, the declared width of a mint amount (burn is Uint<128>). */
 const amount = () => fc.bigInt({ min: 0n, max: MAX_U64 });
 
 const asEither = (

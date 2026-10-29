@@ -74,7 +74,7 @@ export circuit mint(recipient: ZswapCoinPublicKey, amount: Uint<64>, nonce: Byte
   return ZOwnableNativeShieldedToken_mint(recipient, amount, nonce);
 }
 
-export circuit burn(coin: ShieldedCoinInfo, amount: Uint<64>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
+export circuit burn(coin: ShieldedCoinInfo, amount: Uint<128>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
   return ZOwnableNativeShieldedToken_burn(coin, amount, refundTo);
 }
 

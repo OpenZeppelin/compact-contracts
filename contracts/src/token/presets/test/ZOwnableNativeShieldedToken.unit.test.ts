@@ -482,11 +482,14 @@ describe('ZOwnableNativeShieldedToken', () => {
       expect(result.is_some).toStrictEqual(false);
     });
 
-    it('rejects a burn amount above Uint<64>', async () => {
-      const coin = literalCoin(await token.tokenColor(), MAX_U64);
-      await expect(
-        token.as(OWNER).burn(coin, U64_BOUND, refundTo()),
-      ).rejects.toThrow('Uint<0..18446744073709551616>');
+    // compact-runtime still encodes coin values as 8 bytes, so a burn above
+    // Uint<64> cannot run end-to-end yet (same skip as NativeShieldedTokenIssuer
+    // after #1033). The circuit type is Uint<128> so the limit lifts when the
+    // runtime does; keep this case skipped until then.
+    it.skip('burns a coin above Uint<64> in one call', async () => {
+      const coin = literalCoin(await token.tokenColor(), U64_BOUND);
+      const result = await token.as(OWNER).burn(coin, U64_BOUND, refundTo());
+      expect(result.is_some).toStrictEqual(false);
     });
   });
 

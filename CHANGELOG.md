@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `ZOwnableNativeShieldedToken.burn` (and the example / mock wrappers) take a `Uint<128>` amount, matching `NativeShieldedToken._burn`. Digests for amounts that fit `Uint<64>` are unchanged. (#1171)
 - `EcdhMask.encrypt` takes a `Uint<248>` value instead of a `Uint<128>`, the full range of its 248-bit pad. Ciphertexts for `Uint<128>` values are unchanged. The hiding margin shrinks with the value's width and is gone at the full 248 bits. (#1150)
 - `ElGamal.encryptPoint` takes its ephemeral and mask from `Ecdh.deriveShared`, so its weak-input guards now read `Ecdh: identity pk` / `Ecdh: zero ephemeral` instead of `ElGamal: identity pk` / `ElGamal: zero randomness`. Ciphertexts are unchanged. (#1110)
 

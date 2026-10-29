@@ -178,11 +178,11 @@ module ZOwnableNativeShieldedToken {
    * - `refundTo` is not zero.
    *
    * @param {ShieldedCoinInfo} coin - Coin of this token, paid into the tx by the caller's wallet.
-   * @param {Uint<64>} amount - Amount to burn from `coin`.
+   * @param {Uint<128>} amount - Amount to burn from `coin`.
    * @param {ZswapCoinPublicKey} refundTo - Coin public key that receives the change.
    * @returns {Maybe<ShieldedCoinInfo>} The refund coin, or `none` on a full burn.
    */
-  export circuit burn(coin: ShieldedCoinInfo, amount: Uint<64>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
+  export circuit burn(coin: ShieldedCoinInfo, amount: Uint<128>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
     ZOwnablePK_assertOnlyOwner();
     return NST__burn(coin, amount, refundTo);
   }
