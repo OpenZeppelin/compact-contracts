@@ -123,6 +123,7 @@ We may close low-effort AI output without further explanation.
    ```sh
    yarn compile
    yarn test
+   yarn test:integration
    yarn test:coverage
    yarn lint:fix
    yarn lint
