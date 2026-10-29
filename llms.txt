@@ -5,8 +5,9 @@
 
 These links describe the development branch (`main`). Releases are installed from npm, never
 from `main`, so read the documentation of the version you installed: replace `main` in a URL
-with its tag (`v<version>`). The audits index is the exception: always use the current one,
-since each row names the commit and scope its report covers.
+with its tag (`v<version>`). A file missing at that tag was added later, so read it on `main`.
+The audits index always stays on `main`, since each row names the commit and scope its report
+covers.
 
 ## Start here
 
@@ -32,7 +33,7 @@ describes the layout of each module directory.
 
 - [multisig examples](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/multisig/examples) and [token examples](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token/examples): deployable contracts, one per preset
 - [Integration tests](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/test/integration): several modules composed into one contract
-- [Documentation site](https://docs.openzeppelin.com/contracts-compact): guides and the API reference for the modules it covers
+- [Documentation site](https://docs.openzeppelin.com/contracts-compact): guides and the API reference for the modules it covers. It does not follow this repository's tags, so for an installed release, read the source at its tag
 
 ## Audits and security
 
