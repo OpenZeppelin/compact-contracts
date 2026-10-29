@@ -11,6 +11,10 @@ on:
         description: "Target version (exact SemVer, e.g. 0.3.0-alpha.3)"
         required: true
         type: string
+      allow_empty_changelog:
+        description: "Roll an empty Unreleased section (first rc cut, clean audit)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -140,6 +144,12 @@ jobs:
           find ./contracts/src/ -type d -name '.*' -prune -o \
             -type f -exec sed -Ei "s#${ESCAPED_CURRENT}${VERSION_SUFFIX}#$ESCAPED_NEW#g" {} +
 
+      # The bump commit carries the release notes that create-release.yml reads.
+      - name: Roll changelog
+        env:
+          ALLOW_EMPTY: ${{ inputs.allow_empty_changelog }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release-ci.ts roll-changelog
+
       - name: Collect changed files
         id: changes
         run: |
@@ -180,7 +190,7 @@ jobs:
           GH_TOKEN: ${{ steps.gh-app-token.outputs.token }}
           BASE_BRANCH: ${{ github.ref_name }}
         run: |
-          BODY=$(printf 'Automated version bump to `%s`.\n\nMerging this PR into `%s` cuts `v%s` and publishes to npm after the release approval gate.' "$NEW_VERSION" "$BASE_BRANCH" "$NEW_VERSION")
+          BODY=$(printf 'Automated version bump to `%s`. Also rolls the CHANGELOG `## Unreleased` section into `## %s`, which opens the release notes.\n\nMerging this PR into `%s` cuts `v%s` and publishes to npm after the release approval gate.' "$NEW_VERSION" "$NEW_VERSION" "$BASE_BRANCH" "$NEW_VERSION")
           gh pr create \
             --base "$BASE_BRANCH" \
             --head "$BUMP_BRANCH" \

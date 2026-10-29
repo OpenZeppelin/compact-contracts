@@ -49,6 +49,7 @@ coverage
 
 *temp
 
-.claude/
+.claude/*
+!.claude/skills/
 
 .states

@@ -61,18 +61,17 @@ pragma language_version >= 0.26.0;
  * through the main role approval circuits (`grantRole` and `_grantRole`).
  * In other words, role approvals to contract addresses are disallowed through these
  * circuits.
- * This is because Compact currently does not support contract-to-contract calls which means
- * if a contract is granted a role, the contract cannot directly call the protected
- * circuit.
+ * This is because this library has not yet migrated to contract-to-contract calls, which means
+ * a contract granted a role cannot directly call the protected circuit.
  *
  * @notice This module does offer an experimental circuit that allows roles to be granted
  * to contract addresses (`_unsafeGrantRole`).
  * Note that the circuit name is very explicit ("unsafe") with this experimental circuit.
- * Until contract-to-contract calls are supported,
+ * Until this library migrates to contract-to-contract calls,
  * there is no direct way for a contract to call protected circuits.
  *
- * @notice The unsafe circuits are planned to become deprecated once contract-to-contract calls
- * are supported.
+ * @notice The unsafe circuits are planned to become deprecated once this library migrates to
+ * contract-to-contract calls.
  *
  * @dev Migration plan (safe -> C2C-capable role grants)
  *
@@ -84,8 +83,8 @@ pragma language_version >= 0.26.0;
  * which is the only kind of upgrade the CMA supports. Widening the type later would instead force
  * a ledger-layout rewrite, which the CMA cannot perform.
  *
- * When C2C lands, an already-deployed contract migrates without changing its address or ledger
- * state:
+ * When the C2C migration lands, an already-deployed contract migrates without changing its address
+ * or ledger state:
  *
  * - Minor release: mark `_unsafeGrantRole` deprecated (and emit a warning if possible); keep its
  *   implementation intact so existing callers continue to work.

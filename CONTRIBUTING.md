@@ -28,8 +28,8 @@ See ["Fork-a-Repo"](https://help.github.com/articles/fork-a-repo/) for how this 
 
 Coding conventions live in [`GUIDELINES.md`](GUIDELINES.md):
 the single source of truth for naming, section ordering, idioms, testing and documentation.
-The design rationale and constraints live in `ARCHITECTURE.md` (coming soon!).
-Read them before opening a PR.
+The design rationale and constraints live in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+Read both before opening a PR.
 The items below are the hard gates your contribution must clear:
 
 - **Test coverage**: minimum 95% per-file coverage on TypeScript sources (witnesses and simulators),
@@ -52,6 +52,9 @@ The single source of truth for how changes land, and humans and agents follow th
   `type(scope): summary`, e.g. `fix(token): reject zero-amount transfers`.
   Pull requests are squash-merged and the PR title becomes the commit message,
   so the title must follow the same format.
+  A CI check enforces it on the title:
+  one of `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `style` or `revert`,
+  an optional scope, and a summary starting with a lowercase letter.
 - **Never add a `Co-Authored-By` trailer for an AI assistant.**
   Add one only for a human co-author.
   You are accountable for everything you submit under your own name, whatever tools helped produce it.
@@ -61,14 +64,17 @@ The single source of truth for how changes land, and humans and agents follow th
   `Fixes #123` / `Resolves #123` closes it on merge and belongs only on a PR that resolves it completely;
   for partial work a plain `#123` reference is enough.
   Closing keywords act only on PRs targeting the default branch.
-- When you make a user-facing change, record it in [`CHANGELOG.md`](CHANGELOG.md) under `## Unreleased`,
+- If the PR changes `contracts/src/` (outside test dirs) or a runtime dependency in `contracts/package.json`,
+  add an entry to [`CHANGELOG.md`](CHANGELOG.md) under `## Unreleased`,
   grouped by change type (`### Added` / `Changed` / `Fixed` / ...),
   following [Keep a Changelog](https://keepachangelog.com/),
   and reference the PR number.
+  A CI check requires the entry;
+  if nothing user-facing changed, ask a maintainer to add the `skip-changelog` label instead.
 
 ## AI-assisted contributions
 
-AI coding assistants are welcome (see `AGENTS.md`, coming soon! for the agent setup),
+AI coding assistants are welcome (see [`AGENTS.md`](AGENTS.md) for the agent setup),
 but review thoroughly every line you submit.
 What does not change is who is answerable for the result:
 
@@ -80,7 +86,7 @@ What does not change is who is answerable for the result:
   and an unreviewed generated diff spends it faster than anything else.
 - **Do a local review pass before requesting a human one.**
   Run the tests, the formatter and the linter,
-  then follow the `code-quality` review procedure (see `AGENTS.md`, coming soon! for how to use it with your agent).
+  then follow the `code-quality` review procedure (see [`AGENTS.md`](AGENTS.md) for how to use it with your agent).
   Act on what these checks report.
 
 We may close low-effort AI output without further explanation.

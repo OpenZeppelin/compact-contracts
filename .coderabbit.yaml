@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit discovers AGENTS.md automatically. Load the linked source documents
+# as code guidelines for reviews throughout the repository.
+knowledge_base:
+  code_guidelines:
+    filePatterns:
+      - "GUIDELINES.md"
+      - "ARCHITECTURE.md"

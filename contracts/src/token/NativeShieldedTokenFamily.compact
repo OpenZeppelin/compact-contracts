@@ -8,8 +8,8 @@ pragma language_version >= 0.26.0;
  * @description A module for issuing a FAMILY of native shielded (Zswap)
  * token types from one contract, discriminated by a per-call domain.
  *
- * This flavor exists because of Midnight's composition model: there is no
- * contract-to-contract interaction and no way for a contract to deploy
+ * This flavor exists because of Midnight's composition model: this library has no
+ * contract-to-contract interaction yet and a contract cannot deploy
  * another, so the Ethereum pattern of one token contract per asset (stamped
  * out by a factory) is unavailable. A protocol that issues many related
  * tokens — e.g. a DEX minting one liquidity-share token per pair — must do
@@ -61,7 +61,7 @@ pragma language_version >= 0.26.0;
  * need an on-chain `totalSupply(domain)`; see it for the privacy trade-off it
  * introduces (it makes contract-mediated burn amounts public).
  *
- * @notice Out of scope (phase two, pending contract-to-contract support):
+ * @notice Out of scope (phase two, pending this library's contract-to-contract migration):
  * `balanceOf`, `allowance`, transfer mediation, batch operations, and operator
  * approvals are not representable for native shielded UTXOs — once a user holds
  * a coin, the contract cannot observe or restrict its movement.

@@ -28,18 +28,17 @@ pragma language_version >= 0.26.0;
  * through the main transfer circuits (`transferOwnership` and `_transferOwnership`).
  * In other words, ownership transfers to contract addresses are disallowed through these
  * circuits.
- * This is because Compact currently does not support contract-to-contract calls which means
- * if a contract is granted ownership, the owner contract cannot directly call the protected
- * circuit.
+ * This is because this library has not yet migrated to contract-to-contract calls, which means
+ * a contract granted ownership cannot directly call the protected circuit.
  *
  * @notice This module does offer experimental circuits that allow ownership to be granted
  * to contract addresses (`_unsafeTransferOwnership` and `_unsafeUncheckedTransferOwnership`).
  * Note that the circuit names are very explicit ("unsafe") with these experimental circuits.
- * Until contract-to-contract calls are supported, there is no direct way for a contract
+ * Until this library migrates to contract-to-contract calls, there is no direct way for a contract
  * to authenticate as an owner.
  *
- * @notice The unsafe circuits are planned to become deprecated once contract-to-contract calls
- * are supported.
+ * @notice The unsafe circuits are planned to become deprecated once this library migrates to
+ * contract-to-contract calls.
  *
  * @dev Migration plan (safe -> C2C-capable ownership transfers)
  *
@@ -51,8 +50,8 @@ pragma language_version >= 0.26.0;
  * which is the only kind of upgrade the CMA supports. Widening the type later would instead force
  * a ledger-layout rewrite, which the CMA cannot perform.
  *
- * When C2C lands, an already-deployed contract migrates without changing its address or ledger
- * state:
+ * When the C2C migration lands, an already-deployed contract migrates without changing its address
+ * or ledger state:
  *
  * - Minor release: mark `_unsafeTransferOwnership` (and `_unsafeUncheckedTransferOwnership`)
  *   deprecated (and emit a warning if possible); keep their implementation intact so existing
@@ -180,8 +179,8 @@ module Ownable {
   /**
    * @description Transfers ownership of the contract to `newOwner`.
    *
-   * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact.
+   * @notice Ownership transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls.
    * This restriction prevents permanently disabling access to a circuit.
    *
    * @constraints k=13, rows=2947
@@ -206,10 +205,10 @@ module Ownable {
   /**
    * @description Unsafe variant of `transferOwnership`.
    *
-   * @warning Ownership transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported.
+   * @warning Ownership transfers to contract addresses are considered unsafe because this library
+   * has not yet migrated to contract-to-contract calls.
    * Ownership privileges sent to a contract address may become uncallable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * @constraints k=13, rows=2944
    *
@@ -248,7 +247,7 @@ module Ownable {
     assertOnlyOwner();
 
     // We use `left` here because `assertOnlyOwner` would return a misleading
-    // error msg (c2c is not currently supported)
+    // error msg (this library has not yet migrated to c2c)
     const zero = Either<Bytes<32>, ContractAddress> {
       is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
     };
@@ -284,8 +283,8 @@ module Ownable {
    * @description Transfers ownership of the contract to `newOwner` without
    * enforcing permission checks on the caller.
    *
-   * @notice Ownership transfers to contract addresses are currently disallowed until contract-to-contract
-   * interactions are supported in Compact.
+   * @notice Ownership transfers to contract addresses are disallowed until this library migrates to
+   * contract-to-contract calls.
    * This restriction prevents circuits from being inadvertently locked in contracts.
    *
    * @constraints k=10, rows=598
@@ -308,10 +307,10 @@ module Ownable {
   /**
    * @description Unsafe variant of `_transferOwnership`.
    *
-   * @warning Ownership transfers to contract addresses are considered unsafe because contract-to-contract
-   * calls are not currently supported.
+   * @warning Ownership transfers to contract addresses are considered unsafe because this library
+   * has not yet migrated to contract-to-contract calls.
    * Ownership privileges sent to a contract address may become uncallable.
-   * Once contract-to-contract calls are supported, this circuit may be deprecated.
+   * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
    * @constraints k=10, rows=595
    *
