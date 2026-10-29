@@ -1438,8 +1438,8 @@ module ConfidentialFungibleToken {
           ownerCt:   ElGamal_encryptZero(),
           // Transient placeholder: this slot exists only so the refund reads an
           // on-curve no-op, and it is removed immediately below, so the memo is
-          // never decrypted. Use an on-curve identity point (never a `default`,
-          // which is off-curve).
+          // never decrypted. Prefer an explicit identity via `ecMulGenerator(0)`
+          // (same on-curve point as `default<JubjubPoint>` / `(0, 1)`).
           ownerMemo: EcdhMask_Ciphertext {
             ephemeralPk: ecMulGenerator(0 as JubjubScalar),
             ct: 0 as Field
