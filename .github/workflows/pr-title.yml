@@ -42,6 +42,6 @@ jobs:
             style
             revert
           requireScope: false
-          subjectPattern: ^(?![A-Z]).+$
+          subjectPattern: ^[a-z].*$
           subjectPatternError: |
             The summary "{subject}" in "{title}" must start with a lowercase letter.
