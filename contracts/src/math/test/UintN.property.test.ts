@@ -10,8 +10,6 @@ const PROPERTY_RUNS = isLiveBackend() ? 2 : 100;
 // Pure circuits evaluate locally on either backend.
 const PURE_RUNS = 2_000;
 
-const U8 = Array.from({ length: 256 }, (_, i) => BigInt(i));
-
 let uintNSimulator: UintNSimulator;
 
 const WIDTHS = [
@@ -21,71 +19,117 @@ const WIDTHS = [
     sub: (a: bigint, b: bigint) => uintNSimulator.wrappingSub64(a, b),
   },
   {
+    n: 247n,
+    add: (a: bigint, b: bigint) => uintNSimulator.wrappingAdd247(a, b),
+    sub: (a: bigint, b: bigint) => uintNSimulator.wrappingSub247(a, b),
+  },
+  {
     n: 248n,
     add: (a: bigint, b: bigint) => uintNSimulator.wrappingAdd248(a, b),
     sub: (a: bigint, b: bigint) => uintNSimulator.wrappingSub248(a, b),
   },
 ];
 
-/** Whether `values` holds each `Uint<8>` exactly once. */
-const isPermutation = (values: bigint[]): boolean => {
+/** Every `Uint<n>` for `M = 2^n`, ascending. */
+const domain = (M: bigint): bigint[] =>
+  Array.from({ length: Number(M) }, (_, i) => BigInt(i));
+
+/** Whether `values` holds each element of `all` exactly once. */
+const isPermutation = (all: bigint[], values: bigint[]): boolean => {
   const seen = new Set(values);
-  return values.length === U8.length && U8.every((v) => seen.has(v));
+  return values.length === all.length && all.every((v) => seen.has(v));
 };
 
-describe('UintN property: Uint<8>, exhaustively', () => {
-  const OPS = [
+describe('UintN property: Uint<1>, Uint<7> and Uint<8>, exhaustively', () => {
+  const EXHAUSTIVE_WIDTHS = [
     {
-      name: 'wrappingAdd',
-      symbol: '+',
-      circuit: pureCircuits.U8_wrappingAdd,
-      expected: (a: bigint, b: bigint) => (a + b) % 256n,
+      n: 1n,
+      add: pureCircuits.U1_wrappingAdd,
+      sub: pureCircuits.U1_wrappingSub,
     },
     {
-      name: 'wrappingSub',
-      symbol: '-',
-      circuit: pureCircuits.U8_wrappingSub,
-      expected: (a: bigint, b: bigint) => (a - b + 256n) % 256n,
+      n: 7n,
+      add: pureCircuits.U7_wrappingAdd,
+      sub: pureCircuits.U7_wrappingSub,
+    },
+    {
+      n: 8n,
+      add: pureCircuits.U8_wrappingAdd,
+      sub: pureCircuits.U8_wrappingSub,
     },
   ];
 
-  for (const { name, symbol, circuit, expected } of OPS) {
-    describe(name, () => {
-      it(`should return (a ${symbol} b) mod 2^8 for all 65536 pairs`, () => {
-        const wrong = U8.flatMap((a) =>
-          U8.filter((b) => circuit(a, b) !== expected(a, b)).map(
-            (b) => `${a} ${symbol} ${b}`,
-          ),
-        );
+  for (const { n, add, sub } of EXHAUSTIVE_WIDTHS) {
+    const M = 1n << n;
+    const values = domain(M);
+    const OPS = [
+      {
+        name: 'wrappingAdd',
+        symbol: '+',
+        circuit: add,
+        expected: (a: bigint, b: bigint) => (a + b) % M,
+      },
+      {
+        name: 'wrappingSub',
+        symbol: '-',
+        circuit: sub,
+        expected: (a: bigint, b: bigint) => (a - b + M) % M,
+      },
+    ];
 
-        expect(wrong).toStrictEqual([]);
-      });
+    describe(`Uint<${n}>`, () => {
+      for (const { name, symbol, circuit, expected } of OPS) {
+        describe(name, () => {
+          it(`should return (a ${symbol} b) mod 2^${n} for all ${M * M} pairs`, () => {
+            const wrong = values.flatMap((a) =>
+              values
+                .filter((b) => circuit(a, b) !== expected(a, b))
+                .map((b) => `${a} ${symbol} ${b}`),
+            );
 
-      it('should permute Uint<8> over b for each fixed a', () => {
-        const failing = U8.filter(
-          (a) => !isPermutation(U8.map((b) => circuit(a, b))),
-        );
+            expect(wrong).toStrictEqual([]);
+          });
 
-        expect(failing).toStrictEqual([]);
-      });
+          it(`should permute Uint<${n}> over b for each fixed a`, () => {
+            const failing = values.filter(
+              (a) =>
+                !isPermutation(
+                  values,
+                  values.map((b) => circuit(a, b)),
+                ),
+            );
 
-      it('should permute Uint<8> over a for each fixed b', () => {
-        const failing = U8.filter(
-          (b) => !isPermutation(U8.map((a) => circuit(a, b))),
-        );
+            expect(failing).toStrictEqual([]);
+          });
 
-        expect(failing).toStrictEqual([]);
-      });
+          it(`should permute Uint<${n}> over a for each fixed b`, () => {
+            const failing = values.filter(
+              (b) =>
+                !isPermutation(
+                  values,
+                  values.map((a) => circuit(a, b)),
+                ),
+            );
+
+            expect(failing).toStrictEqual([]);
+          });
+        });
+      }
     });
   }
 });
 
-describe('UintN property: Uint<64> and Uint<248>, pure circuits', () => {
+describe('UintN property: Uint<64>, Uint<247> and Uint<248>, pure circuits', () => {
   const PURE_WIDTHS = [
     {
       n: 64n,
       add: pureCircuits.U64_wrappingAdd,
       sub: pureCircuits.U64_wrappingSub,
+    },
+    {
+      n: 247n,
+      add: pureCircuits.U247_wrappingAdd,
+      sub: pureCircuits.U247_wrappingSub,
     },
     {
       n: 248n,
@@ -169,7 +213,7 @@ describe('UintN property: Uint<64> and Uint<248>, pure circuits', () => {
   }
 });
 
-describe('UintN property: Uint<64> and Uint<248>, impure wrappers', () => {
+describe('UintN property: Uint<64>, Uint<247> and Uint<248>, impure wrappers', () => {
   beforeAll(async () => {
     uintNSimulator = await UintNSimulator.create();
   });

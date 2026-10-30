@@ -14,6 +14,12 @@ type Width = {
 
 const WIDTHS: Width[] = [
   {
+    n: 7n,
+    modulus: () => uintNSimulator.MODULUS7(),
+    add: (a, b) => uintNSimulator.wrappingAdd7(a, b),
+    sub: (a, b) => uintNSimulator.wrappingSub7(a, b),
+  },
+  {
     n: 8n,
     modulus: () => uintNSimulator.MODULUS8(),
     add: (a, b) => uintNSimulator.wrappingAdd8(a, b),
@@ -26,10 +32,49 @@ const WIDTHS: Width[] = [
     sub: (a, b) => uintNSimulator.wrappingSub64(a, b),
   },
   {
+    n: 247n,
+    modulus: () => uintNSimulator.MODULUS247(),
+    add: (a, b) => uintNSimulator.wrappingAdd247(a, b),
+    sub: (a, b) => uintNSimulator.wrappingSub247(a, b),
+  },
+  {
     n: 248n,
     modulus: () => uintNSimulator.MODULUS248(),
     add: (a, b) => uintNSimulator.wrappingAdd248(a, b),
     sub: (a, b) => uintNSimulator.wrappingSub248(a, b),
+  },
+];
+
+/** `[a, b, expected]` for every pair of `Uint<n>`. */
+type TruthTable = readonly (readonly [bigint, bigint, bigint])[];
+
+/** Widths too narrow for the `WIDTHS` literals, tested pair by pair. */
+const DEGENERATE: (Width & { sums: TruthTable; differences: TruthTable })[] = [
+  {
+    n: 0n,
+    modulus: () => uintNSimulator.MODULUS0(),
+    add: (a, b) => uintNSimulator.wrappingAdd0(a, b),
+    sub: (a, b) => uintNSimulator.wrappingSub0(a, b),
+    sums: [[0n, 0n, 0n]],
+    differences: [[0n, 0n, 0n]],
+  },
+  {
+    n: 1n,
+    modulus: () => uintNSimulator.MODULUS1(),
+    add: (a, b) => uintNSimulator.wrappingAdd1(a, b),
+    sub: (a, b) => uintNSimulator.wrappingSub1(a, b),
+    sums: [
+      [0n, 0n, 0n],
+      [0n, 1n, 1n],
+      [1n, 0n, 1n],
+      [1n, 1n, 0n],
+    ],
+    differences: [
+      [0n, 0n, 0n],
+      [0n, 1n, 1n],
+      [1n, 0n, 1n],
+      [1n, 1n, 0n],
+    ],
   },
 ];
 
@@ -159,4 +204,52 @@ describe('UintN', () => {
       });
     }
   });
+});
+
+describe('UintN: Uint<0> and Uint<1>, whole domain', () => {
+  beforeAll(async () => {
+    uintNSimulator = await UintNSimulator.create();
+  });
+
+  for (const { n, modulus, add, sub, sums, differences } of DEGENERATE) {
+    const M = 1n << n;
+
+    describe(`Uint<${n}>`, () => {
+      it(`should return 2^${n} from MODULUS`, async () => {
+        expect(await modulus()).toBe(M);
+      });
+
+      describe('wrappingAdd', () => {
+        for (const [a, b, sum] of sums) {
+          it(`should return ${sum} for ${a} + ${b}`, async () => {
+            expect(await add(a, b)).toBe(sum);
+          });
+        }
+
+        it(`should reject 2^${n} as the first operand`, async () => {
+          await expectRejection(add(M, 0n), outOfRange(M));
+        });
+
+        it(`should reject 2^${n} as the second operand`, async () => {
+          await expectRejection(add(0n, M), outOfRange(M));
+        });
+      });
+
+      describe('wrappingSub', () => {
+        for (const [a, b, difference] of differences) {
+          it(`should return ${difference} for ${a} - ${b}`, async () => {
+            expect(await sub(a, b)).toBe(difference);
+          });
+        }
+
+        it(`should reject 2^${n} as the first operand`, async () => {
+          await expectRejection(sub(M, 0n), outOfRange(M));
+        });
+
+        it(`should reject 2^${n} as the second operand`, async () => {
+          await expectRejection(sub(0n, M), outOfRange(M));
+        });
+      });
+    });
+  }
 });

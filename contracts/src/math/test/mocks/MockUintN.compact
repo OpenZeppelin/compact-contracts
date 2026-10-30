@@ -1,29 +1,99 @@
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
-// This contract exposes the UintN module's circuits at three widths so they
-// can be driven directly from off-chain tests. DO NOT deploy or use this
-// contract in any production application.
+// This contract exposes the UintN module's circuits at degenerate,
+// non-byte-aligned, byte-aligned and maximum widths so they can be driven
+// directly from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
 
 pragma language_version >= 0.26.0;
 
 import CompactStandardLibrary;
 
+import "../../UintN"<0> prefix U0_;
+
+import "../../UintN"<1> prefix U1_;
+
+import "../../UintN"<7> prefix U7_;
+
 import "../../UintN"<8> prefix U8_;
 
 import "../../UintN"<64> prefix U64_;
 
+import "../../UintN"<247> prefix U247_;
+
 import "../../UintN"<248> prefix U248_;
 
 // Pure, so a spec can sweep inputs without a ledger round trip per call.
+export { U0_MODULUS, U0_wrappingAdd, U0_wrappingSub };
+export { U1_MODULUS, U1_wrappingAdd, U1_wrappingSub };
+export { U7_MODULUS, U7_wrappingAdd, U7_wrappingSub };
 export { U8_MODULUS, U8_wrappingAdd, U8_wrappingSub };
 export { U64_MODULUS, U64_wrappingAdd, U64_wrappingSub };
+export { U247_MODULUS, U247_wrappingAdd, U247_wrappingSub };
 export { U248_MODULUS, U248_wrappingAdd, U248_wrappingSub };
 
 // Keeps every circuit below impure. Without a ledger write the compiler
 // promotes them to pure, and the artifact ships without ZKIR or proving keys,
 // leaving the circuits evaluated but never proven.
 ledger _invocations: Counter;
+
+////////////////////////////////////////////////////////////////
+// N = 0
+////////////////////////////////////////////////////////////////
+
+export circuit MODULUS0(): Field {
+  _invocations.increment(1);
+  return U0_MODULUS();
+}
+
+export circuit wrappingAdd0(a: Uint<0>, b: Uint<0>): Uint<0> {
+  _invocations.increment(1);
+  return U0_wrappingAdd(a, b);
+}
+
+export circuit wrappingSub0(a: Uint<0>, b: Uint<0>): Uint<0> {
+  _invocations.increment(1);
+  return U0_wrappingSub(a, b);
+}
+
+////////////////////////////////////////////////////////////////
+// N = 1
+////////////////////////////////////////////////////////////////
+
+export circuit MODULUS1(): Field {
+  _invocations.increment(1);
+  return U1_MODULUS();
+}
+
+export circuit wrappingAdd1(a: Uint<1>, b: Uint<1>): Uint<1> {
+  _invocations.increment(1);
+  return U1_wrappingAdd(a, b);
+}
+
+export circuit wrappingSub1(a: Uint<1>, b: Uint<1>): Uint<1> {
+  _invocations.increment(1);
+  return U1_wrappingSub(a, b);
+}
+
+////////////////////////////////////////////////////////////////
+// N = 7
+////////////////////////////////////////////////////////////////
+
+export circuit MODULUS7(): Field {
+  _invocations.increment(1);
+  return U7_MODULUS();
+}
+
+export circuit wrappingAdd7(a: Uint<7>, b: Uint<7>): Uint<7> {
+  _invocations.increment(1);
+  return U7_wrappingAdd(a, b);
+}
+
+export circuit wrappingSub7(a: Uint<7>, b: Uint<7>): Uint<7> {
+  _invocations.increment(1);
+  return U7_wrappingSub(a, b);
+}
 
 ////////////////////////////////////////////////////////////////
 // N = 8
@@ -61,6 +131,25 @@ export circuit wrappingAdd64(a: Uint<64>, b: Uint<64>): Uint<64> {
 export circuit wrappingSub64(a: Uint<64>, b: Uint<64>): Uint<64> {
   _invocations.increment(1);
   return U64_wrappingSub(a, b);
+}
+
+////////////////////////////////////////////////////////////////
+// N = 247
+////////////////////////////////////////////////////////////////
+
+export circuit MODULUS247(): Field {
+  _invocations.increment(1);
+  return U247_MODULUS();
+}
+
+export circuit wrappingAdd247(a: Uint<247>, b: Uint<247>): Uint<247> {
+  _invocations.increment(1);
+  return U247_wrappingAdd(a, b);
+}
+
+export circuit wrappingSub247(a: Uint<247>, b: Uint<247>): Uint<247> {
+  _invocations.increment(1);
+  return U247_wrappingSub(a, b);
 }
 
 ////////////////////////////////////////////////////////////////

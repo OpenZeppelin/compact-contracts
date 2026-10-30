@@ -35,7 +35,7 @@ const UintNSimulatorBase = createSimulator<
 
 /**
  * @description A simulator implementation for testing UintN wrapping
- * arithmetic (N = 8, 64, 248).
+ * arithmetic (N = 0, 1, 7, 8, 64, 247, 248).
  *
  * Each method calls the mock's impure wrapper, the circuit a live run proves.
  * The pure re-exports (`U8_wrappingAdd`, ...) are called through the
@@ -50,6 +50,54 @@ export class UintNSimulator extends UintNSimulatorBase {
   ): Promise<UintNSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create([], options) as Promise<UintNSimulator>;
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // N = 0
+  ////////////////////////////////////////////////////////////////
+
+  public MODULUS0(): Promise<bigint> {
+    return this.circuits.impure.MODULUS0();
+  }
+
+  public wrappingAdd0(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingAdd0(a, b);
+  }
+
+  public wrappingSub0(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingSub0(a, b);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // N = 1
+  ////////////////////////////////////////////////////////////////
+
+  public MODULUS1(): Promise<bigint> {
+    return this.circuits.impure.MODULUS1();
+  }
+
+  public wrappingAdd1(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingAdd1(a, b);
+  }
+
+  public wrappingSub1(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingSub1(a, b);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // N = 7
+  ////////////////////////////////////////////////////////////////
+
+  public MODULUS7(): Promise<bigint> {
+    return this.circuits.impure.MODULUS7();
+  }
+
+  public wrappingAdd7(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingAdd7(a, b);
+  }
+
+  public wrappingSub7(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingSub7(a, b);
   }
 
   ////////////////////////////////////////////////////////////////
@@ -82,6 +130,22 @@ export class UintNSimulator extends UintNSimulatorBase {
 
   public wrappingSub64(a: bigint, b: bigint): Promise<bigint> {
     return this.circuits.impure.wrappingSub64(a, b);
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // N = 247
+  ////////////////////////////////////////////////////////////////
+
+  public MODULUS247(): Promise<bigint> {
+    return this.circuits.impure.MODULUS247();
+  }
+
+  public wrappingAdd247(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingAdd247(a, b);
+  }
+
+  public wrappingSub247(a: bigint, b: bigint): Promise<bigint> {
+    return this.circuits.impure.wrappingSub247(a, b);
   }
 
   ////////////////////////////////////////////////////////////////
