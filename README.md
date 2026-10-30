@@ -249,6 +249,7 @@ yarn lint:fix
 ```bash
 yarn compile:access
 yarn compile:archive
+yarn compile:math
 ...
 ```
 

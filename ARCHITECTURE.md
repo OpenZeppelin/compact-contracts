@@ -26,6 +26,7 @@ covers each domain's internal layout and the mocks warning. Dependencies are the
 | --- | --- |
 | `contracts/src/access` | Ownership and role-based access control, transparent and shielded. Imports `utils`. |
 | `contracts/src/crypto` | ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712. No ledger state and no witnesses, so an importer inherits no witness interface it does not need. Imports nothing outside `crypto`. |
+| `contracts/src/math` | Wrapping arithmetic on `Uint<N>` at any width: pure circuits, no ledger state, no witnesses. Imports nothing. |
 | `contracts/src/multisig` | Signer registry, threshold approvals, proposals, treasuries, forwarders, presets. Imports `utils` and `crypto/Ecdsa`; the presets add `crypto/Eip712` and `utils/EvmAbi`. `presets/NativeShieldedTokenIssuer` is the only multisig file that imports `token`. |
 | `contracts/src/security` | Initialization, pausing, allowlists and blocklists. Imports only the standard library. |
 | `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`. `ConfidentialFungibleToken` imports `crypto/ElGamal` and `crypto/EcdhMask`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
