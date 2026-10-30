@@ -80,14 +80,16 @@ pragma language_version >= 0.26.0;
  * encryption — a UX nicety, not a confidentiality requirement.
  *
  * @dev Key association. A `Ciphertext` carries nothing binding it to a recipient
- * key, and the key is not recoverable from `(c1, c2)` without the randomness or
- * the secret. So `addEncrypted`, `subEncrypted` and `rerandomize` CANNOT check
- * the `pk` they are given against the key their input was encrypted under: a
- * mismatched `pk` silently yields a ciphertext no key can open. Wherever the
+ * key: every `(c1, c2)` is a valid encryption of some point under every key,
+ * and it reveals nothing about the key it was made for. So `addEncrypted`,
+ * `subEncrypted` and `rerandomize` CANNOT check the `pk` they are given against
+ * the key their input was encrypted under: a mismatched `pk` silently yields a
+ * ciphertext that opens to the intended plaintext under no key. Wherever the
  * result is persisted and must stay decryptable, `pk` MUST come from a source
  * the importing contract controls (e.g. a lookup in its own registration map),
- * never a caller-supplied or mutable value. Possession CAN be checked by a
- * holder of the `ek` (see `assertKeyPair`/`assertDecryptsTo`).
+ * never a caller-supplied or mutable value. A holder of the `ek` CAN prove a
+ * ciphertext opens under their key (`assertDecryptsTo`); `assertKeyPair` only
+ * binds `ek` to `pk`.
  *
  * @dev Randomness. `encryptPoint` asserts `r != 0` — like `pk = identity`,
  * `r = 0` zeros the mask (`r*pk = O`), yielding the non-hiding `(O, m)`; it is
