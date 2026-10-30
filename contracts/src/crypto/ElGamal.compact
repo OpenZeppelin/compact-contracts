@@ -74,6 +74,19 @@ pragma language_version >= 0.23.0;
  * (e.g. at registration) to fail fast with a clear error rather than at first
  * encryption — a UX nicety, not a confidentiality requirement.
  *
+ * @dev Key association. A `Ciphertext` carries nothing binding it to a recipient
+ * key: every `(c1, c2)` is a valid encryption of some point under every key,
+ * and it reveals nothing about the key it was made for. So `addEncrypted`,
+ * `subEncrypted` and `rerandomize` CANNOT check the `pk` they are given against
+ * the key their input was encrypted under: a mismatched `pk` silently yields a
+ * ciphertext that opens to the intended plaintext under no key. Wherever the
+ * result is persisted and must stay decryptable, `pk` MUST come from a source
+ * the importing contract controls (e.g. its registration map), never from a
+ * caller, and the key a stored ciphertext was made under MUST NOT change while
+ * it is stored unless every such ciphertext is re-encrypted in the same
+ * transition. A holder of the `ek` CAN prove a ciphertext opens under their key
+ * (`assertDecryptsTo`); `assertKeyPair` only binds `ek` to `pk`.
+ *
  * @dev Randomness. `encryptPoint` asserts `r != 0` — like `pk = identity`,
  * `r = 0` zeros the mask (`r*pk = O`), yielding the non-hiding `(O, m)`; it is
  * the unique mask-zeroing randomness, so the two asserts together guarantee a
@@ -350,6 +363,9 @@ module ElGamal {
    * Convenience over `add` for folding a known plaintext into a ciphertext:
    * `add(old, encrypt(pk, value, r))`.
    *
+   * @notice `pk` MUST be the key `old` was encrypted under; the circuit cannot
+   * check it (see the key-association note in the module header).
+   *
    * Requirements:
    *
    * - `pk` is not the identity point.
@@ -367,6 +383,9 @@ module ElGamal {
   /**
    * @description Homomorphically subtracts `value` from the plaintext encrypted
    * by `old`. Convenience over `sub`: `sub(old, encrypt(pk, value, r))`.
+   *
+   * @notice `pk` MUST be the key `old` was encrypted under; the circuit cannot
+   * check it (see the key-association note in the module header).
    *
    * @notice The caller MUST ensure the underlying plaintext subtraction does
    * not underflow; this circuit cannot check it. Callers verify sufficiency by
@@ -394,11 +413,11 @@ module ElGamal {
    * value) yet decrypts identically. Equivalent to homomorphically adding an
    * encryption of zero.
    *
-   * @notice `r = 0` is rejected (it would be a no-op via the `encryptPoint`
-   * zero-randomness assert). One silent failure mode remains that the circuit
-   * cannot catch: a `pk` that is not the key `ct` was encrypted under corrupts
-   * the plaintext (the result no longer decrypts to the original value). Pass
-   * fresh randomness and the matching `pk`.
+   * @notice `pk` MUST be the key `ct` was encrypted under; the circuit cannot
+   * check it (see the key-association note in the module header).
+   *
+   * @notice `r = 0` is rejected (by the `encryptPoint` zero-randomness assert):
+   * it would return `ct` unchanged, defeating unlinkability.
    *
    * Requirements:
    *

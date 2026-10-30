@@ -352,6 +352,21 @@ describe('ElGamal', () => {
         contract.assertDecryptsTo(ct, pkA, EK_A, 43n),
       ).rejects.toThrow('ElGamal: plaintext mismatch');
     });
+
+    it('should yield a ciphertext neither key opens when pk is not the key old was encrypted under', async () => {
+      const bad = await contract.addEncrypted(
+        await contract.encrypt(pkA, 40n, R1),
+        pkB,
+        2n,
+        R2,
+      );
+      await expect(
+        contract.assertDecryptsTo(bad, pkA, EK_A, 42n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
+      await expect(
+        contract.assertDecryptsTo(bad, pkB, EK_B, 42n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -402,6 +417,21 @@ describe('ElGamal', () => {
       );
       await expect(
         contract.assertDecryptsTo(ct, pkA, EK_A, 0n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
+    });
+
+    it('should yield a ciphertext neither key opens when pk is not the key old was encrypted under', async () => {
+      const bad = await contract.subEncrypted(
+        await contract.encrypt(pkA, 50n, R1),
+        pkB,
+        8n,
+        R2,
+      );
+      await expect(
+        contract.assertDecryptsTo(bad, pkA, EK_A, 42n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
+      await expect(
+        contract.assertDecryptsTo(bad, pkB, EK_B, 42n),
       ).rejects.toThrow('ElGamal: plaintext mismatch');
     });
   });
@@ -475,6 +505,19 @@ describe('ElGamal', () => {
       );
       await contract.assertDecryptsTo(diff, pkA, EK_A, 0n);
     });
+
+    it('does not combine across recipient keys (result opens under neither)', async () => {
+      const mixed = await contract.sub(
+        await contract.encrypt(pkA, 10n, R1),
+        await contract.encrypt(pkB, 5n, R2),
+      );
+      await expect(
+        contract.assertDecryptsTo(mixed, pkA, EK_A, 5n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
+      await expect(
+        contract.assertDecryptsTo(mixed, pkB, EK_B, 5n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -531,6 +574,20 @@ describe('ElGamal', () => {
       expect(await contract.rerandomize(base, pkA, R2)).not.toEqual(
         await contract.rerandomize(base, pkA, R3),
       );
+    });
+
+    it('should not decrypt to the original value when pk is not the key ct was encrypted under', async () => {
+      const bad = await contract.rerandomize(
+        await contract.encrypt(pkA, 40n, R1),
+        pkB,
+        R2,
+      );
+      await expect(
+        contract.assertDecryptsTo(bad, pkA, EK_A, 40n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
+      await expect(
+        contract.assertDecryptsTo(bad, pkB, EK_B, 40n),
+      ).rejects.toThrow('ElGamal: plaintext mismatch');
     });
   });
 
