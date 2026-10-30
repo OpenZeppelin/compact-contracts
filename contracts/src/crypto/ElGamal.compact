@@ -86,10 +86,11 @@ pragma language_version >= 0.26.0;
  * the key their input was encrypted under: a mismatched `pk` silently yields a
  * ciphertext that opens to the intended plaintext under no key. Wherever the
  * result is persisted and must stay decryptable, `pk` MUST come from a source
- * the importing contract controls (e.g. a lookup in its own registration map),
- * never a caller-supplied or mutable value. A holder of the `ek` CAN prove a
- * ciphertext opens under their key (`assertDecryptsTo`); `assertKeyPair` only
- * binds `ek` to `pk`.
+ * the importing contract controls (e.g. its registration map), never from a
+ * caller, and the key a stored ciphertext was made under MUST NOT change while
+ * it is stored unless every such ciphertext is re-encrypted in the same
+ * transition. A holder of the `ek` CAN prove a ciphertext opens under their key
+ * (`assertDecryptsTo`); `assertKeyPair` only binds `ek` to `pk`.
  *
  * @dev Randomness. `encryptPoint` asserts `r != 0` — like `pk = identity`,
  * `r = 0` zeros the mask (`r*pk = O`), yielding the non-hiding `(O, m)`; it is
