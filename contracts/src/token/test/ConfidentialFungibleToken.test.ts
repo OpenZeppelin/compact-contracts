@@ -1083,25 +1083,33 @@ describe.skipIf(isLiveBackend())(
     });
 
     it('returns the absent-allowance placeholder when no escrow exists', async () => {
-      const entry = await cft.allowance(ALICE.accountId, BOB.accountId);
+      // Pin the exact shape, not just that two missing pairs agree: every
+      // point is the identity. The amounts are Enc(0); `ownerMemo` is a
+      // sentinel, not an encrypted zero, and wallets branch on this shape.
+      const id = identityPoint();
+      for (const [owner, spender] of [
+        [ALICE.accountId, BOB.accountId],
+        [BOB.accountId, CHARLIE.accountId],
+      ]) {
+        const entry = await cft.allowance(owner, spender);
+        expect(entry.spenderCt.c1).toEqual(id);
+        expect(entry.spenderCt.c2).toEqual(id);
+        expect(entry.ownerCt.c1).toEqual(id);
+        expect(entry.ownerCt.c2).toEqual(id);
+        expect(entry.ownerMemo.ephemeralPk).toEqual(id);
+        expect(entry.ownerMemo.ct).toBe(0n);
+      }
 
-      // `ownerMemo` is a sentinel, not an encrypted zero. Wallets branch on
-      // this shape, so pin it rather than only comparing two absent entries.
-      expect(entry.ownerMemo.ephemeralPk).toEqual(identityPoint());
-      expect(entry.ownerMemo.ct).toBe(0n);
-
+      // The sentinel memo is not decryptable: `EcdhMask_decrypt` rejects it.
+      const { ownerMemo } = await cft.allowance(ALICE.accountId, BOB.accountId);
       const ownerScalar = await elgamal.secretToScalar(ALICE.encryptionKey);
       await expect(
         ecdhMask.decrypt(
-          entry.ownerMemo,
+          ownerMemo,
           ownerScalar,
           padTag('OZ_CFT_escrow_owner_v1'),
         ),
       ).rejects.toThrow('identity ephemeral');
-
-      expect(entry).toEqual(
-        await cft.allowance(BOB.accountId, CHARLIE.accountId),
-      );
     });
   },
 );

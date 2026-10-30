@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** `ProposalManager`: `Proposal` stores the lifecycle stage in `status: ProposalStatus` and the deadline in `expiry: Uint<64>` instead of overlaying both in `state`, so an executed or cancelled proposal keeps its expiry. `_createProposal` no longer rejects an expiry in the former reserved range (#1193)
 - **Breaking:** `ShieldedAccessControl`: revoking or renouncing a `(role, accountId)` pairing that was never granted reverts with `role was never granted`, so a nullifier can only exist for a granted pairing (#1116)
+- `ConfidentialFungibleToken`: `allowance` builds its absent-pair entry from `ecMulGenerator(0)` instead of `constructJubjubPoint(0, 1)`, matching the id guards in `ElGamal` and `EcdhMask` (#1136)
 - `ConfidentialFungibleToken`: `transferFrom` and `_burnFrom` reject an escrow whose owner or spender is unregistered as `owner not registered` / `spender not registered` (#1165)
 - `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the id point (#1077)
 
