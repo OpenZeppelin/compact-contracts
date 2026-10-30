@@ -33,7 +33,7 @@ Read both before opening a PR.
 The items below are the hard gates your contribution must clear:
 
 - **Test coverage**: minimum 95% per-file coverage on TypeScript sources (witnesses and simulators),
-  checked with `yarn test:coverage`.
+  checked with `yarn test:coverage` and enforced by the test workflow on every PR.
   Compact coverage is reported but not gated.
 - **Formatting and linting**: all code must pass the formatter and strict linting
   with the commands in [the workflow below](#a-typical-workflow).
@@ -156,7 +156,7 @@ We may close low-effort AI output without further explanation.
 What every change must be tested with, and how tests are laid out, lives in [`GUIDELINES.md`](GUIDELINES.md#testing).
 The coverage gate above is the only testing rule this file owns.
 
-`yarn test` and `yarn test:integration` run against a mock backend and are what CI runs on every PR.
+`yarn test:coverage` and `yarn test:integration` run against a mock backend and are what CI runs on every PR.
 The mock accepts some operations the node rejects,
 so a change that touches coins, identity or deployment should also pass live against a local Midnight stack (Docker required)
 before you request a review:
