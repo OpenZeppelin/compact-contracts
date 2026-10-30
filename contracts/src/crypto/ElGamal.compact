@@ -385,11 +385,11 @@ module ElGamal {
    * value) yet decrypts identically. Equivalent to homomorphically adding an
    * encryption of zero.
    *
-   * @notice `r = 0` is rejected (it would be a no-op via the `encryptPoint`
-   * zero-randomness assert). One silent failure mode remains that the circuit
-   * cannot catch: a `pk` that is not the key `ct` was encrypted under corrupts
-   * the plaintext (the result no longer decrypts to the original value). Pass
-   * fresh randomness and the matching `pk`.
+   * @notice `pk` MUST be the key `ct` was encrypted under; the circuit cannot
+   * check it (see the key-association note in the module header).
+   *
+   * @notice `r = 0` is rejected (by the `encryptPoint` zero-randomness assert):
+   * it would return `ct` unchanged, defeating unlinkability.
    *
    * Requirements:
    *
