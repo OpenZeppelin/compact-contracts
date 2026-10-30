@@ -1,6 +1,7 @@
 import {
   CompactTypeBytes,
   CompactTypeVector,
+  constructJubjubPoint,
   convertBytesToField,
   type JubjubPoint,
   persistentHash,
@@ -260,6 +261,15 @@ describe('ElGamal', () => {
       );
       // The lifted path routes through encryptPoint, so it is guarded too.
       await expect(contract.encrypt(idPk, 100n, R1)).rejects.toThrow(
+        'ElGamal: identity pk',
+      );
+    });
+
+    it('rejects the identity public key given as the coordinate pair (0, 1)', async () => {
+      // The guard compares against `ecMulGenerator(0)`; the same point spelled
+      // as affine coordinates must be caught too.
+      const idPk = constructJubjubPoint(0n, 1n);
+      await expect(contract.encryptPoint(idPk, m1, R1)).rejects.toThrow(
         'ElGamal: identity pk',
       );
     });

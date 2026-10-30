@@ -1066,10 +1066,17 @@ describe.skipIf(isLiveBackend())(
 
     it('returns the absent-allowance placeholder when no escrow exists', async () => {
       const entry = await cft.allowance(ALICE.accountId, BOB.accountId);
+      const id = identityPoint();
+
+      // The amount fields are genuine encryptions of 0.
+      expect(entry.spenderCt.c1).toEqual(id);
+      expect(entry.spenderCt.c2).toEqual(id);
+      expect(entry.ownerCt.c1).toEqual(id);
+      expect(entry.ownerCt.c2).toEqual(id);
 
       // `ownerMemo` is a sentinel, not an encrypted zero. Wallets branch on
       // this shape, so pin it rather than only comparing two absent entries.
-      expect(entry.ownerMemo.ephemeralPk).toEqual(identityPoint());
+      expect(entry.ownerMemo.ephemeralPk).toEqual(id);
       expect(entry.ownerMemo.ct).toBe(0n);
 
       const ownerScalar = elgamal.secretToScalar(ALICE.encryptionKey);
