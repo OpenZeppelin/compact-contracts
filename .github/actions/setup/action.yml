@@ -21,7 +21,11 @@ runs:
     # empty cache under a key later jobs restore would leave them with nothing
     # instead of an earlier commit's populated fallback.
     #
-    # Keyed on the contract sources and the pinned compiler, NOT on the commit.
+    # Keyed on everything turbo hashes a compile on: the contract sources, the
+    # compile config (`turbo.json`, the `compile:*` scripts with their toolchain
+    # pin) and this action, NOT on the commit. An input missing here is a
+    # cache that misses and then cannot save, since actions/cache never
+    # overwrites a key: every run recompiles cold until a listed file moves.
     # A commit-keyed entry is written on every push whether or not anything it
     # caches changed, and these entries are large — `token`'s slice is ~275 MB of
     # ZK keys, so five commits had left five copies of it, and the repo was at
@@ -34,7 +38,7 @@ runs:
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: .turbo
-        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ hashFiles('contracts/src/**/*.compact', 'contracts/test/integration/**/*.compact', '.github/actions/setup/action.yml') }}
+        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ hashFiles('contracts/src/**/*.compact', 'contracts/test/integration/**/*.compact', 'contracts/package.json', 'turbo.json', '.github/actions/setup/action.yml') }}
         # Kept, so a source change still starts from the previous build rather
         # than from nothing: turbo's store is content-addressed, so the tasks
         # whose inputs did not move stay hits.
