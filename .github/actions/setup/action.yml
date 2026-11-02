@@ -23,7 +23,8 @@ runs:
     #
     # Keyed on everything turbo hashes a compile on: the contract sources, the
     # compile config (`turbo.json`, the `compile:*` scripts with their toolchain
-    # pin) and this action, NOT on the commit. An input missing here is a
+    # pin), the dependency tree (turbo folds the lockfile into every task hash)
+    # and this action, NOT on the commit. An input missing here is a
     # cache that misses and then cannot save, since actions/cache never
     # overwrites a key: every run recompiles cold until a listed file moves.
     # A commit-keyed entry is written on every push whether or not anything it
@@ -38,7 +39,7 @@ runs:
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: .turbo
-        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ hashFiles('contracts/src/**/*.compact', 'contracts/test/integration/**/*.compact', 'contracts/package.json', 'turbo.json', '.github/actions/setup/action.yml') }}
+        key: ${{ runner.os }}-${{ inputs.turbo-cache-key }}-${{ hashFiles('contracts/src/**/*.compact', 'contracts/test/integration/**/*.compact', 'contracts/package.json', 'package.json', 'yarn.lock', 'turbo.json', '.github/actions/setup/action.yml') }}
         # Kept, so a source change still starts from the previous build rather
         # than from nothing: turbo's store is content-addressed, so the tasks
         # whose inputs did not move stay hits.
