@@ -92,12 +92,16 @@ module UnshieldedTreasury {
   /**
    * @description Sends unshielded tokens from the treasury.
    *
-   * @warning Beyond the self check, recipients are not validated. An
+   * @warning Recipients other than this contract are not validated. An
    * unspendable recipient (such as a zero address) is accepted and
    * permanently removes the funds from the contract. This is not a
-   * sanctioned burn — no unshielded equivalent of `shieldedBurnAddress` is
-   * exposed to contracts — so treat recipient validation as the consuming
+   * sanctioned burn (no unshielded equivalent of `shieldedBurnAddress` is
+   * exposed to contracts), so treat recipient validation as the consuming
    * contract's responsibility.
+   *
+   * @dev A self-addressed send is auto-received by `sendUnshielded` but
+   * still debited from `_balances`, so the funds would be stranded.
+   * Therefore, this circuit rejects sends to self.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
