@@ -1,0 +1,138 @@
+import {
+  constructJubjubPoint,
+  ecMulGenerator,
+} from '@midnight-ntwrk/compact-runtime';
+import { describe, expect, it } from 'vitest';
+import { pureCircuits } from '../../../artifacts/MockEcdh/contract/index.js';
+
+// The Ecdh circuits are pure, so tests drive them directly via the compiled
+// artifact's `pureCircuits` (no proof, no simulator needed).
+
+// Jubjub prime-order subgroup order. Valid scalars are [1, L-1]; the runtime
+// faults ecMul on scalars >= L (see crypto/ElGamal), so L-1 is the largest
+// valid scalar.
+const L =
+  6554484396890773809930967563523245729705921265872317281365359162392183254199n;
+
+// A recipient's secret scalar and their derived public key g^ek.
+const EK = 111222333444555n;
+const PK = ecMulGenerator(EK);
+const IDENTITY = ecMulGenerator(0n);
+
+// Jubjub base field modulus q.
+const Q =
+  52435875175126190479447740508185965837690552500527637822603658699938581184513n;
+// Coordinate negation of a subgroup point: on-curve, order 2*L, not low-order.
+const MIXED_ORDER = constructJubjubPoint(Q - PK.x, Q - PK.y);
+// Fails the twisted Edwards equation.
+const OFF_CURVE = constructJubjubPoint(1n, 1n);
+
+// Runtime error text: the subgroup check trips on an on-curve point outside
+// the prime-order subgroup; an off-curve point fails to decode as a point.
+const SUBGROUP_TRAP = 'unreachable';
+const OFF_CURVE_DECODE =
+  'failed to decode for built-in type EmbeddedGroupAffine after successful typecheck';
+
+describe('Ecdh', () => {
+  describe('weak-input guards', () => {
+    it('rejects the identity public key', () => {
+      expect(() => pureCircuits.deriveShared(IDENTITY, 42n)).toThrow(
+        'Ecdh: identity pk',
+      );
+    });
+
+    it('rejects a zero ephemeral', () => {
+      expect(() => pureCircuits.deriveShared(PK, 0n)).toThrow(
+        'Ecdh: zero ephemeral',
+      );
+    });
+  });
+
+  describe('key agreement', () => {
+    it('returns the ephemeral public key g^e', () => {
+      expect(pureCircuits.deriveShared(PK, 31337n).ephemeralPk).toStrictEqual(
+        ecMulGenerator(31337n),
+      );
+    });
+
+    it('recovers the shared secret from the ephemeral public key', () => {
+      const shared = pureCircuits.deriveShared(PK, 31337n);
+      expect(pureCircuits.recoverShared(shared.ephemeralPk, EK)).toStrictEqual(
+        shared.sShared,
+      );
+    });
+
+    it('agrees at the maximum valid scalar (L - 1) for key and ephemeral', () => {
+      // The top of the valid scalar range: L and above fault ecMul.
+      const ek = L - 1n;
+      const shared = pureCircuits.deriveShared(ecMulGenerator(ek), L - 1n);
+      expect(pureCircuits.recoverShared(shared.ephemeralPk, ek)).toStrictEqual(
+        shared.sShared,
+      );
+    });
+
+    it('produces distinct shared secrets for distinct ephemerals', () => {
+      expect(pureCircuits.deriveShared(PK, 1n).sShared).not.toStrictEqual(
+        pureCircuits.deriveShared(PK, 2n).sShared,
+      );
+    });
+
+    it('is symmetric: deriveShared(g^a, b) and deriveShared(g^b, a) agree', () => {
+      const a = 31337n;
+      const b = EK;
+      expect(
+        pureCircuits.deriveShared(ecMulGenerator(a), b).sShared,
+      ).toStrictEqual(pureCircuits.deriveShared(ecMulGenerator(b), a).sShared);
+    });
+  });
+
+  describe('subgroup boundary', () => {
+    it('traps deriveShared on a mixed-order recipient key', () => {
+      expect(() => pureCircuits.deriveShared(MIXED_ORDER, 42n)).toThrow(
+        SUBGROUP_TRAP,
+      );
+    });
+
+    it('traps deriveShared on an off-curve recipient key', () => {
+      expect(() => pureCircuits.deriveShared(OFF_CURVE, 42n)).toThrow(
+        OFF_CURVE_DECODE,
+      );
+    });
+
+    it('traps recoverShared on a mixed-order ephemeral point', () => {
+      expect(() => pureCircuits.recoverShared(MIXED_ORDER, EK)).toThrow(
+        SUBGROUP_TRAP,
+      );
+    });
+
+    it('traps recoverShared on an off-curve ephemeral point', () => {
+      expect(() => pureCircuits.recoverShared(OFF_CURVE, EK)).toThrow(
+        OFF_CURVE_DECODE,
+      );
+    });
+  });
+
+  describe('total recipient side', () => {
+    // Nothing on the recipient side asserts, so a scanner cannot tell an
+    // addressed exchange from an unaddressed one by an abort.
+    it('accepts a wrong secret key', () => {
+      const shared = pureCircuits.deriveShared(PK, 31337n);
+      expect(() =>
+        pureCircuits.recoverShared(shared.ephemeralPk, 999999n),
+      ).not.toThrow();
+    });
+
+    it('recovers a different point under a wrong secret key', () => {
+      const shared = pureCircuits.deriveShared(PK, 31337n);
+      expect(
+        pureCircuits.recoverShared(shared.ephemeralPk, 999999n),
+      ).not.toStrictEqual(shared.sShared);
+    });
+
+    it('returns the identity for an identity ephemeral point', () => {
+      // The degenerate input the sender guard rejects still resolves here, so a
+      // wallet can scan a malformed exchange without aborting.
+      expect(pureCircuits.recoverShared(IDENTITY, EK)).toStrictEqual(IDENTITY);
+    });
+  });
+});

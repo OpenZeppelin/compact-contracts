@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.2.0 (token/extensions/NativeShieldedTokenFamilyPublicSupply.compact)
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (token/extensions/NativeShieldedTokenFamilyPublicSupply.compact)
 
 pragma language_version >= 0.26.0;
 

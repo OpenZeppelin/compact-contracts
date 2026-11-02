@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (multisig/ProposalManager.compact)
+// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (multisig/ProposalManager.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -107,8 +107,8 @@ module ProposalManager {
    * checks and the deadline comparison above. `_proposals` is exported ledger
    * state and readable without a proof. `executedState` and
    * `cancelledState` are pure, so a reader can obtain the sentinel values without
-   * hardcoding them. A state-reading accessor will be revisited once contract-to-contract
-   * interactions are available.
+   * hardcoding them. A state-reading accessor will be revisited once this library migrates to
+   * contract-to-contract calls.
    */
   export struct Proposal {
     to: Recipient,
