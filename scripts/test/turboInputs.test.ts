@@ -5,8 +5,8 @@ import { REPO_ROOT, SRC } from '../live/paths.ts';
 
 /**
  * A `compile:<category>` cache entry is keyed on its `inputs`, so they must
- * cover every category its sources import. A missing one serves stale
- * artifacts after an edit to the imported module.
+ * cover every category its sources import, through any chain of imports. A
+ * missing one serves stale artifacts after an edit to the imported module.
  */
 
 const TURBO = JSON.parse(
@@ -15,10 +15,10 @@ const TURBO = JSON.parse(
 
 const IMPORT = /^\s*import\s+"([^"]+)"/gm;
 
-/** `src/` categories the sources under `src/<category>` import, itself included. */
-function importedCategories(category: string): string[] {
+/** `src/` categories the sources under `src/<category>` import directly. */
+function directImports(category: string): string[] {
   const dir = path.join(SRC, category);
-  const found = new Set([category]);
+  const found = new Set<string>();
   for (const file of readdirSync(dir, { recursive: true, encoding: 'utf8' })) {
     if (!file.endsWith('.compact')) continue;
     const abs = path.join(dir, file);
@@ -26,6 +26,20 @@ function importedCategories(category: string): string[] {
       const rel = path.relative(SRC, path.resolve(path.dirname(abs), spec));
       if (!rel.startsWith('..')) found.add(rel.split(path.sep)[0]);
     }
+  }
+  return [...found];
+}
+
+/** Every category a `compile:<category>` artifact is built from: itself and
+ * all it reaches through imports. */
+function importedCategories(category: string): string[] {
+  const found = new Set<string>();
+  const pending = [category];
+  while (pending.length > 0) {
+    const c = pending.pop();
+    if (c === undefined || found.has(c)) continue;
+    found.add(c);
+    pending.push(...directImports(c));
   }
   return [...found].sort();
 }
@@ -35,7 +49,7 @@ const CATEGORIES = readdirSync(SRC, { withFileTypes: true })
   .map((e) => e.name);
 
 describe('turbo compile inputs', () => {
-  it.each(CATEGORIES)('compile:%s covers every category it imports', (c) => {
+  it.each(CATEGORIES)('compile:%s covers every category it reaches', (c) => {
     const inputs = TURBO.tasks[`compile:${c}`]?.inputs ?? [];
 
     expect(
