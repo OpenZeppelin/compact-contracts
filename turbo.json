@@ -29,6 +29,13 @@
       "outputLogs": "new-only",
       "outputs": ["artifacts/utils/**"]
     },
+    "compile:math": {
+      "dependsOn": ["^build"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["src/math/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/math/**"]
+    },
     "compile:access": {
       "dependsOn": ["^build", "compile:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
@@ -84,6 +91,7 @@
         "compile:crypto",
         "compile:security",
         "compile:utils",
+        "compile:math",
         "compile:access",
         "compile:multisig",
         "compile:token"

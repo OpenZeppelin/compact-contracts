@@ -27,6 +27,7 @@
     "compile:access": "compact-compiler +0.34.0 --hierarchical --dir access",
     "compile:archive": "compact-compiler +0.34.0 --hierarchical --dir archive",
     "compile:crypto": "compact-compiler +0.34.0 --hierarchical --dir crypto --feature-zkir-v3 --exclude 'MockElGamal.compact' --exclude 'MockEcdhMask.compact' --exclude 'MockCurveOps.compact' && compact-compiler +0.34.0 --hierarchical --dir crypto/test/mocks --exclude 'MockEcdsa.compact' --exclude 'MockEip712.compact'",
+    "compile:math": "compact-compiler +0.34.0 --hierarchical --dir math",
     "compile:multisig": "compact-compiler +0.34.0 --hierarchical --dir multisig --feature-zkir-v3",
     "compile:security": "compact-compiler +0.34.0 --hierarchical --dir security",
     "compile:token": "compact-compiler +0.34.0 --hierarchical --dir token",
