@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EcdhMask.encrypt` takes a `Uint<248>` value instead of a `Uint<128>`, the full range of its 248-bit pad. Ciphertexts for `Uint<128>` values are unchanged. The hiding margin shrinks with the value's width and is gone at the full 248 bits. (#1150)
 - `ElGamal.encryptPoint` takes its ephemeral and mask from `Ecdh.deriveShared`, so its weak-input guards now read `Ecdh: identity pk` / `Ecdh: zero ephemeral` instead of `ElGamal: identity pk` / `ElGamal: zero randomness`. Ciphertexts are unchanged. (#1110)
 
+### Fixed
+
+- Compile each module into its own artifact subtree, mirroring `src/` (`artifacts/token/test/mocks/MockFungibleToken/`), and cache each `compile:*` task on that subtree alone. The tasks shared `artifacts/**` as their turbo output, so one task's cache pack or restore truncated ZK keys a sibling was still writing. The aggregate `compile` script, which recompiled `access`, `security`, `token` and `utils` a second time, is removed. The `compile:*` scripts pin the toolchain CI installs (`+0.34.0`), so the cache key carries the compiler version, and clear their subtree first, so a deleted source leaves no orphan in the cache. Fixes #675.
+
 ## 0.5.0-alpha.1 (2026-10-13)
 
 ### Added

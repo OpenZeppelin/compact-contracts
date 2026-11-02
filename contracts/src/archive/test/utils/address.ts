@@ -3,7 +3,7 @@ import {
   encodeCoinPublicKey,
 } from '@midnight-ntwrk/compact-runtime';
 import { encodeContractAddress } from '@midnightntwrk/ledger-v9';
-import type * as Compact from '../../../../artifacts/MockShieldedToken/contract/index.js';
+import type * as Compact from '../../../../artifacts/archive/test/mocks/MockShieldedToken/contract/index.js';
 
 const PREFIX_ADDRESS = '0200';
 

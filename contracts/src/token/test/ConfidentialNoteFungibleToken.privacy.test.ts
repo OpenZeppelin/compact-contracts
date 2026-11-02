@@ -51,7 +51,7 @@ import {
   pureCircuits as core,
   ledger,
   Contract as MockCore,
-} from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
+} from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
 import {
   ConfidentialNoteFungibleTokenWitnesses,

@@ -2,7 +2,7 @@ import { createSimulator } from '@openzeppelin/compact-simulator';
 import {
   ledger,
   Contract as SharedInitCollision,
-} from '../../../artifacts/SharedInitCollision/contract/index.js';
+} from '../../../artifacts/integration/SharedInitCollision/contract/index.js';
 
 type EmptyPrivateState = Record<string, never>;
 

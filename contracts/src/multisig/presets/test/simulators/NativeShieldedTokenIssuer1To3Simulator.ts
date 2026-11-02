@@ -10,7 +10,7 @@ import {
   pureCircuits,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/MockNativeShieldedTokenIssuer1To3/contract/index.js';
+} from '../../../../../artifacts/multisig/presets/test/mocks/MockNativeShieldedTokenIssuer1To3/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,

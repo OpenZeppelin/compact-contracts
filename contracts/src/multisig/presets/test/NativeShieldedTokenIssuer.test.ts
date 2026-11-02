@@ -21,7 +21,7 @@ import type {
   QualifiedShieldedCoinInfo,
   ShieldedCoinInfo,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNativeShieldedTokenIssuer2To3/contract/index.js';
+} from '../../../../artifacts/multisig/presets/test/mocks/MockNativeShieldedTokenIssuer2To3/contract/index.js';
 import {
   burnFromSelfMsgHash,
   burnMsgHash,

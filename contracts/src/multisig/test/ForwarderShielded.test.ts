@@ -9,7 +9,7 @@ import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import type {
   ShieldedCoinInfo,
   ShieldedSendResult,
-} from '../../../artifacts/MockForwarderShielded/contract/index.js';
+} from '../../../artifacts/multisig/test/mocks/MockForwarderShielded/contract/index.js';
 import { MockForwarderShieldedSimulator } from './simulators/MockForwarderShieldedSimulator.js';
 
 // The constructor takes the narrow, supported arm only: a `ZswapCoinPublicKey`.

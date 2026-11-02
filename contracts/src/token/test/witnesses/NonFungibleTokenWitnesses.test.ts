@@ -1,6 +1,6 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../artifacts/MockNonFungibleToken/contract/index.js';
+import type { Ledger } from '../../../../artifacts/token/test/mocks/MockNonFungibleToken/contract/index.js';
 import {
   NonFungibleTokenPrivateState,
   NonFungibleTokenWitnesses,

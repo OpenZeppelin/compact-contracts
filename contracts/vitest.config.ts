@@ -87,7 +87,7 @@ export default defineConfig({
         'src/**/witnesses/**/*.ts',
         'src/**/test/simulators/**/*.ts',
         // compactc-generated JS for every compiled contract.
-        'artifacts/*/contract/index.js',
+        'artifacts/**/contract/index.js',
       ],
       exclude: [
         ...(configDefaults.coverage?.exclude ?? []),

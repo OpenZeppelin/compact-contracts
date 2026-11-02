@@ -8,7 +8,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { pureCircuits as cftPure } from '../../../artifacts/MockConfidentialFungibleToken/contract/index.js';
+import { pureCircuits as cftPure } from '../../../artifacts/token/test/mocks/MockConfidentialFungibleToken/contract/index.js';
 // The crypto simulators double as an off-chain mirror to predict ciphertexts
 // the contract derives internally.
 import { EcdhMaskSimulator } from '../../crypto/test/simulators/EcdhMaskSimulator.js';
@@ -1690,7 +1690,7 @@ describe.skipIf(isLiveBackend())(
     it('pins the compiled claim width', () => {
       const raw = readFileSync(
         new URL(
-          '../../../artifacts/MockConfidentialFungibleToken/compiler/contract-info.json',
+          '../../../artifacts/token/test/mocks/MockConfidentialFungibleToken/compiler/contract-info.json',
           import.meta.url,
         ),
         'utf8',

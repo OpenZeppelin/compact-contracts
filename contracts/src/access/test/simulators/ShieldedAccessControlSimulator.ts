@@ -9,7 +9,7 @@ import {
 import {
   ledger,
   Contract as MockShieldedAccessControl,
-} from '../../../../artifacts/MockShieldedAccessControl/contract/index.js';
+} from '../../../../artifacts/access/test/mocks/MockShieldedAccessControl/contract/index.js';
 import {
   ShieldedAccessControlPrivateState,
   ShieldedAccessControlWitnesses,

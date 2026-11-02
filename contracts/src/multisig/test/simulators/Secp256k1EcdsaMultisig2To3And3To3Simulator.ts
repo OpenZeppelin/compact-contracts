@@ -7,7 +7,7 @@ import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
   Contract as MockSecp256k1EcdsaMultisig2To3And3To3,
-} from '../../../../artifacts/MockSecp256k1EcdsaMultisig2To3And3To3/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockSecp256k1EcdsaMultisig2To3And3To3/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Secp256k1EcdsaMultisig2To3And3To3Args = readonly [
