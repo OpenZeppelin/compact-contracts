@@ -30,10 +30,14 @@ describe('compile toolchain pin', () => {
   });
 
   it.each(COMPILE)('%s pins every compact-compiler call to it', (_, script) => {
-    const calls = script.split('&&').map((call) => call.trim().split(' '));
+    const compilers = script
+      .split('&&')
+      .map((call) => call.trim().split(' '))
+      .filter((argv) => argv[0] === 'compact-compiler');
 
-    expect(calls.map((argv) => argv.slice(0, 2))).toStrictEqual(
-      calls.map(() => ['compact-compiler', `+${CI_VERSION}`]),
+    expect(compilers.length).toBeGreaterThan(0);
+    expect(compilers.map((argv) => argv[1])).toStrictEqual(
+      compilers.map(() => `+${CI_VERSION}`),
     );
   });
 });
