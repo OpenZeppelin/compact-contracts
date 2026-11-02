@@ -142,12 +142,16 @@ module ShieldedTreasury {
    * the retained change coin, and nothing at all when the send leaves no change,
    * so the sent coin's plaintext is disclosed beyond anything in public state.
    *
+   * @dev A self-addressed coin is auto-received by `sendShielded` but never recorded
+   * in _coins so it would be stranded. Therefore, this circuit rejects sends to self.
+   *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
    * authorization policy.
    *
    * Requirements:
    *
+   * - `recipient` must not be this contract's own address.
    * - A coin of the given `color` must exist in the treasury.
    * - The coin's value must be >= `amount`.
    * - Send must not cause sent total overflow.
@@ -163,6 +167,11 @@ module ShieldedTreasury {
     color: Bytes<32>,
     amount: Uint<128>
   ): ShieldedSendResult {
+    // `kernel.self()` stays outside the `||`: the compiler treats a ledger
+    // read behind a witness-conditioned branch as an undeclared disclosure
+    const self = kernel.self();
+    assert(recipient.is_left || recipient.right != self,
+           "ShieldedTreasury: self-send");
     assert(_coins.member(disclose(color)), "ShieldedTreasury: no balance");
 
     const coin = _coins.lookup(disclose(color));
