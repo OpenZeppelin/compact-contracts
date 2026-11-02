@@ -14,6 +14,12 @@ pragma language_version >= 0.23.0;
  * caller's per-call `domain`, so the accounting logic and guarantees live in
  * the shared core.
  *
+ * @notice A contract MUST NOT import both `NativeShieldedTokenFamilyPublicSupply`
+ * and `NativeShieldedTokenPublicSupply`. Both wrap
+ * `NativeShieldedTokenPublicSupplyCore`, so they share one `_totalMinted` /
+ * `_totalBurned` pair, and the single-token flavor's fixed key is a domain this
+ * flavor also accepts. Pick one flavor per contract, matching the token flavor.
+ *
  * @notice Pairs with `NativeShieldedTokenFamily`. The consuming contract
  * composes the pieces, calling the accounting block alongside the matching
  * token op:
