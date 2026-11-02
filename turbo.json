@@ -1,6 +1,5 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".github/actions/setup/action.yml"],
   "globalPassThroughEnv": [
     "GITHUB_ACTIONS",
     "GITHUB_OUTPUT",
