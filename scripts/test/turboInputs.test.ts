@@ -13,7 +13,9 @@ const TURBO = JSON.parse(
   readFileSync(path.join(REPO_ROOT, 'turbo.json'), 'utf8'),
 ) as { tasks: Record<string, { inputs?: string[] }> };
 
-const IMPORT = /^\s*import\s+"([^"]+)"/gm;
+/** The path of a file import, whole (`import "p";`) or selective
+ * (`import { a } from "p";`). A module-name import has no path. */
+const IMPORT = /^\s*import\b[^;]*?"([^"]+)"/gm;
 
 /** `src/` categories the sources under `src/<category>` import directly. */
 function directImports(category: string): string[] {
