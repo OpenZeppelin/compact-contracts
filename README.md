@@ -233,6 +233,8 @@ yarn compile
 yarn test
 ```
 
+Integration and live suites are described in [TESTING.md](TESTING.md).
+
 ### Check/apply Biome formatter
 
 ```bash

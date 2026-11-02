@@ -88,7 +88,7 @@ export function resolvePlan(
   const scoped =
     !integration && args.length > 0 && allCategories.includes(args[0]);
 
-  // The first positional arg always names the target (CONTRIBUTING.md). If it is
+  // The first positional arg always names the target (TESTING.md). If it is
   // present but names neither an active live category — an excluded one like
   // `archive`, or a typo — nor `integration`, reject it here so the caller can
   // fail fast, BEFORE the expensive compile / env-up / harness-smoke setup (no

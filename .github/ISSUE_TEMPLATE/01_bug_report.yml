@@ -10,7 +10,7 @@ body:
       value: |
         Thanks for taking the time to fill out this bug report!
 
-        If you’re unsure whether the issue you’re having is a bug, you can post in [Discussions](https://github.com/OpenZeppelin/midnight-contracts/discussions) instead.
+        If you’re unsure whether the issue you’re having is a bug, you can post in [Discussions](https://github.com/OpenZeppelin/compact-contracts/discussions) instead.
 
   - type: checkboxes
     id: prerequisites
@@ -18,11 +18,11 @@ body:
       label: Prerequisites
       description: Please ensure you have completed all of the following.
       options:
-        - label: I have read the [Contributing Guidelines](https://github.com/OpenZeppelin/midnight-contracts/CONTRIBUTING.md#creating-an-issue).
+        - label: I have read the [Contributing Guidelines](https://github.com/OpenZeppelin/compact-contracts/blob/main/CONTRIBUTING.md#opening-an-issue).
           required: true
-        - label: I agree to follow the [Code of Conduct](https://github.com/OpenZeppelin/midnight-contracts/CODE_OF_CONDUCT.md).
+        - label: I agree to follow the [Code of Conduct](https://github.com/OpenZeppelin/compact-contracts/blob/main/CODE_OF_CONDUCT.md).
           required: true
-        - label: I have searched for [existing issues](https://github.com/OpenZeppelin/midnight-contracts/issues) that already report this problem, without success.
+        - label: I have searched for [existing issues](https://github.com/OpenZeppelin/compact-contracts/issues) that already report this problem, without success.
           required: true
 
   - type: textarea
