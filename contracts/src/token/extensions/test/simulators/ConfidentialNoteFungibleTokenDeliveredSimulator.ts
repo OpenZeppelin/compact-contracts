@@ -46,12 +46,6 @@ type DeliveredArgs = readonly [
   value: bigint,
 ];
 
-/** Same role as `pendingWallet` in ConfidentialNoteFungibleTokenSimulator. */
-let pendingWallets: { note: NoteWallet; delivery: DeliveryWallet } = {
-  note: createNoteWallet(),
-  delivery: createDeliveryWallet(),
-};
-
 const ConfidentialNoteFungibleTokenDeliveredSimulatorBase = createSimulator<
   ConfidentialNoteFungibleTokenPrivateState,
   ReturnType<typeof ledger>,
@@ -69,10 +63,11 @@ const ConfidentialNoteFungibleTokenDeliveredSimulatorBase = createSimulator<
     value,
   ],
   ledgerExtractor: (state) => ledger(state),
+  // Fallback only: `create` always passes its own witnesses.
   witnessesFactory: () =>
     ConfidentialNoteFungibleTokenDeliveredWitnesses(
-      pendingWallets.note,
-      pendingWallets.delivery,
+      createNoteWallet(),
+      createDeliveryWallet(),
     ),
   artifactName: 'MockConfidentialNoteFungibleTokenDelivered',
 });
@@ -116,11 +111,18 @@ export class ConfidentialNoteFungibleTokenDeliveredSimulator extends Confidentia
     } = options;
     const wallet = givenWallet ?? createNoteWallet();
     const deliveryWallet = givenDeliveryWallet ?? createDeliveryWallet();
-    pendingWallets = { note: wallet, delivery: deliveryWallet };
     // biome-ignore lint/complexity/noThisInStatic: super.create keeps subclass `this`
     const simulator = (await super.create(
       [instanceSalt ?? INSTANCE_SALT, ownerPk, ownerEncPk, value],
-      rest,
+      {
+        ...rest,
+        witnesses:
+          rest.witnesses ??
+          ConfidentialNoteFungibleTokenDeliveredWitnesses(
+            wallet,
+            deliveryWallet,
+          ),
+      },
     )) as ConfidentialNoteFungibleTokenDeliveredSimulator;
     simulator.wallet = wallet;
     simulator.deliveryWallet = deliveryWallet;
