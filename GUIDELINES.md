@@ -495,7 +495,7 @@ Its format:
 
   Everything else, a new assert or a tightened check included, is `Changed` or `Fixed`, since
   an existing deployment takes it in place. Breaking entries go under their own
-  `### Changed (breaking)` header, not under a per-line `**Breaking:**` prefix.
+  `### Changed (breaking)` header.
 - An entry in the second class says `fresh deploys only`.
 - A fix to a change that has not shipped gets no entry; the `Unreleased` entry it corrects is
-  amended if its text is no longer accurate. Shipped entries are never edited.
+  amended if its text is no longer accurate.
