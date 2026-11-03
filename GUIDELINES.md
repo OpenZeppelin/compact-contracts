@@ -10,9 +10,9 @@ restating the rules.
 > land (commits, PR titles, review, the coverage gate) is in
 > [`CONTRIBUTING.md`](CONTRIBUTING.md); how to run the suites is in [`TESTING.md`](TESTING.md).
 
-These conventions target Compact `pragma language_version >= 0.26.0`, compiled with the compiler
-version pinned in [`README.md`](README.md#usage), and TypeScript for the tests, witnesses,
-simulators and scripts. Where this file is silent, follow the surrounding file; for TypeScript,
+These conventions target the Compact language version every module's `pragma` declares,
+compiled with the compiler version pinned in [`README.md`](README.md#usage), and TypeScript for
+the tests, witnesses, simulators and scripts. Where this file is silent, follow the surrounding file; for TypeScript,
 Biome's recommended rules apply through the repository's [`biome.json`](biome.json).
 
 ## Naming
@@ -70,7 +70,7 @@ A library module (`contracts/src/<category>/<Module>.compact`), top to bottom:
 1. `// SPDX-License-Identifier: MIT`
 2. `// OpenZeppelin Compact Contracts v<version> (<category>/<Module>.compact)`, the version
    being the one in [`contracts/package.json`](contracts/package.json).
-3. `pragma language_version >= 0.26.0;`
+3. The `pragma language_version` line, identical to the one in every other module.
 4. The module header docblock (`@module`, `@description`, then the notices; see
    [Documentation](#documentation)).
 5. `module <Name> {` with everything below indented two spaces.
@@ -406,9 +406,10 @@ above, and the reason says why the rule does not apply there, not that it is noi
 expected occurrence is in every simulator's `create`:
 ``// biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this` ``.
 
-`yarn types` type-checks the witness modules and `scripts/`. Simulators and specs are checked
-only when vitest compiles them, so a type error in one surfaces as a test failure, not a `tsc`
-failure.
+`yarn types` type-checks only the witness modules and `scripts/`. Simulators and specs are not
+type-checked by any script or CI step: vitest strips their types without checking them, so a
+type error there passes unless it also fails at runtime. Check them in the editor before
+opening a PR.
 
 ## Documentation
 
