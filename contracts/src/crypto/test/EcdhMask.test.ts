@@ -184,6 +184,26 @@ describe('EcdhMask', () => {
       const ct2 = (250n + (await contract.kdf(shared.sShared, DOMAIN))) % P;
       expect(ct1 - ct2).toBe(1000n - 250n);
     });
+
+    it('should leak the plaintext difference when two kdfFromDigest calls share a digest and domain', async () => {
+      const shared = ecdh.deriveShared(PK, 7n);
+      const digest = await contract.pointDigest(shared.sShared);
+      const ct1 = (1000n + (await contract.kdfFromDigest(digest, DOMAIN))) % P;
+      const ct2 = (250n + (await contract.kdfFromDigest(digest, DOMAIN))) % P;
+      expect(ct1 - ct2).toBe(1000n - 250n);
+    });
+
+    it('should not leak the plaintext difference under a distinct domain per value', async () => {
+      // One digest, one pad per domain: the shape a consumer uses to deliver
+      // several values from one shared point.
+      const shared = ecdh.deriveShared(PK, 7n);
+      const digest = await contract.pointDigest(shared.sShared);
+      const ct1 =
+        (1000n + (await contract.kdfFromDigest(digest, domain('a')))) % P;
+      const ct2 =
+        (250n + (await contract.kdfFromDigest(digest, domain('b')))) % P;
+      expect(ct1 - ct2).not.toBe(1000n - 250n);
+    });
   });
 
   describe('weak-input guards', () => {
