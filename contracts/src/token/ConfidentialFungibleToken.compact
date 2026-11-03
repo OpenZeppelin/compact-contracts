@@ -266,7 +266,13 @@ pragma language_version >= 0.26.0;
  * it is deployed, so off-chain code mirroring `derivePk` must use that one for
  * the life of the instance. Adopting a newer derivation cannot recover an
  * instance whose keys were stored under the old one. A changed derivation
- * applies to fresh deployments only.
+ * applies to fresh deployments only. Stored points are the other quiet one.
+ * `_encryptionKeys`, and the points inside every ciphertext in `_balances`,
+ * `_pending`, `_escrow` and `_memos`, persist in the runtime's `JubjubPoint`
+ * encoding: the affine `(x, y)` pair as two field elements. The runtime
+ * documents no stability guarantee for that encoding and nothing here versions
+ * or migrates it, so a runtime change to how a point is encoded or normalized
+ * is a breaking storage change for every existing instance.
  *
  * Residual griefing. The dual-balance split (see `sweep`) stops dust
  * credits from churning a victim's spendable ciphertext, but every `_credit`
@@ -597,9 +603,8 @@ module ConfidentialFungibleToken {
   export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
     assertInitialized();
     if (!_balances.member(disclose(account))) {
-      // Unregistered accounts hold zero. Return a well-formed Enc(0) rather than
-      // `default<ElGamal_Ciphertext>`, whose zeroed points are not guaranteed to
-      // be valid curve points; this matches a registered account's fresh balance.
+      // Unregistered accounts hold zero: Enc(0), the same ciphertext a registered
+      // account starts with.
       return ElGamal_encryptZero();
     }
     return _balances.lookup(disclose(account));
@@ -631,10 +636,9 @@ module ConfidentialFungibleToken {
   /**
    * @description Returns the escrow entry (the encrypted allowance) that `owner`
    * granted `spender`. When no allowance exists, returns a placeholder entry
-   * rather than `default<EscrowEntry>`: the returned Jubjub points are on-curve,
-   * so the view is safe to prove (e.g. through a contract-to-contract call),
-   * whereas a zeroed default holds off-curve points. The cap is encrypted, not
-   * public.
+   * (encrypted amounts that decrypt to 0 and a sentinel memo, see the notices
+   * below), which is provable (e.g. through a contract-to-contract call). The
+   * cap is encrypted, not public.
    *
    * @notice The placeholder's `spenderCt` and `ownerCt` are genuine encryptions
    * of 0. Its `ownerMemo` is not: it is a sentinel for an absent allowance,
@@ -648,7 +652,7 @@ module ConfidentialFungibleToken {
    * (`transferFrom`/`burnFrom`) gates on `_escrow` membership independently, so a
    * non-existent allowance is unspendable.
    *
-   * @constraints k=10, rows=936
+   * @constraints k=11, rows=1482
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
@@ -658,7 +662,7 @@ module ConfidentialFungibleToken {
   export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
     if (!_escrow.member(disclose(owner)) ||
         !_escrow.lookup(disclose(owner)).member(disclose(spender))) {
-      const id = constructJubjubPoint(0 as Field, 1 as Field);
+      const id = ecMulGenerator(0 as JubjubScalar);
       const zeroCt = ElGamal_Ciphertext { c1: id, c2: id };
       return EscrowEntry {
         spenderCt: zeroCt,
@@ -1469,9 +1473,8 @@ module ConfidentialFungibleToken {
           spenderCt: ElGamal_encryptZero(),
           ownerCt:   ElGamal_encryptZero(),
           // Transient placeholder: this slot exists only so the refund reads an
-          // on-curve no-op, and it is removed immediately below, so the memo is
-          // never decrypted. Use an on-curve identity point (never a `default`,
-          // which is off-curve).
+          // identity no-op, and it is removed immediately below, so the memo is
+          // never decrypted.
           ownerMemo: EcdhMask_Ciphertext {
             ephemeralPk: ecMulGenerator(0 as JubjubScalar),
             ct: 0 as Field
