@@ -13,14 +13,20 @@ export const REPO_ROOT = path.resolve(
 export const CONTRACTS = path.join(REPO_ROOT, 'contracts');
 export const SRC = path.join(CONTRACTS, 'src');
 export const ARTIFACTS = path.join(CONTRACTS, 'artifacts');
-/** Integration mocks compile into the same `artifacts/` tree as `src`, so the
- * truncated-key scan has to be told about them explicitly. */
 export const INTEGRATION_MOCKS = path.join(
   CONTRACTS,
   'test/integration/_mocks',
 );
+/** `compile:integration` builds the integration mocks here (`--out`). */
+export const INTEGRATION_ARTIFACTS = path.join(ARTIFACTS, 'integration');
+
+/** A source tree and the artifact tree it compiles into. The compiler runs
+ * with `--hierarchical`, so `<src>/<rel>.compact` builds `<artifacts>/<rel>/`. */
+export interface ArtifactRoot {
+  readonly src: string;
+  readonly artifacts: string;
+}
 export const LOGS = path.join(REPO_ROOT, 'logs');
-export const TURBO_CACHE = path.join(REPO_ROOT, '.turbo', 'cache');
 export const VITEST_BIN = path.join(
   REPO_ROOT,
   'node_modules',

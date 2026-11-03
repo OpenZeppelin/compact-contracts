@@ -31,7 +31,7 @@ name: Live Test Suite
 #
 # Two consequences of that literalness:
 #   - the steps live in reusable workflows (`live-compile.yml`, `live-suite.yml`)
-#     so the pairs below stay declarations rather than 14 copies of a job;
+#     so the pairs below stay declarations rather than 16 copies of a job;
 #   - KNOWN_TARGETS has to be kept in step with the pairs, and the plan job fails
 #     in seconds if a discovered `src/` category has no pair (`live-ci.ts`), so a
 #     new category can never be silently missing from the live run.
@@ -76,10 +76,10 @@ on:
 
 # Deny by default, at the workflow level rather than per job.
 #
-# The 14 job pairs below are `uses:` declarations with no steps of their own, and
+# The 16 job pairs below are `uses:` declarations with no steps of their own, and
 # a job without a `permissions:` block inherits whatever the repository's default
 # GITHUB_TOKEN scope happens to be — which CodeQL flags, once per job. Setting the
-# floor here covers all of them in one place instead of adding 14 identical blocks
+# floor here covers all of them in one place instead of adding 16 identical blocks
 # to jobs whose whole point is to stay one-liners. The two jobs that need more
 # (`plan` reads a previous run's artifacts, `report-nightly` writes the tracking
 # issue and prunes caches) declare it themselves, and a job-level block replaces
@@ -120,6 +120,7 @@ jobs:
       targets: ${{ steps.plan.outputs.targets }}
       legs-access: ${{ steps.plan.outputs.legs-access }}
       legs-crypto: ${{ steps.plan.outputs.legs-crypto }}
+      legs-math: ${{ steps.plan.outputs.legs-math }}
       legs-multisig: ${{ steps.plan.outputs.legs-multisig }}
       legs-security: ${{ steps.plan.outputs.legs-security }}
       legs-token: ${{ steps.plan.outputs.legs-token }}
@@ -170,7 +171,7 @@ jobs:
           TARGET: ${{ inputs.target }}
           LABEL: ${{ github.event.label.name }}
           FILTER: ${{ inputs.filter }}
-          KNOWN_TARGETS: access crypto multisig security token utils integration
+          KNOWN_TARGETS: access crypto math multisig security token utils integration
           LIVE_REPORTS_DIR: ${{ runner.temp }}/live-history
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
 
@@ -202,7 +203,7 @@ jobs:
       && needs.plan.outputs.legs-access != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -238,7 +239,7 @@ jobs:
       && needs.plan.outputs.legs-crypto != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -248,6 +249,42 @@ jobs:
     uses: ./.github/workflows/live-suite.yml
     with:
       target: crypto
+      file: ${{ matrix.file }}
+      name: ${{ matrix.name }}
+      test-filter: ${{ matrix.testFilter }}
+
+  compile-math:
+    name: compile-math
+    needs: plan
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'math') }}
+    uses: ./.github/workflows/live-compile.yml
+    with:
+      target: math
+
+  live-math:
+    # The matrix value is in the name on purpose: a caller job with a fixed name
+    # renders every leg identically, so the spec under test has to appear here.
+    name: live-math · ${{ matrix.name }}
+    needs: [plan, compile-math]
+    # The empty-legs guard is belt and braces: this target's compile is
+    # already skipped when the run's scope drops it, and an empty `include` is
+    # a hard matrix error rather than an empty job list.
+    if: >-
+      ${{ !cancelled()
+      && needs.compile-math.result == 'success'
+      && needs.plan.outputs.legs-math != '[]' }}
+    strategy:
+      fail-fast: false # one spec file failing should not cancel the others
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
+      # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
+      max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
+      # `include` rather than an axis product: the legs are the (file, name)
+      # pairs the plan job resolved for this target.
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.legs-math) }}
+    uses: ./.github/workflows/live-suite.yml
+    with:
+      target: math
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
       test-filter: ${{ matrix.testFilter }}
@@ -274,7 +311,7 @@ jobs:
       && needs.plan.outputs.legs-multisig != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -310,7 +347,7 @@ jobs:
       && needs.plan.outputs.legs-security != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -346,7 +383,7 @@ jobs:
       && needs.plan.outputs.legs-token != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -382,7 +419,7 @@ jobs:
       && needs.plan.outputs.legs-utils != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -418,7 +455,7 @@ jobs:
       && needs.plan.outputs.legs-integration != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 7 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the 8 per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -441,6 +478,7 @@ jobs:
       - plan
       - compile-access
       - compile-crypto
+      - compile-math
       - compile-multisig
       - compile-security
       - compile-token
@@ -448,6 +486,7 @@ jobs:
       - compile-integration
       - live-access
       - live-crypto
+      - live-math
       - live-multisig
       - live-security
       - live-token
@@ -487,9 +526,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SUITE_RESULT: "${{ needs.live-access.result }} ${{ needs.live-crypto.result }} ${{ needs.live-multisig.result }} ${{ needs.live-security.result }} ${{ needs.live-token.result }} ${{ needs.live-utils.result }} ${{ needs.live-integration.result }}"
+          SUITE_RESULT: "${{ needs.live-access.result }} ${{ needs.live-crypto.result }} ${{ needs.live-math.result }} ${{ needs.live-multisig.result }} ${{ needs.live-security.result }} ${{ needs.live-token.result }} ${{ needs.live-utils.result }} ${{ needs.live-integration.result }}"
           PLAN_RESULT: ${{ needs.plan.result }}
-          COMPILE_RESULT: "${{ needs.compile-access.result }} ${{ needs.compile-crypto.result }} ${{ needs.compile-multisig.result }} ${{ needs.compile-security.result }} ${{ needs.compile-token.result }} ${{ needs.compile-utils.result }} ${{ needs.compile-integration.result }}"
+          COMPILE_RESULT: "${{ needs.compile-access.result }} ${{ needs.compile-crypto.result }} ${{ needs.compile-math.result }} ${{ needs.compile-multisig.result }} ${{ needs.compile-security.result }} ${{ needs.compile-token.result }} ${{ needs.compile-utils.result }} ${{ needs.compile-integration.result }}"
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts nightly
 

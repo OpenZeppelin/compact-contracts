@@ -3,7 +3,7 @@ import {
   ecMulGenerator,
 } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import { pureCircuits } from '../../../artifacts/MockEcdh/contract/index.js';
+import { pureCircuits } from '../../../artifacts/crypto/test/mocks/MockEcdh/contract/index.js';
 
 // The Ecdh circuits are pure, so tests drive them directly via the compiled
 // artifact's `pureCircuits` (no proof, no simulator needed).

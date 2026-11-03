@@ -1,6 +1,6 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../artifacts/MockAccessControl/contract/index.js';
+import type { Ledger } from '../../../../artifacts/access/test/mocks/MockAccessControl/contract/index.js';
 import {
   AccessControlPrivateState,
   AccessControlWitnesses,

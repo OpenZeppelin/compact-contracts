@@ -8,7 +8,7 @@ import {
   ledger,
   type Maybe,
   Contract as MockMultiToken,
-} from '../../../../artifacts/MockMultiToken/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockMultiToken/contract/index.js';
 import {
   MultiTokenPrivateState,
   MultiTokenWitnesses,

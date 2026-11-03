@@ -9,7 +9,7 @@ import {
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNativeShieldedToken/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockNativeShieldedToken/contract/index.js';
 
 /**
  * The native shielded token core module declares no witnesses, so the private

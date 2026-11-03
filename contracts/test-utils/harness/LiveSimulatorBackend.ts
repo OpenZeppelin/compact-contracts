@@ -16,7 +16,10 @@ import {
   type LocalTestConfiguration,
 } from '@midnight-ntwrk/testkit-js';
 import { CompactConfig } from '@openzeppelin/compact-deployer/config/compact-config';
-import type { NetworkConfig } from '@openzeppelin/compact-deployer/config/schema';
+import type {
+  ContractConfig,
+  NetworkConfig,
+} from '@openzeppelin/compact-deployer/config/schema';
 import {
   Deployer,
   type DeployerOptions,
@@ -43,11 +46,10 @@ import type { WalletPool } from './WalletPool.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
-/** Absolute path to `contracts/artifacts/<name>/` (the ZK keys + zkir root). */
-function moduleRootPath(name: string): string {
-  // this harness lives at contracts/test-utils/harness/;
-  // artifacts live at        contracts/artifacts/<name>/
-  return path.resolve(currentDir, '..', '..', 'artifacts', name);
+/** Absolute path to the contract's artifact directory (module, ZK keys, zkir):
+ * its `compact.toml` `artifact`, under `artifacts_dir`. */
+function artifactDir(config: CompactConfig, entry: ContractConfig): string {
+  return path.resolve(config.rootDir, config.artifactsDir, entry.artifact);
 }
 
 /** The repo-root `compact.toml` every live deploy reads its settings from. */
@@ -70,13 +72,14 @@ type PrivateState = ContractNs.PrivateState<AnyContract>;
 /** The compiled artifact's module shape — its generated `Contract` constructor. */
 type ContractModule = { Contract: new (...args: unknown[]) => AnyContract };
 
-/** Loads a compiled contract module by artifact name. Injectable for tests. */
-export type LoadContract = (name: string) => Promise<ContractModule>;
+/** Loads a compiled contract module from its artifact directory. Injectable
+ * for tests. */
+export type LoadContract = (dir: string) => Promise<ContractModule>;
 
 /** Default loader: dynamic-import the artifact's generated `contract/index.js`. */
-const importArtifact: LoadContract = (name) =>
+const importArtifact: LoadContract = (dir) =>
   import(
-    pathToFileURL(path.join(moduleRootPath(name), 'contract', 'index.js')).href
+    pathToFileURL(path.join(dir, 'contract', 'index.js')).href
   ) as Promise<ContractModule>;
 
 /** The midnight-js provider bundle, pinned to the runtime-chosen contract. */
@@ -117,6 +120,7 @@ function requireArtifactName(req: LiveBackendRequest): string {
 /** Bind the artifact's constructor to its witnesses and compiled-file assets. */
 function compileArtifact(
   name: string,
+  dir: string,
   ctor: ContractModule['Contract'],
   witnesses: unknown,
 ) {
@@ -126,9 +130,7 @@ function compileArtifact(
     // phantom-context type narrows to `never`; the assets step below then reads
     // cleanly. This single cast is intrinsic to the builder's typing.
     CompiledContract.withWitnesses((witnesses ?? {}) as never),
-    CompiledContract.withCompiledFileAssets(
-      path.join(moduleRootPath(name), 'contract'),
-    ),
+    CompiledContract.withCompiledFileAssets(path.join(dir, 'contract')),
   );
 }
 
@@ -137,9 +139,9 @@ function makePublicDataProvider(env: LocalTestConfiguration) {
   return indexerPublicDataProvider(env.indexer, env.indexerWS);
 }
 
-/** Loads the artifact's proving keys + zkir from `contracts/artifacts/<name>/`. */
-function makeZkConfigProvider(name: string) {
-  return new NodeZkConfigProvider<CircuitId>(moduleRootPath(name));
+/** Loads the artifact's proving keys + zkir from its artifact directory. */
+function makeZkConfigProvider(dir: string) {
+  return new NodeZkConfigProvider<CircuitId>(dir);
 }
 
 /** Proves transactions against the local proof server. */
@@ -299,7 +301,7 @@ export class LiveSimulatorBackend {
     private readonly pool: WalletPool,
     private readonly env: LocalTestConfiguration,
     private readonly logger: DeployLogger,
-    // Seam for tests: how a contract module is loaded from its artifact name.
+    // Seam for tests: how a contract module is loaded from its artifact directory.
     private readonly loadContract: LoadContract = importArtifact,
   ) {}
 
@@ -320,8 +322,8 @@ export class LiveSimulatorBackend {
   }
 
   /** Build the caller-independent providers once for one deployment. */
-  private sharedProviders(name: string): SharedProviders {
-    const zkConfigProvider = makeZkConfigProvider(name);
+  private sharedProviders(dir: string): SharedProviders {
+    const zkConfigProvider = makeZkConfigProvider(dir);
     return {
       publicDataProvider: makePublicDataProvider(this.env),
       zkConfigProvider,
@@ -343,15 +345,16 @@ export class LiveSimulatorBackend {
         `live backend: compact.toml gives "${name}" no private_state_id`,
       );
     }
+    const dir = artifactDir(config, entry);
     // The loaded constructor is the one genuinely-untyped value; the loader
     // pins it to a precise constructor type so `Contract.Any` flows from here.
-    const { Contract: ctor } = await this.loadContract(name);
+    const { Contract: ctor } = await this.loadContract(dir);
     const witnesses = req.config.witnessesFactory();
-    const compiled = compileArtifact(name, ctor, witnesses);
+    const compiled = compileArtifact(name, dir, ctor, witnesses);
 
     await this.pool.ensureReady();
     ensureSigningKey(path.resolve(config.rootDir, entry.signing_key_file));
-    const shared = this.sharedProviders(name);
+    const shared = this.sharedProviders(dir);
     const providersFor = makeProvidersFor(this.pool, shared);
 
     // The deploy is always signed by the deployer.

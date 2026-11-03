@@ -5,8 +5,8 @@ import {
 } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
-import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
-import { Contract as MockInit } from '../../../artifacts/MockConfidentialNoteFungibleTokenInit/contract/index.js';
+import { pureCircuits as core } from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
+import { Contract as MockInit } from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleTokenInit/contract/index.js';
 import { ConfidentialNoteFungibleTokenCtorMintSimulator } from './simulators/ConfidentialNoteFungibleTokenCtorMintSimulator.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
 import {

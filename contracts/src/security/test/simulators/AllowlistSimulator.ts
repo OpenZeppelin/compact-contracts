@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockAllowlist,
-} from '../../../../artifacts/MockAllowlist/contract/index.js';
+} from '../../../../artifacts/security/test/mocks/MockAllowlist/contract/index.js';
 import {
   AllowlistPrivateState,
   AllowlistWitnesses,
