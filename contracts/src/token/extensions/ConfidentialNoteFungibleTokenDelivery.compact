@@ -151,8 +151,8 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @type {JubjubPoint} encPk - The key the entry is addressed to.
    */
   struct EphemeralPreimage {
-    seed: Bytes<32>;
     domain: Bytes<32>;
+    seed: Bytes<32>;
     slot: Bytes<32>;
     nonce: Field;
     encPk: JubjubPoint;
