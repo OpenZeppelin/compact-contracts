@@ -38,8 +38,8 @@ pragma language_version >= 0.26.0;
  * - Private: `encPk`, `value`, `nonce`, the seed, `e`, `S`. `slot` is hashed
  *   into `e` and never written; it is a public constant of the composer.
  * - Hiding: with a uniform mask the pad is perfect, so `valueCt` and
- *   `nonceCt` carry nothing about the plaintext, whatever its width or
- *   distribution below `2^248` (`UintN<248>.MODULUS`). The mask's
+ *   `nonceCt` carry nothing about the plaintext, regardless of its width
+ *   or distribution; the only bound is `2^248` (`UintN<248>.MODULUS`). The mask's
  *   uniformity is `EcdhMask`'s assumption: hashed ElGamal, CDH in the
  *   random-oracle model.
  *
