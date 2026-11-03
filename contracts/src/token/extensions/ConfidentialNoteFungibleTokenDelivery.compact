@@ -5,7 +5,7 @@ pragma language_version >= 0.26.0;
 
 /**
  * @module ConfidentialNoteFungibleTokenDelivery
- * @description Optional standalone extension that publishes every output note
+ * @description Extension that publishes every output note
  * of a `ConfidentialNoteFungibleToken` encrypted to its owner's Jubjub key, so
  * a wallet discovers its notes from chain data alone. One ECDH per output, two
  * one-time pads from `EcdhMask.kdf`, one append-only `_deliveries` list. It
