@@ -485,10 +485,11 @@ Its format:
   Changelog](https://keepachangelog.com/) order: `### Added`, `### Changed`, `### Deprecated`,
   `### Removed`, `### Fixed`, `### Security`. A behavior change goes under `### Changed`, never
   `### Added`.
-- A breaking change is a changed exported circuit signature, or a removed or renamed ledger key,
-  relative to the last release tag. Added state, added struct fields and behavior changes are
-  not breaking. Breaking entries go under their own `### Changed (breaking)` header, not under a
-  per-line `**Breaking:**` prefix.
+- A change is breaking when a consumer must act on it to keep working, relative to the last
+  release tag: a changed exported circuit signature, a removed or renamed ledger key, a field
+  added to a struct that is signed or hashed, a new assert that rejects inputs a released circuit
+  accepted, or a ledger layout change that only a fresh deployment can adopt. Breaking entries go
+  under their own `### Changed (breaking)` header, not under a per-line `**Breaking:**` prefix.
 - A ledger layout change that only a fresh deployment can adopt says `fresh deploys only`.
 - A fix to a change that has not shipped gets no entry; the `Unreleased` entry it corrects is
   amended if its text is no longer accurate. Shipped entries are never edited.
