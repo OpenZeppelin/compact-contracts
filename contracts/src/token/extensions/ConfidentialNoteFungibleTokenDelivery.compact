@@ -12,7 +12,7 @@ pragma language_version >= 0.26.0;
  * imports no token module: the composer calls `_deliver` beside the core's
  * note creation.
  *
- * @dev Notation, on top of the core's:
+ * @dev Notation. `Hf`, `pk`, `nonce` and `slot` are defined in the core
  * - `encPk = g^ekScalar`: the owner's Jubjub encryption key, paired with the
  *   spend identity `pk` out of band.
  * - `e = Hf(seed, "CNFT:delivery:e", slot, nonce, encPk)`: the ephemeral
