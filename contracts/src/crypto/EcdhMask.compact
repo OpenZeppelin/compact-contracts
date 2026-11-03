@@ -204,6 +204,10 @@ module EcdhMask {
    * @description The mask for `domain` from a point digest:
    * `kdf(S, domain) == kdfFromDigest(pointDigest(S), domain)`.
    *
+   * @notice One mask per `(digest, domain)`. Pad one value under each pair,
+   * and give every mask drawn from one digest its own tag; two values under
+   * one pair share the pad and leak their difference.
+   *
    * @constraints k=13, rows=3956 (zkir-v3)
    *
    * @param digest - `pointDigest` of the shared point.
