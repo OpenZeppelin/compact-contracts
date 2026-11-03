@@ -79,12 +79,8 @@ A library module (`contracts/src/<category>/<Module>.compact`), top to bottom:
 7. Types: `enum`, `new type`, `struct`, exported before internal.
 8. Ledger state, the `_isInitialized` flag first when the module has one.
 9. Witness declarations.
-10. `initialize`, `assertInitialized`, `assertNotInitialized`.
-11. The remaining circuits, in one of two orders per file: by feature, where a guarded circuit
-    is immediately followed by the `_` or `_unsafe` block it delegates to (`FungibleToken`,
-    `Ownable`), or by visibility, with the public API first and every `_` block after it
-    (`Signer`, `NativeShieldedTokenCore`).
-12. Pure derivation helpers (`_computeAccountId`) last.
+10. `initialize` (if applicable).
+11. The remaining circuits.
 
 Section dividers (`// ─── State ───` or `// ------- Types -------`) are optional; a file that
 uses them uses one style throughout and labels every section.
@@ -191,18 +187,6 @@ Visibility:
 - A guarded circuit and its `_unsafe` variant come in pairs: the guarded one asserts, then
   delegates. The `_unsafe` docblock carries `@warning` naming what the skipped guard protected.
 
-Arguments and returns:
-
-- Argument order is subject, object, value, then extras: `(owner, spender, value)`,
-  `(fromAddress, to, value)`, `(to, color, amount, expiry)`. A constructor-time setting that
-  shadows a ledger field takes a trailing underscore (`name_`, `symbol_`).
-- A mutator returns `[]` unless a standard it mirrors demands otherwise (`transfer` returns
-  `Boolean` as the ERC-20 interface does). A coin operation returns the coin info or result
-  struct the caller must persist; the docblock says that dropping it strands value.
-- Return values are off-chain only and every call costs a proof, so consumers read exported
-  ledger state directly. A view circuit earns its place through in-circuit reuse (`balanceOf`
-  inside `_update`); prefer exported ledger state over a new getter-only circuit.
-
 Validation and errors:
 
 - In a module with an init flag, every impure exported circuit other than `initialize` and
@@ -308,9 +292,10 @@ export pure circuit UINT128_MAX(): Uint<128> {
 }
 ```
 
-**Compute, do not mutate.** Locals are immutable and the only loop is `for (const x of ...)`.
-Branch with a ternary or an early `return`, and fold with a vector rather than an accumulator
-variable.
+**Compute, do not mutate.** Locals are immutable and the only loop is `for (const x of ...)`
+over a vector or a `0..n` range, with its bound fixed at compile time. Branch with a ternary or
+an early `return`, and accumulate with the standard library's `fold` or `map` rather than an
+accumulator variable.
 
 Patterns the library does not use, and why:
 
@@ -390,8 +375,6 @@ Idioms:
 - No `it.only` is ever committed. `it.skip` carries a comment with the reason.
 - Flaky tests are not acceptable: the live runner's flake check reports a pass on retry loudly,
   and the fix is in the test or the harness, not a retry loop in the spec.
-- A refactor avoids changing tests in the same PR. If a test has to change, the PR description
-  says which one and why.
 - Property-based tests (`fast-check`) back math-heavy and encoding code: the curve modules,
   `EvmAbi`, supply accounting. A claim over a small finite input space is tested exhaustively
   instead, the way the concurrency suites enumerate every ordered pair of circuits.
@@ -481,15 +464,13 @@ pins. Every `Mock*.compact` starts with the `WARNING: FOR TESTING PURPOSES ONLY.
 every `*Witnesses.ts` with the `TEST-ONLY WITNESS. NOT FOR PRODUCTION USE.` banner, verbatim.
 
 Prose rules for all of the above and for every Markdown file: US spelling, no em dashes (use a
-colon, a comma or parentheses), no row counts or values expected to change (address prefixes,
-version numbers) in running text, and every added sentence checked against the line of code it
-describes and the sentence next to it.
+colon, a comma or parentheses), and no row counts or values expected to change (address prefixes,
+version numbers) in running text.
 
 The online documentation at
 [OpenZeppelin/docs](https://github.com/OpenZeppelin/docs) mirrors the module headers of the
 modules it covers, with usage examples; the API pages copy the docblocks and infer nothing. It
-is synchronized at release time rather than per PR; a docs PR links the contract PR whose text
-it mirrors.
+is synchronized at release time rather than per PR.
 
 ## Changelog
 
