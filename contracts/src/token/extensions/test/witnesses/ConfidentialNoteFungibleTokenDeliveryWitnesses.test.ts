@@ -1,6 +1,6 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
+import type { Ledger } from '../../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
 import {
   ConfidentialNoteFungibleTokenDeliveryWitnesses,
   createDeliveryWallet,

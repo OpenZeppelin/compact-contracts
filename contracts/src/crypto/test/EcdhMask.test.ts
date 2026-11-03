@@ -2,7 +2,7 @@ import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { pureCircuits as ecdh } from '../../../artifacts/MockEcdh/contract/index.js';
+import { pureCircuits as ecdh } from '../../../artifacts/crypto/test/mocks/MockEcdh/contract/index.js';
 import { EcdhMaskSimulator } from './simulators/EcdhMaskSimulator.js';
 import { ElGamalSimulator } from './simulators/ElGamalSimulator.js';
 

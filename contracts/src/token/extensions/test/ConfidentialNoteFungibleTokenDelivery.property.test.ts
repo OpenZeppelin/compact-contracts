@@ -18,7 +18,7 @@ import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { pureCircuits as delivery } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
+import { pureCircuits as delivery } from '../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
 import {
   ConfidentialNoteFungibleTokenDeliverySimulator,
   type Delivery,

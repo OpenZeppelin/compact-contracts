@@ -8,7 +8,7 @@ import {
   ledger,
   Contract as MockUtils,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockUtils/contract/index.js';
+} from '../../../../artifacts/utils/test/mocks/MockUtils/contract/index.js';
 import {
   UtilsPrivateState,
   UtilsWitnesses,

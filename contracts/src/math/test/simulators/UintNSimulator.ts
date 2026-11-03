@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockUintN,
-} from '../../../../artifacts/MockUintN/contract/index.js';
+} from '../../../../artifacts/math/test/mocks/MockUintN/contract/index.js';
 
 // The UintN module is stateless and declares no witnesses, so the private
 // state and witness set are both empty.

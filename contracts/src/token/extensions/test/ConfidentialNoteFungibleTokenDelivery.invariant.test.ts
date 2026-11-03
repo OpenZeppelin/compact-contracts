@@ -28,7 +28,7 @@ import {
   pureCircuits as composed,
   type Delivery_Delivery as Delivery,
   type Ledger,
-} from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
+} from '../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
 import {
   INSTANCE_SALT,
   type Note,

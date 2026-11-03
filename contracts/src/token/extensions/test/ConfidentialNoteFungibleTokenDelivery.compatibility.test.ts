@@ -28,13 +28,13 @@ import type {
   Circuits as ComposedCircuits,
   Ledger as ComposedLedger,
   ProvableCircuits as ComposedProvableCircuits,
-} from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
+} from '../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
 import {
   type Circuits,
   pureCircuits as delivery,
   type Ledger,
   type ProvableCircuits,
-} from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
+} from '../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
 import {
   ConfidentialNoteFungibleTokenDeliverySimulator,
   type Delivery,
@@ -162,7 +162,9 @@ const DELIVERY_SLOT_TYPE = {
 
 describe('ConfidentialNoteFungibleTokenDelivery compatibility: published surface', () => {
   const contractInfo = () =>
-    readContractInfo('MockConfidentialNoteFungibleTokenDelivery');
+    readContractInfo(
+      'token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivery',
+    );
 
   it('should keep the pinned ledger layout', () => {
     expect(ledgerSlots(contractInfo())).toStrictEqual([
@@ -227,7 +229,9 @@ describe('ConfidentialNoteFungibleTokenDelivery compatibility: published surface
  */
 describe('ConfidentialNoteFungibleTokenDelivery compatibility: composed surface', () => {
   const contractInfo = () =>
-    readContractInfo('MockConfidentialNoteFungibleTokenDelivered');
+    readContractInfo(
+      'token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivered',
+    );
 
   it('should keep the pinned ledger layout', () => {
     expect(ledgerSlots(contractInfo())).toStrictEqual([

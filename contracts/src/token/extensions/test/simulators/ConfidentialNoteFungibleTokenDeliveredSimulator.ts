@@ -6,7 +6,7 @@ import {
 import {
   ledger,
   Contract as MockDelivered,
-} from '../../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
+} from '../../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
 import {
   type ConfidentialNoteFungibleTokenPrivateState,
   ConfidentialNoteFungibleTokenWitnesses,

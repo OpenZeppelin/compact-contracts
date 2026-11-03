@@ -22,8 +22,8 @@ function signalStatus(signal: NodeJS.Signals): number {
  * chain the loop never turns between children either — so a queued SIGINT handler
  * could not run until the entire phase finished. Ctrl-C during a compile was
  * therefore ignored until it was too late, and the truncated keys the interruption
- * itself had just created were then mistaken for a poisoned cache, draining it and
- * kicking off a pointless serial recompile. Awaiting the child keeps the loop live,
+ * itself had just created were then mistaken for a poisoned tree, kicking off a
+ * pointless forced recompile. Awaiting the child keeps the loop live,
  * so {@link installSignalHandlers} fires immediately.
  *
  * Use {@link runSync} only where a result is needed without awaiting — teardown

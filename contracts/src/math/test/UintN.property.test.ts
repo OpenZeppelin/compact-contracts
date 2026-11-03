@@ -1,7 +1,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { pureCircuits } from '../../../artifacts/MockUintN/contract/index.js';
+import { pureCircuits } from '../../../artifacts/math/test/mocks/MockUintN/contract/index.js';
 import { UintNSimulator } from './simulators/UintNSimulator.js';
 
 // Every run is a transaction on the live backend.

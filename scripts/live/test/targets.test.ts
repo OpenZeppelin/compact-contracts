@@ -1,6 +1,11 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { INTEGRATION_MOCKS, SRC } from '../paths.ts';
+import {
+  ARTIFACTS,
+  INTEGRATION_ARTIFACTS,
+  INTEGRATION_MOCKS,
+  SRC,
+} from '../paths.ts';
 import {
   compileScope,
   type LivePlan,
@@ -216,7 +221,12 @@ describe('compileScope', () => {
     // compile-time), so both the build and the scan stay per-category.
     expect(compileScope(plan(['multisig']))).toStrictEqual({
       scripts: ['compile:multisig'],
-      verifyRoots: [path.join(SRC, 'multisig')],
+      verifyRoots: [
+        {
+          src: path.join(SRC, 'multisig'),
+          artifacts: path.join(ARTIFACTS, 'multisig'),
+        },
+      ],
     });
   });
 
@@ -226,24 +236,35 @@ describe('compileScope', () => {
     // turbo's `dependsOn`.
     expect(compileScope(plan(['token']))).toStrictEqual({
       scripts: ['compile:token'],
-      verifyRoots: [path.join(SRC, 'token'), path.join(SRC, 'crypto')],
+      verifyRoots: [
+        {
+          src: path.join(SRC, 'token'),
+          artifacts: path.join(ARTIFACTS, 'token'),
+        },
+        {
+          src: path.join(SRC, 'crypto'),
+          artifacts: path.join(ARTIFACTS, 'crypto'),
+        },
+      ],
     });
   });
 
   it('compiles the integration mocks for the integration target', () => {
-    // `compile:integration` depends on the full `compile`, so the src slices
-    // the mocks import are built without being named here; the specs deploy
-    // only the composed mocks, so only that tree is scanned.
+    // The composed mocks compile their `src` imports in, so no `src` slice is
+    // named here; the specs deploy only the composed mocks, so only that tree
+    // is scanned.
     expect(compileScope(plan(['integration']))).toStrictEqual({
       scripts: ['compile:integration'],
-      verifyRoots: [INTEGRATION_MOCKS],
+      verifyRoots: [
+        { src: INTEGRATION_MOCKS, artifacts: INTEGRATION_ARTIFACTS },
+      ],
     });
   });
 
   it('compiles everything for an unscoped run', () => {
     expect(compileScope(plan([]))).toStrictEqual({
       scripts: ['compile'],
-      verifyRoots: [SRC],
+      verifyRoots: [{ src: SRC, artifacts: ARTIFACTS }],
     });
   });
 });

@@ -1,8 +1,8 @@
 import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
-import { pureCircuits as composed } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
-import { pureCircuits as delivery } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
+import { pureCircuits as composed } from '../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
+import { pureCircuits as delivery } from '../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
 import {
   createNoteWallet,
   INSTANCE_SALT,

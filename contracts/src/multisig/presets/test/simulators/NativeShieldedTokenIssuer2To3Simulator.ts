@@ -12,7 +12,7 @@ import {
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/MockNativeShieldedTokenIssuer2To3/contract/index.js';
+} from '../../../../../artifacts/multisig/presets/test/mocks/MockNativeShieldedTokenIssuer2To3/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,
