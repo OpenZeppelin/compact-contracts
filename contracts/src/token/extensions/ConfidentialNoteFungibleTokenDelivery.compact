@@ -160,8 +160,7 @@ module ConfidentialNoteFungibleTokenDelivery {
 
   /**
    * @description Every delivery ever made, newest first. Append-only: no
-   * circuit reads, removes or overwrites an entry. Unbounded, like the core's
-   * `_nullifiers` and `_issuedNonces`.
+   * circuit reads, removes or overwrites an entry. Unbounded.
    * @type {List<Delivery>} _deliveries - The feed wallets scan.
    */
   export ledger _deliveries: List<Delivery>;
