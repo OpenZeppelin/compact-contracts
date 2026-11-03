@@ -6,12 +6,7 @@ import {
 import {
   ledger,
   Contract as MockDelivered,
-} from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
-import {
-  ConfidentialNoteFungibleTokenDeliveryWitnesses,
-  createDeliveryWallet,
-  type DeliveryWallet,
-} from '../witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
+} from '../../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
 import {
   type ConfidentialNoteFungibleTokenPrivateState,
   ConfidentialNoteFungibleTokenWitnesses,
@@ -20,7 +15,12 @@ import {
   type NoteCommitmentLedger,
   type NoteWallet,
   ConfidentialNoteFungibleTokenPrivateState as PrivateState,
-} from '../witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+} from '../../../test/witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import {
+  ConfidentialNoteFungibleTokenDeliveryWitnesses,
+  createDeliveryWallet,
+  type DeliveryWallet,
+} from '../witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
 
 /** The core's four witnesses plus delivery's one, over the core's private state. */
 const ConfidentialNoteFungibleTokenDeliveredWitnesses = (

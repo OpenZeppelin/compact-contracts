@@ -36,17 +36,17 @@ import {
   Contract as MockDelivered,
 } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
 import {
-  ConfidentialNoteFungibleTokenDeliveryWitnesses,
-  createDeliveryWallet,
-  type DeliveryWallet,
-} from '../witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
-import {
   ConfidentialNoteFungibleTokenWitnesses,
   createNoteWallet,
   INSTANCE_SALT,
   type NoteCommitmentLedger,
   type NoteWallet,
-} from '../witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+} from '../../test/witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import {
+  ConfidentialNoteFungibleTokenDeliveryWitnesses,
+  createDeliveryWallet,
+  type DeliveryWallet,
+} from './witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
 
 // ---------------------------------------------------------------------------
 // Two parties, one ledger

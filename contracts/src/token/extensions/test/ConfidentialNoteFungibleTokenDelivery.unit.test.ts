@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { pureCircuits as composed } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
 import { pureCircuits as delivery } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
-import { ConfidentialNoteFungibleTokenDeliveredSimulator } from '../simulators/ConfidentialNoteFungibleTokenDeliveredSimulator.js';
-import {
-  ConfidentialNoteFungibleTokenDeliverySimulator,
-  type Delivery,
-} from '../simulators/ConfidentialNoteFungibleTokenDeliverySimulator.js';
 import {
   createNoteWallet,
   INSTANCE_SALT,
   type Note,
-} from '../witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+} from '../../test/witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import { ConfidentialNoteFungibleTokenDeliveredSimulator } from './simulators/ConfidentialNoteFungibleTokenDeliveredSimulator.js';
+import {
+  ConfidentialNoteFungibleTokenDeliverySimulator,
+  type Delivery,
+} from './simulators/ConfidentialNoteFungibleTokenDeliverySimulator.js';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -4,7 +4,7 @@
 // consumer wires it beside the core's note creation. DO NOT deploy this mock.
 pragma language_version >= 0.26.0;
 import CompactStandardLibrary;
-import "../../extensions/ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
+import "../../ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
 
 export { Delivery_Delivery, Delivery_RecoveredNote }
 

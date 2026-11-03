@@ -47,12 +47,6 @@ import {
   ledger,
   Contract as MockDelivered,
 } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
-import { ConfidentialNoteFungibleTokenDeliveredSimulator } from '../simulators/ConfidentialNoteFungibleTokenDeliveredSimulator.js';
-import {
-  ConfidentialNoteFungibleTokenDeliveryWitnesses,
-  createDeliveryWallet,
-  type DeliveryWallet,
-} from '../witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
 import {
   ConfidentialNoteFungibleTokenWitnesses,
   createNoteWallet,
@@ -60,7 +54,13 @@ import {
   type Note,
   type NoteCommitmentLedger,
   type NoteWallet,
-} from '../witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+} from '../../test/witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import { ConfidentialNoteFungibleTokenDeliveredSimulator } from './simulators/ConfidentialNoteFungibleTokenDeliveredSimulator.js';
+import {
+  ConfidentialNoteFungibleTokenDeliveryWitnesses,
+  createDeliveryWallet,
+  type DeliveryWallet,
+} from './witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
 
 // ---------------------------------------------------------------------------
 // Probe: the composed contract driven directly, so `proofData` survives
@@ -314,12 +314,12 @@ const sourceOf = (relative: string): string =>
   readFileSync(new URL(relative, import.meta.url), 'utf8');
 
 const EXTENSION_SOURCE = sourceOf(
-  '../../extensions/ConfidentialNoteFungibleTokenDelivery.compact',
+  '../ConfidentialNoteFungibleTokenDelivery.compact',
 );
 const MOCK_SOURCES = [
   EXTENSION_SOURCE,
-  sourceOf('../mocks/MockConfidentialNoteFungibleTokenDelivery.compact'),
-  sourceOf('../mocks/MockConfidentialNoteFungibleTokenDelivered.compact'),
+  sourceOf('./mocks/MockConfidentialNoteFungibleTokenDelivery.compact'),
+  sourceOf('./mocks/MockConfidentialNoteFungibleTokenDelivered.compact'),
 ];
 
 /** Source lines that are code, not doc comments. */

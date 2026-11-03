@@ -8,7 +8,7 @@ import {
   ledger,
   Contract as MockDelivery,
   type Delivery_RecoveredNote as RecoveredNote,
-} from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
+} from '../../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
 import {
   type ConfidentialNoteFungibleTokenDeliveryPrivateState,
   ConfidentialNoteFungibleTokenDeliveryWitnesses,

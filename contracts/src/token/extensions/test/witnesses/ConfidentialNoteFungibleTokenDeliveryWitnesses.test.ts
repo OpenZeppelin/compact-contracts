@@ -1,11 +1,11 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
+import type { Ledger } from '../../../../../artifacts/MockConfidentialNoteFungibleTokenDelivery/contract/index.js';
 import {
   ConfidentialNoteFungibleTokenDeliveryWitnesses,
   createDeliveryWallet,
   type ConfidentialNoteFungibleTokenDeliveryPrivateState as PrivateState,
-} from '../witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
+} from './ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
 
 /** The witness reads no ledger, so an empty context is enough. */
 const context = (): WitnessContext<Ledger, PrivateState> =>

@@ -38,7 +38,7 @@ import {
 import {
   ConfidentialNoteFungibleTokenDeliverySimulator,
   type Delivery,
-} from '../simulators/ConfidentialNoteFungibleTokenDeliverySimulator.js';
+} from './simulators/ConfidentialNoteFungibleTokenDeliverySimulator.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -74,10 +74,7 @@ const PINNED_ENTRY: Delivery = {
 };
 
 const EXTENSION_SOURCE = readFileSync(
-  new URL(
-    '../../extensions/ConfidentialNoteFungibleTokenDelivery.compact',
-    import.meta.url,
-  ),
+  new URL('../ConfidentialNoteFungibleTokenDelivery.compact', import.meta.url),
   'utf8',
 );
 

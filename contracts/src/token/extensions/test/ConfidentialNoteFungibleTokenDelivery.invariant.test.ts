@@ -29,11 +29,11 @@ import {
   type Delivery_Delivery as Delivery,
   type Ledger,
 } from '../../../../artifacts/MockConfidentialNoteFungibleTokenDelivered/contract/index.js';
-import { ConfidentialNoteFungibleTokenDeliveredSimulator } from '../simulators/ConfidentialNoteFungibleTokenDeliveredSimulator.js';
 import {
   INSTANCE_SALT,
   type Note,
-} from '../witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+} from '../../test/witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
+import { ConfidentialNoteFungibleTokenDeliveredSimulator } from './simulators/ConfidentialNoteFungibleTokenDeliveredSimulator.js';
 
 // ---------------------------------------------------------------------------
 // Parties

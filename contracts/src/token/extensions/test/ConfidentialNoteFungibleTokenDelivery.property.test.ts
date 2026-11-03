@@ -22,7 +22,7 @@ import { pureCircuits as delivery } from '../../../../artifacts/MockConfidential
 import {
   ConfidentialNoteFungibleTokenDeliverySimulator,
   type Delivery,
-} from '../simulators/ConfidentialNoteFungibleTokenDeliverySimulator.js';
+} from './simulators/ConfidentialNoteFungibleTokenDeliverySimulator.js';
 
 // ---------------------------------------------------------------------------
 // Generators, each pinned to the circuit's own type

@@ -5,8 +5,8 @@
 // ungated, so anyone can create value. DO NOT deploy this mock.
 pragma language_version >= 0.26.0;
 import CompactStandardLibrary;
-import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
-import "../../extensions/ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
+import "../../../ConfidentialNoteFungibleToken"<32> prefix Core_;
+import "../../ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
 
 export { Core_Note, Delivery_Delivery, Delivery_RecoveredNote }
 
