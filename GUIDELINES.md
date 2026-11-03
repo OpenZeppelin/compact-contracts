@@ -52,9 +52,9 @@ TypeScript:
   modules are `<Module>Witnesses.ts` exporting `I<Module>Witnesses`, `<Module>PrivateState` (a
   type and a same-named object with `generate()` and the `with<Field>` constructors) and the
   `<Module>Witnesses()` factory.
-- Test files are `<Module>.test.ts` next to what they cover. A flavoured suite adds its flavour
+- Test files are `<Module>.test.ts` next to what they cover. A flavored suite adds its flavor
   before the extension: `.privacy.test.ts`, `.property.test.ts`, `.invariant.test.ts`,
-  `.concurrency.test.ts`, `.compatibility.test.ts`; when a module splits its behaviour suite out,
+  `.concurrency.test.ts`, `.compatibility.test.ts`; when a module splits its behavior suite out,
   it is `.unit.test.ts`. Integration specs are `camelCase.spec.ts` under
   `contracts/test/integration/specs/`.
 - Shared helpers in `contracts/test-utils/` are `camelCase.ts` for function modules
@@ -208,7 +208,7 @@ Validation and errors:
 
 ## Idioms and patterns
 
-Each pattern below is one the library standardises on, with the shape to avoid first.
+Each pattern below is one the library standardizes on, with the shape to avoid first.
 
 **Canonicalize an `Either` before it keys a map or feeds a comparison.** A crafted value with
 data in both branches would otherwise miss a lookup that only inspects the active branch.
@@ -332,7 +332,7 @@ Layout:
   one method per circuit. A spec reaches the generated artifact directly only for
   `pureCircuits`, for the transcript (`proofData`) a privacy suite inspects, or for a
   constructor-only check that no simulator method can express.
-- The unit spec covers behaviour. A claim the header makes beyond behaviour gets its own flavour
+- The unit spec covers behavior. A claim the header makes beyond behavior gets its own flavor
   file: `.privacy` (what the transcript and the ledger publish, with a negative control),
   `.property` (`fast-check` over generated inputs), `.invariant` (what holds across operation
   sequences), `.concurrency` (which pairs of calls conflict, through
@@ -361,7 +361,7 @@ What every exported circuit has:
 
 Idioms:
 
-- `describe` per circuit (or per state, "when not initialized"); `it` names the behaviour in the
+- `describe` per circuit (or per state, "when not initialized"); `it` names the behavior in the
   present tense: `'returns 0 when there is no supply'`. The older `'should ...'` form is accepted
   in files that already use it; do not mix the two in one file.
 - `it.each` / `describe.each` for the same assertion over recipient kinds or circuit lists.
@@ -415,7 +415,7 @@ opening a PR.
 
 Every circuit (exported or not), every ledger field, every witness declaration and every
 struct carries a `/** ... */` docblock. Docblocks are consumer-facing and describe what the code
-does now: behaviour, effects on the ledger, operational duties, deliberate asymmetries and
+does now: behavior, effects on the ledger, operational duties, deliberate asymmetries and
 hazards invisible in a diff. No design rationale over alternatives, no history, no mention of
 tests or mocks; that prose belongs in the PR, an issue or `ARCHITECTURE.md`.
 
@@ -442,7 +442,7 @@ Ledger fields: `@description`, plus `@type` lines on a map describing its key an
 
 Circuits, with a blank `*` line between groups and typically in this order:
 
-1. `@description`: one to three sentences on behaviour and effect, never a restatement of the
+1. `@description`: one to three sentences on behavior and effect, never a restatement of the
    signature.
 2. `@constraints k=<k>, rows=<rows>` on exported circuits, measured from a full compile of a
    mock that exercises them (not `SKIP_ZK`). An untagged annotation is the default ZKIR v2
@@ -483,10 +483,10 @@ Its format:
   on.
 - Sections are added only when an entry needs them, in [Keep a
   Changelog](https://keepachangelog.com/) order: `### Added`, `### Changed`, `### Deprecated`,
-  `### Removed`, `### Fixed`, `### Security`. A behaviour change goes under `### Changed`, never
+  `### Removed`, `### Fixed`, `### Security`. A behavior change goes under `### Changed`, never
   `### Added`.
 - A breaking change is a changed exported circuit signature, or a removed or renamed ledger key,
-  relative to the last release tag. Added state, added struct fields and behaviour changes are
+  relative to the last release tag. Added state, added struct fields and behavior changes are
   not breaking. Breaking entries go under their own `### Changed (breaking)` header, not under a
   per-line `**Breaking:**` prefix.
 - A ledger layout change that only a fresh deployment can adopt says `fresh deploys only`.
