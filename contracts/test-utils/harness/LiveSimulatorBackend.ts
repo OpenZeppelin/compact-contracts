@@ -346,7 +346,7 @@ export class LiveSimulatorBackend {
     // The loaded constructor is the one genuinely-untyped value; the loader
     // pins it to a precise constructor type so `Contract.Any` flows from here.
     const { Contract: ctor } = await this.loadContract(name);
-    const witnesses = req.config.witnessesFactory();
+    const witnesses = req.options.witnesses ?? req.config.witnessesFactory();
     const compiled = compileArtifact(name, ctor, witnesses);
 
     await this.pool.ensureReady();
