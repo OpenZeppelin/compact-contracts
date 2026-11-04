@@ -79,12 +79,8 @@ pragma language_version >= 0.26.0;
  *     `Signer_assertSigner`), so WHICH signers approved.
  *   - Deposit: the coin commitment as a receive claim, with this contract
  *     named in the Zswap output (`disclose(coin)` in `Treasury__deposit`).
- *   - Execute: the spent coin's nullifier, and the sent and change coins in
- *     plaintext (`nonce`, `color`, `value`). `execute` returns the
- *     `ShieldedSendResult` from its entry point, which publishes both coins
- *     (see the warning on `ShieldedTreasuryStateless._send`). The recipient
- *     is not published, but with the sent coin known a candidate key can be
- *     tested against its commitment.
+ *   - Execute: the spent coin's nullifier and the sent and change coin
+ *     commitments. The returned `ShieldedSendResult` stays with the caller.
  * - Public, as state:
  *   - Cells: `_nonce`, `_domainSeparator`, and the `Secp256k1EcdsaMultisig`
  *     cells (`_signers`, `_signerCount`, `_threshold`, `_instanceSalt`)
@@ -95,14 +91,14 @@ pragma language_version >= 0.26.0;
  * - Private:
  *   - Signer material: public keys and signatures are verified in-circuit,
  *     never disclosed.
- *   - Operation data: the recipient, up to the commitment test above.
+ *   - Operation data: the amount and the recipient.
  * - Signer identity: keys sit behind `cm` with a public salt, so an observer
  *   holding a candidate key can test membership; one without cannot
  *   correlate a signer across deployments.
  * - Auditability: no balance is stored, but a coin commitment is a hash of
  *   the coin's data, so whoever knows a held coin can link its receive to
- *   its later spend. `execute` publishes every change coin, so the spend of
- *   one is linkable by anyone.
+ *   its later spend. The change coin's nonce derives from the spent coin's,
+ *   so that observer can follow the change too.
  *
  * @notice Security:
  * - Digest binding: the `Execute` struct binds its type hash, `self`,
