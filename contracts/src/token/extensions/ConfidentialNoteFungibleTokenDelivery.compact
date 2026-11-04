@@ -192,7 +192,7 @@ module ConfidentialNoteFungibleTokenDelivery {
    * The composer gates who may call this.
    *
    * @dev Key- and nonce-bound ephemeral:
-   * `e = Hf(seed, domain, slot, nonce, encPk)`, so `e` repeats only when all
+   * `e = Hf(domain, seed, slot, nonce, encPk)`, so `e` repeats only when all
    * of `(seed, slot, nonce, encPk)` repeat: a reused seed never pads two
    * committed notes alike and never gives two keys one `E`.
    *
