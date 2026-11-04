@@ -144,8 +144,8 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @description Preimage of the ephemeral scalar: the core's `NoncePreimage`
    * shape plus the recipient key. The domain tag and the extra field keep `e`
    * apart from a core nonce drawn from the same seed.
-   * @type {Bytes<32>} seed - The caller's per-invocation randomness.
    * @type {Bytes<32>} domain - The ephemeral domain tag.
+   * @type {Bytes<32>} seed - The caller's per-invocation randomness.
    * @type {Bytes<32>} slot - The per-output tag.
    * @type {Field} nonce - The delivered note's nonce.
    * @type {JubjubPoint} encPk - The key the entry is addressed to.
