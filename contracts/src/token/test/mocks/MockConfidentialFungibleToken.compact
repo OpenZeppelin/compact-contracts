@@ -29,12 +29,17 @@ export {
   CFT__decimals
 };
 
+// `init` lets the suite deploy an uninitialized token and check that every
+// exported circuit refuses to run before `initialize`.
 constructor(
     name_: Opaque<"string">,
     symbol_: Opaque<"string">,
     decimals_: Uint<8>,
+    init: Boolean,
 ) {
-  CFT_initialize(name_, symbol_, decimals_);
+  if (disclose(init)) {
+    CFT_initialize(name_, symbol_, decimals_);
+  }
 }
 
 export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {

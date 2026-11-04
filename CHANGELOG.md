@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ShieldedMultiSigV2` exports `Recipient` and `RecipientKind`; implementing contracts name `execute`'s recipient `ShieldedMultiSigV2_Recipient` rather than `ShieldedMultiSigV2_Proposal_Recipient`
 - **Breaking:** `ProposalManager`: `Proposal` stores the lifecycle stage in `status: ProposalStatus` and the deadline in `expiry: Uint<64>` instead of overlaying both in `state`, so an executed or cancelled proposal keeps its expiry. `_createProposal` no longer rejects an expiry in the former reserved range (#1193)
 - **Breaking:** `ShieldedAccessControl`: revoking or renouncing a `(role, accountId)` pairing that was never granted reverts with `role was never granted`, so a nullifier can only exist for a granted pairing (#1116)
+- `ConfidentialFungibleToken`: `allowance` and `isRegistered` require an initialized contract (#1195)
 - `ConfidentialFungibleToken`: `transferFrom` and `_burnFrom` reject an escrow whose owner or spender is unregistered as `owner not registered` / `spender not registered` (#1165)
 - `ShieldedTreasury`: `_deposit` rejects a zero-value coin as `zero value` (#1200)
 - `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the id point (#1077)
