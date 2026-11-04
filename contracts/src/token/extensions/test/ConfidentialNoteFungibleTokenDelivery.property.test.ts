@@ -176,7 +176,7 @@ describe('ConfidentialNoteFungibleTokenDelivery property: _deliver', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * The ephemeral is `Hf(seed, tag, slot, nonce, encPk)`, so with the seed
+ * The ephemeral is `Hf(tag, seed, slot, nonce, encPk)`, so with the seed
  * planted the nonce, the slot and the key are the inputs left to separate two
  * entries. Each run repeats its first delivery to show the seed held.
  */
