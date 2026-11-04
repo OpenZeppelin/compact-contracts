@@ -26,7 +26,7 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
 }
 
 export circuit execute(
-  to: ShieldedMultiSigV2_Proposal_Recipient,
+  to: ShieldedMultiSigV2_Recipient,
   amount: Uint<128>,
   coin: QualifiedShieldedCoinInfo,
   pubkeys: Vector<1, Secp256k1Point>,
