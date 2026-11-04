@@ -36,6 +36,8 @@ const COMPACT_TYPE_NAMES = [
   'Bytes',
   'Enum',
   'Field',
+  'JubjubPoint',
+  'JubjubScalar',
   'List',
   'Map',
   'Opaque',
@@ -56,6 +58,16 @@ export interface NamedCompactType {
 /** `Field`, the native scalar. A `bigint` at runtime. */
 export interface FieldTypeInfo {
   readonly 'type-name': 'Field';
+}
+
+/** `JubjubPoint`, a curve point. `{ x: bigint, y: bigint }` at runtime. */
+export interface JubjubPointTypeInfo {
+  readonly 'type-name': 'JubjubPoint';
+}
+
+/** `JubjubScalar`, a curve scalar. A `bigint` at runtime. */
+export interface JubjubScalarTypeInfo {
+  readonly 'type-name': 'JubjubScalar';
 }
 
 /** `Boolean`. A `boolean` at runtime. */
@@ -150,6 +162,8 @@ export type CompactTypeInfo =
   | BytesTypeInfo
   | EnumTypeInfo
   | FieldTypeInfo
+  | JubjubPointTypeInfo
+  | JubjubScalarTypeInfo
   | ListTypeInfo
   | MapTypeInfo
   | OpaqueTypeInfo

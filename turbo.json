@@ -57,6 +57,7 @@
         "src/multisig/**/*.compact",
         "src/access/**/*.compact",
         "src/crypto/**/*.compact",
+        "src/math/**/*.compact",
         "src/token/**/*.compact",
         "src/utils/**/*.compact"
       ],
@@ -64,12 +65,18 @@
       "outputs": ["artifacts/multisig/**"]
     },
     "compile:token": {
-      "dependsOn": ["^build", "compile:utils", "compile:crypto"],
+      "dependsOn": [
+        "^build",
+        "compile:utils",
+        "compile:crypto",
+        "compile:math"
+      ],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
       "inputs": [
         "src/token/**/*.compact",
         "src/access/**/*.compact",
         "src/crypto/**/*.compact",
+        "src/math/**/*.compact",
         "src/utils/**/*.compact"
       ],
       "outputLogs": "new-only",

@@ -184,6 +184,26 @@ describe('EcdhMask', () => {
       const ct2 = (250n + (await contract.kdf(shared.sShared, DOMAIN))) % P;
       expect(ct1 - ct2).toBe(1000n - 250n);
     });
+
+    it('should leak the plaintext difference when two kdfFromDigest calls share a digest and domain', async () => {
+      const shared = ecdh.deriveShared(PK, 7n);
+      const digest = await contract.pointDigest(shared.sShared);
+      const ct1 = (1000n + (await contract.kdfFromDigest(digest, DOMAIN))) % P;
+      const ct2 = (250n + (await contract.kdfFromDigest(digest, DOMAIN))) % P;
+      expect(ct1 - ct2).toBe(1000n - 250n);
+    });
+
+    it('should not leak the plaintext difference under a distinct domain per value', async () => {
+      // One digest, one pad per domain: the shape a consumer uses to deliver
+      // several values from one shared point.
+      const shared = ecdh.deriveShared(PK, 7n);
+      const digest = await contract.pointDigest(shared.sShared);
+      const ct1 =
+        (1000n + (await contract.kdfFromDigest(digest, domain('a')))) % P;
+      const ct2 =
+        (250n + (await contract.kdfFromDigest(digest, domain('b')))) % P;
+      expect(ct1 - ct2).not.toBe(1000n - 250n);
+    });
   });
 
   describe('weak-input guards', () => {
@@ -260,6 +280,28 @@ describe('EcdhMask', () => {
     it('differs for distinct domains (domain separation)', async () => {
       expect(await contract.kdf(PK, domain('a'))).not.toBe(
         await contract.kdf(PK, domain('b')),
+      );
+    });
+
+    it('should equal kdfFromDigest over pointDigest', async () => {
+      const digest = await contract.pointDigest(PK);
+
+      expect(await contract.kdfFromDigest(digest, DOMAIN)).toBe(
+        await contract.kdf(PK, DOMAIN),
+      );
+    });
+
+    it('should digest distinct points to distinct digests', async () => {
+      expect(await contract.pointDigest(PK)).not.toStrictEqual(
+        await contract.pointDigest(ecMulGenerator(222n)),
+      );
+    });
+
+    it('should derive distinct masks from one digest under distinct domains', async () => {
+      const digest = await contract.pointDigest(PK);
+
+      expect(await contract.kdfFromDigest(digest, domain('a'))).not.toBe(
+        await contract.kdfFromDigest(digest, domain('b')),
       );
     });
 

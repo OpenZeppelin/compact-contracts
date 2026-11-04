@@ -65,6 +65,8 @@ artifact = "token/test/mocks/{name}"
 
 [contracts."src/token/presets/test/mocks/*"]
 artifact = "token/presets/test/mocks/{name}"
+[contracts."src/token/extensions/test/mocks/*"]
+artifact = "token/extensions/test/mocks/{name}"
 
 [contracts."src/utils/test/mocks/*"]
 artifact = "utils/test/mocks/{name}"
