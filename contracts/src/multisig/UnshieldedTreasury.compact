@@ -61,6 +61,14 @@ module UnshieldedTreasury {
    * operation creates a zero-valued `_balances` entry, which
    * `getTokenBalance` reports the same as absence.
    *
+   * @warning Every non-zero deposit of a color rewrites the `_balances` entry
+   * that `_send` reads for that color, so a deposit that lands first
+   * invalidates every `_send` of the same color still waiting to be applied.
+   * A consumer that exposes `_deposit` without access control lets any
+   * depositor delay authorized sends for as long as they keep depositing; the
+   * sends must then be re-proven. No funds are lost. A zero-value deposit
+   * rewrites the entry with the same value and does not have this effect.
+   *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
    * authorization policy.

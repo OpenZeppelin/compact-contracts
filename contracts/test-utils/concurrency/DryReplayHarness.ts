@@ -12,6 +12,14 @@
  * ledger after the transcript does (ledger/src/semantics.rs:1400), as do mempool
  * ordering, block inclusion, and fee treatment on a failed segment. All of those
  * are live-backend properties.
+ *
+ * COINS. A transcript that stores a received coin (`insertCoin`) indexes the
+ * kernel's claimed receives by commitment to learn the coin's Merkle index. On
+ * the node that table is filled from the transaction's Zswap half; here it is
+ * seeded from the transcript's own declared receives, at the ordinal index the
+ * build assigned (a fresh local state numbers its outputs from zero). The
+ * replay then sees the coin the build saw. Nothing else about the coin (its
+ * nullifier, its spendability) is modelled.
  */
 
 import {
@@ -69,6 +77,8 @@ interface DryPending<R> extends Pending<R> {
    * the pair, so they are carried and passed rather than stubbed.
    */
   readonly effects: Effects;
+  /** Commitments the build received, in output order; see COINS above. */
+  readonly receives: readonly string[];
   readonly builtOn: ChargedState;
 }
 
@@ -132,11 +142,13 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
       );
     }
 
+    const effects = results.context.callContext.currentQueryContext.effects;
     const pending: DryPending<R> = {
       call,
       result: results.result as R,
       transcript: proofData.publicTranscript,
-      effects: results.context.callContext.currentQueryContext.effects,
+      effects,
+      receives: [...effects.claimedShieldedReceives],
       builtOn: at,
     };
     return pending;
@@ -197,7 +209,12 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
     pending: DryPending<unknown>,
     against: ChargedState,
   ): ChargedState {
-    return new QueryContext(against, this.address).runTranscript(
+    const context = pending.receives.reduce(
+      (seeded, commitment, index) =>
+        seeded.insertCommitment(commitment, BigInt(index)),
+      new QueryContext(against, this.address),
+    );
+    return context.runTranscript(
       {
         gas: BUDGET,
         effects: pending.effects,
