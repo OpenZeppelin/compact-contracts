@@ -208,7 +208,7 @@ describe('ConfidentialNoteFungibleTokenDelivery: recoverNote', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * The ephemeral is `Hf(seed, tag, slot, nonce, encPk)`, so with the seed
+ * The ephemeral is `Hf(tag, seed, slot, nonce, encPk)`, so with the seed
  * pinned the nonce, the slot and the key are the inputs left to separate two
  * entries.
  */
