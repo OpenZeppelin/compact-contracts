@@ -25,6 +25,13 @@ pragma language_version >= 0.26.0;
  * through ZswapOutput events from the indexer, constructs QualifiedShieldedCoinInfo
  * off-chain, and provides it as a circuit parameter for spending.
  *
+ * @notice Keeping coin data off the ledger hides balances from the public,
+ * not from a depositor. Whoever knows a deposited coin can find the `execute`
+ * that spends it, recover the amount sent, test candidate recipients against
+ * the sent coin's commitment, and derive the change coin, so every later
+ * spend descending from that change and the balance it carries are traceable
+ * by that depositor. See `ShieldedTreasuryStateless` for the derivation.
+ *
  * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  *
  * @notice Implementing contracts register the signer set from their
@@ -132,7 +139,8 @@ module ShieldedMultiSigV2<#t> {
    *
    * No access control which allows anyone to deposit. The coin is claimed at the
    * protocol level through receiveShielded. No coin data is stored on the
-   * public ledger, preserving full balance privacy.
+   * public ledger, so no balance is readable from it; a depositor can still
+   * follow the coin they deposited (see the module notice).
    *
    * The operator discovers the coin's Merkle tree index by subscribing
    * to ZswapOutput events via the indexer, filtering by contract address,
