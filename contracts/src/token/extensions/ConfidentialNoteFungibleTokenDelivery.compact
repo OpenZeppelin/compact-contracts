@@ -15,7 +15,7 @@ pragma language_version >= 0.26.0;
  * @dev Notation. `Hf`, `pk`, `nonce` and `slot` are defined in the core
  * - `encPk = g^ekScalar`: the owner's Jubjub encryption key, paired with the
  *   spend identity `pk` out of band.
- * - `e = Hf(seed, "CNFT:delivery:e", slot, nonce, encPk)`: the ephemeral
+ * - `e = Hf("CNFT:delivery:e", seed, slot, nonce, encPk)`: the ephemeral
  *   scalar.
  * - `E = g^e` and `S = encPk^e = E^ekScalar`: the `crypto/Ecdh` exchange.
  * - `valueCt = (value + kdf(S, "CNFT:delivery:value")) mod 2^248` and
