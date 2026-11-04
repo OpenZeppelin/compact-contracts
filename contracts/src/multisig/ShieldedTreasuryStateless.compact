@@ -22,10 +22,16 @@ pragma language_version >= 0.26.0;
  * application time. Sufficiency is likewise enforced by `sendShielded` rather
  * than by an assert here.
  *
- * @notice "No ledger state" is not the same as "unobservable". A coin
- * commitment is a hash of the coin's data, so `sendShielded` can link a coin
- * receive to its later spend; `_send` declares that disclosure on the
- * consumer's behalf. Consumers that need to make the trade-off themselves
+ * @notice "No ledger state" is not the same as "unobservable". A coin's
+ * nullifier is a hash of the coin and this contract's address, and
+ * `sendShielded` derives the nonces of the sent coin and of the change from a
+ * public hash of the spent coin's nonce. Whoever knows a deposited coin can
+ * therefore find the spend that consumes it, recover the amount sent (on a
+ * partial spend the change commitment has the value as its only unknown),
+ * test candidate recipients against the sent coin's commitment, and repeat
+ * from the change coin for every later spend descending from it. `_send`
+ * declares the spent coin's disclosure on the consumer's behalf. Consumers
+ * that need to make the trade-off themselves
  * should note it is only declared here for convenience — it could be moved to
  * the caller. Separately, see `_send`'s warning about its return value, which
  * carries coin plaintext.

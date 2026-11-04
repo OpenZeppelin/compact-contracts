@@ -9,8 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** `ProposalManager`: `Proposal` stores the lifecycle stage in `status: ProposalStatus` and the deadline in `expiry: Uint<64>` instead of overlaying both in `state`, so an executed or cancelled proposal keeps its expiry. `_createProposal` no longer rejects an expiry in the former reserved range (#1193)
 - **Breaking:** `ShieldedAccessControl`: revoking or renouncing a `(role, accountId)` pairing that was never granted reverts with `role was never granted`, so a nullifier can only exist for a granted pairing (#1116)
 - `ConfidentialFungibleToken`: `allowance` and `isRegistered` require an initialized contract (#1195)
+- `ConfidentialFungibleToken`: `transferFrom` and `_burnFrom` reject an escrow whose owner or spender is unregistered as `owner not registered` / `spender not registered` (#1165)
+- `EcdhMask.decrypt` rejects a ciphertext whose ephemeral is the id point (#1077)
+- **Breaking:** `ShieldedTreasury._send` rejects self as recipient (#1177)
+- **Breaking:** `UnshieldedTreasury._send` rejects the contract's own address as recipient with `UnshieldedTreasury: self-send`. A self-addressed send is auto-received, so the funds stayed held while the tracked balance dropped and `_send` could no longer reach them. (#1182)
+
+### Removed
+
+- `ProposalManager.executedState` and `cancelledState` (#1193)
 
 ## 0.4.0-alpha.6 (2026-10-06)
 

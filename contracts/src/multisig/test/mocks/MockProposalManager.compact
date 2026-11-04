@@ -23,7 +23,7 @@ export circuit rewindProposalCounter(by: Uint<16>): [] {
 }
 
 /**
- * TEST-ONLY. Overwrites a proposal's `state` with an arbitrary value, leaving
+ * TEST-ONLY. Overwrites a proposal's `status` with an arbitrary value, leaving
  * its other fields intact.
  *
  * This models what a consuming contract can already do: importing
@@ -34,10 +34,10 @@ export circuit rewindProposalCounter(by: Uint<16>): [] {
  * deployment could never reach.
  *
  * @param {Uint<64>} id - The proposal ID.
- * @param {Uint<64>} state - The raw `state` value to write.
+ * @param {Proposal_ProposalStatus} status - The raw `status` value to write.
  * @returns {[]} Empty tuple.
  */
-export circuit forceProposalState(id: Uint<64>, state: Uint<64>): [] {
+export circuit forceProposalStatus(id: Uint<64>, status: Proposal_ProposalStatus): [] {
   Proposal_assertProposalExists(id);
 
   const proposal = _proposals.lookup(disclose(id));
@@ -45,16 +45,30 @@ export circuit forceProposalState(id: Uint<64>, state: Uint<64>): [] {
     to: proposal.to,
     color: proposal.color,
     amount: proposal.amount,
-    state: disclose(state)
+    expiry: proposal.expiry,
+    status: disclose(status)
   });
 }
 
-export pure circuit executedState(): Uint<64> {
-  return Proposal_executedState();
-}
+/**
+ * TEST-ONLY. Overwrites a proposal's `expiry` with an arbitrary value, leaving
+ * its other fields intact. Same consumer capability as `forceProposalStatus`.
+ *
+ * @param {Uint<64>} id - The proposal ID.
+ * @param {Uint<64>} expiry - The raw `expiry` value to write.
+ * @returns {[]} Empty tuple.
+ */
+export circuit forceProposalExpiry(id: Uint<64>, expiry: Uint<64>): [] {
+  Proposal_assertProposalExists(id);
 
-export pure circuit cancelledState(): Uint<64> {
-  return Proposal_cancelledState();
+  const proposal = _proposals.lookup(disclose(id));
+  _proposals.insert(disclose(id), Proposal_Proposal {
+    to: proposal.to,
+    color: proposal.color,
+    amount: proposal.amount,
+    expiry: disclose(expiry),
+    status: proposal.status
+  });
 }
 
 export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Proposal_Recipient {
