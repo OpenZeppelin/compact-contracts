@@ -230,7 +230,13 @@ module NativeShieldedToken {
    *
    * @notice The consumer SHOULD persist the returned coin info in its own
    * ledger state: it is the contract's holding and is not otherwise
-   * recoverable.
+   * recoverable. The coin is already claimed as a receive by the mint, so a
+   * custody module must record it without calling `receiveShielded` on it
+   * again (see the recipient-arm note in `NativeShieldedTokenCore`).
+   * `ShieldedTreasury._deposit` claims on the way in and is not that path;
+   * a record-only circuit is tracked in compact-contracts#1112. Until a
+   * custody module is composed, the only spend of a contract-held coin is
+   * `_burnFromSelf`.
    *
    * @constraints k=14, rows=10221
    *
@@ -310,7 +316,9 @@ module NativeShieldedToken {
    *
    * @dev The consumer SHOULD persist the returned change coin info in its own
    * ledger state: the change replaces `coin` as the contract's holding, and
-   * its info is not otherwise recoverable.
+   * its info is not otherwise recoverable. Like a `_mintToSelf` coin, the
+   * change is already claimed as a receive, so a custody module must record
+   * it without a second `receiveShielded`.
    *
    * @constraints k=15, rows=23208
    *
