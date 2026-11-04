@@ -29,8 +29,15 @@ import type {
 } from '@midnight-ntwrk/compact-runtime';
 import {
   bigIntToValue,
+  CompactTypeField,
+  CompactTypeVector,
+  convertBytesToUint,
   copyCircuitContext,
+  degradeToTransient,
   emptyZswapLocalState,
+  MAX_FIELD,
+  transientHash,
+  upgradeFromTransient,
 } from '@midnight-ntwrk/compact-runtime';
 import {
   CircuitContextManager,
@@ -686,6 +693,31 @@ describe.skipIf(isLiveBackend())(
       expect(result.sent.value).toBe(AMOUNT);
       expect(result.sent.color).toStrictEqual(COLOR);
       expect(result.change.is_some).toBe(false);
+    });
+
+    // `sendShielded` derives both output nonces from the input nonce under
+    // fixed public tags, so a depositor who knows the coin knows them too.
+    // This pins the derivation the module notice describes; if the standard
+    // library moves it to secret material, the notice comes out.
+    const evolved = (tag: string, nonce: Uint8Array): Uint8Array => {
+      const bytes = new TextEncoder().encode(tag);
+      return upgradeFromTransient(
+        transientHash(new CompactTypeVector(2, CompactTypeField), [
+          convertBytesToUint(MAX_FIELD, bytes.length, bytes, 'Field', 'test'),
+          degradeToTransient(nonce),
+        ]),
+      );
+    };
+
+    it('a depositor can derive the sent and change nonces from the coin nonce', async () => {
+      const [result] = await drain(PARTIAL);
+
+      expect(hex(result.sent.nonce)).toBe(
+        hex(evolved('midnight:kernel:nonce_evolve', COIN_NONCE)),
+      );
+      expect(hex(result.change.value.nonce)).toBe(
+        hex(evolved('midnight:kernel:nonce_evolve/2', COIN_NONCE)),
+      );
     });
 
     it.each(drains)(
