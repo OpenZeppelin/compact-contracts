@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.4.0 (2026-11-04)
+
 ### Changed
 
 - **Breaking:** Move `Recipient` and `RecipientKind` into the new types-only `multisig/RecipientTypes` module (#1197)
