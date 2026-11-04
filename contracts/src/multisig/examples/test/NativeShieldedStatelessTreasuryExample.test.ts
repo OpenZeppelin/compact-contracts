@@ -17,8 +17,8 @@ import {
 import {
   Contract as Example,
   ledger,
-} from '../../../../artifacts/multisig/examples/ShieldedMultiSigV2Example/contract/index.js';
-import { ShieldedMultiSigV2_2To3Simulator } from '../../presets/test/simulators/ShieldedMultiSigV2_2To3Simulator.js';
+} from '../../../../artifacts/multisig/examples/NativeShieldedStatelessTreasuryExample/contract/index.js';
+import { NativeShieldedStatelessTreasury_2To3Simulator } from '../../presets/test/simulators/NativeShieldedStatelessTreasury_2To3Simulator.js';
 import { executeMsgHash } from '../../test/EcdsaTestUtils.js';
 import {
   EmptyPrivateState,
@@ -36,7 +36,7 @@ const S2 = signerFromLabel('v2-example-signer-2');
 const S3 = signerFromLabel('v2-example-signer-3');
 
 const commitmentOf = (s: Signer) =>
-  ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
+  NativeShieldedStatelessTreasury_2To3Simulator.calculateSignerId(
     s.publicKey,
     INSTANCE_SALT,
   );
@@ -68,10 +68,10 @@ const ExampleSimulator = createSimulator<
   ],
   ledgerExtractor: (state) => ledger(state),
   witnessesFactory: () => emptyWitnesses(),
-  artifactName: 'ShieldedMultiSigV2Example',
+  artifactName: 'NativeShieldedStatelessTreasuryExample',
 });
 
-describe('ShieldedMultiSigV2Example', () => {
+describe('NativeShieldedStatelessTreasuryExample', () => {
   let example: InstanceType<typeof ExampleSimulator>;
 
   beforeEach(async () => {
