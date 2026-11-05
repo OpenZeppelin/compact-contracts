@@ -86,6 +86,13 @@ pragma language_version >= 0.26.0;
  * same `pk` leaks the difference of the two plaintexts (`c1` collides, so
  * `c2 - c2' = m - m'`). Prefer `expandRandomness` with a distinct tag per
  * encryption.
+ *
+ * @dev Deterministic zero. `encryptZero` returns the fixed pair `(O, O)`, not a
+ * hiding encryption, so a stored slot still holding it is publicly recognizable
+ * as zero by construction. An importing module that persists ciphertexts should
+ * enumerate that among its own disclosures. A zero reached by homomorphic
+ * subtraction is randomized only when the inputs' randomizers differ: `sub(ct,
+ * ct)` cancels both components and yields `(O, O)` again.
  */
 module ElGamal {
   import CompactStandardLibrary;
@@ -181,9 +188,9 @@ module ElGamal {
    * curve identity). Useful for initializing a fresh balance.
    *
    * @notice This is a fixed, deterministic value `(O, O)` — NOT a hiding
-   * encryption. It is publicly recognizable, so a slot left at `encryptZero` is
-   * distinguishable as never-written. Rerandomize (or credit with fresh `r`)
-   * before treating it as private.
+   * encryption. It is publicly recognizable, so a slot holding `encryptZero` is
+   * distinguishable as zero by construction (never written, or reset to it).
+   * Rerandomize (or credit with fresh `r`) before treating it as private.
    */
   export pure circuit encryptZero(): Ciphertext {
     const id = ecMulGenerator(0 as JubjubScalar);
