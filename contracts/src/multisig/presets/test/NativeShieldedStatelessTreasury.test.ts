@@ -17,7 +17,7 @@ import {
   hexOf,
   mintMsgHash,
 } from '../../test/EcdsaTestUtils.js';
-import { ShieldedMultiSigV2_2To3Simulator } from './simulators/ShieldedMultiSigV2_2To3Simulator.js';
+import { NativeShieldedStatelessTreasury_2To3Simulator } from './simulators/NativeShieldedStatelessTreasury_2To3Simulator.js';
 
 const RecipientKind = { ShieldedUser: 0, UnshieldedUser: 1, Contract: 2 };
 
@@ -36,18 +36,21 @@ const S2 = signerFromLabel('v2-signer-2');
 const S3 = signerFromLabel('v2-signer-3');
 const OUTSIDER = signerFromLabel('v2-outsider');
 
-const COMMITMENT1 = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
-  S1.publicKey,
-  INSTANCE_SALT,
-);
-const COMMITMENT2 = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
-  S2.publicKey,
-  INSTANCE_SALT,
-);
-const COMMITMENT3 = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
-  S3.publicKey,
-  INSTANCE_SALT,
-);
+const COMMITMENT1 =
+  NativeShieldedStatelessTreasury_2To3Simulator.calculateSignerId(
+    S1.publicKey,
+    INSTANCE_SALT,
+  );
+const COMMITMENT2 =
+  NativeShieldedStatelessTreasury_2To3Simulator.calculateSignerId(
+    S2.publicKey,
+    INSTANCE_SALT,
+  );
+const COMMITMENT3 =
+  NativeShieldedStatelessTreasury_2To3Simulator.calculateSignerId(
+    S3.publicKey,
+    INSTANCE_SALT,
+  );
 const SIGNER_COMMITMENTS = [COMMITMENT1, COMMITMENT2, COMMITMENT3];
 
 function makeRecipient(address: Uint8Array): {
@@ -79,11 +82,11 @@ function makeQualifiedCoin(
 const hexBytes = (hex: string): Uint8Array =>
   Uint8Array.from(Buffer.from(hex, 'hex'));
 
-let multisig: ShieldedMultiSigV2_2To3Simulator;
+let multisig: NativeShieldedStatelessTreasury_2To3Simulator;
 
 /** The execute digest the contract computes for these params at its current nonce. */
 async function executeDigest(
-  m: ShieldedMultiSigV2_2To3Simulator,
+  m: NativeShieldedStatelessTreasury_2To3Simulator,
   to: { kind: number; address: Uint8Array },
   coin: { color: Uint8Array },
   amount: bigint,
@@ -101,13 +104,13 @@ async function executeDigest(
 // A fresh 2-of-3 stateless multisig. Mutating groups build one per test
 // (`beforeEach`); the read-only `view` group shares one deploy (`beforeAll`).
 const freshMultisig = () =>
-  ShieldedMultiSigV2_2To3Simulator.create(
+  NativeShieldedStatelessTreasury_2To3Simulator.create(
     INSTANCE_SALT,
     SIGNER_COMMITMENTS,
     true,
   );
 
-describe('ShieldedMultiSigV2', () => {
+describe('NativeShieldedStatelessTreasury', () => {
   describe('constructor', () => {
     it('should derive a domain separator matching ethers', async () => {
       multisig = await freshMultisig();
@@ -118,7 +121,7 @@ describe('ShieldedMultiSigV2', () => {
         ).toString('hex'),
       ).toEqual(
         TypedDataEncoder.hashDomain({
-          name: 'ShieldedMultiSigV2',
+          name: 'NativeShieldedStatelessTreasury',
           version: '1',
           salt: `0x${Buffer.from(INSTANCE_SALT).toString('hex')}`,
         }).slice(2),
@@ -126,7 +129,7 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     it('should initialize with 2-of-3 threshold', async () => {
-      multisig = await ShieldedMultiSigV2_2To3Simulator.create(
+      multisig = await NativeShieldedStatelessTreasury_2To3Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         true,
@@ -136,7 +139,7 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     it('should register all signer commitments', async () => {
-      multisig = await ShieldedMultiSigV2_2To3Simulator.create(
+      multisig = await NativeShieldedStatelessTreasury_2To3Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         true,
@@ -147,15 +150,16 @@ describe('ShieldedMultiSigV2', () => {
     });
 
     it('should reject a non-signer commitment', async () => {
-      multisig = await ShieldedMultiSigV2_2To3Simulator.create(
+      multisig = await NativeShieldedStatelessTreasury_2To3Simulator.create(
         INSTANCE_SALT,
         SIGNER_COMMITMENTS,
         true,
       );
-      const unknown = ShieldedMultiSigV2_2To3Simulator.calculateSignerId(
-        OUTSIDER.publicKey,
-        INSTANCE_SALT,
-      );
+      const unknown =
+        NativeShieldedStatelessTreasury_2To3Simulator.calculateSignerId(
+          OUTSIDER.publicKey,
+          INSTANCE_SALT,
+        );
       expect(await multisig.isSigner(unknown)).toEqual(false);
     });
   });
@@ -411,7 +415,7 @@ describe('ShieldedMultiSigV2', () => {
         };
 
         const ourDomain = {
-          name: 'ShieldedMultiSigV2',
+          name: 'NativeShieldedStatelessTreasury',
           version: '1',
           salt: hexOf(INSTANCE_SALT),
         };
@@ -545,7 +549,7 @@ describe('ShieldedMultiSigV2', () => {
               [sign(S1, digest), sign(S2, digest)],
             ),
           ).rejects.toThrow(
-            'ShieldedMultiSigV2: recipient must be a coin public key',
+            'NativeShieldedStatelessTreasury: recipient must be a coin public key',
           );
         });
 
@@ -566,7 +570,7 @@ describe('ShieldedMultiSigV2', () => {
               [sign(S1, digest), sign(S2, digest)],
             ),
           ).rejects.toThrow(
-            'ShieldedMultiSigV2: recipient must be a coin public key',
+            'NativeShieldedStatelessTreasury: recipient must be a coin public key',
           );
         });
       });
@@ -591,11 +595,12 @@ describe('ShieldedMultiSigV2', () => {
 
     describe('uninitialized', () => {
       it('cannot execute, and holds a zero domain separator', async () => {
-        const uninit = await ShieldedMultiSigV2_2To3Simulator.create(
-          INSTANCE_SALT,
-          SIGNER_COMMITMENTS,
-          false,
-        );
+        const uninit =
+          await NativeShieldedStatelessTreasury_2To3Simulator.create(
+            INSTANCE_SALT,
+            SIGNER_COMMITMENTS,
+            false,
+          );
 
         expect(
           Buffer.from((await uninit.getPublicState())._domainSeparator).every(
@@ -621,7 +626,7 @@ describe('ShieldedMultiSigV2', () => {
 
     // The mirror of the V3 spec's check
     describe('cross-preset replay', () => {
-      it('should reject a ShieldedMultiSigV3 mint signature', async () => {
+      it('should reject a NativeShieldedTokenIssuer mint signature', async () => {
         const address = new Uint8Array(32).fill(7);
         const to = makeRecipient(address);
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
@@ -654,12 +659,13 @@ describe('ShieldedMultiSigV2', () => {
 
       it('should reject a signature bound to another instance', async () => {
         const instance1 = await freshMultisig();
-        const instance2 = await ShieldedMultiSigV2_2To3Simulator.create(
-          INSTANCE_SALT,
-          SIGNER_COMMITMENTS,
-          true,
-          isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
-        );
+        const instance2 =
+          await NativeShieldedStatelessTreasury_2To3Simulator.create(
+            INSTANCE_SALT,
+            SIGNER_COMMITMENTS,
+            true,
+            isLiveBackend() ? {} : { contractAddress: OTHER_ADDRESS },
+          );
         const to = makeRecipient(new Uint8Array(32).fill(7));
         const coin = makeQualifiedCoin(COLOR, AMOUNT, 0n);
         const digest = await executeDigest(instance1, to, coin, 100n);

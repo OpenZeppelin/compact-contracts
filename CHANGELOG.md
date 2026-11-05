@@ -7,14 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.5.0-alpha.2 (2026-11-04)
+
 ### Added
 
 - Add the `math/UintN<N>` module: `wrappingAdd` and `wrappingSub` compute `(a ± b) mod 2^N` on `Uint<N>` for any width and never fail, and `MODULUS` returns `2^N` as a `Field`. (#1189)
+- Add the `ConfidentialNoteFungibleTokenDelivery` extension: `_deliver` publishes an output note's `(value, nonce)` to the `_deliveries` list, padded under one nonce-bound ECDH ephemeral and two `EcdhMask.kdf` masks to the owner's Jubjub key, and the pure `recoverNote` opens an entry off-chain, so a wallet finds its notes by scanning the chain. (#1183)
 
 ### Changed
 
+- `EcdhMask.kdf` is `kdfFromDigest(pointDigest(S), domain)`, both exported, so a consumer deriving several masks from one shared point digests it once. Masks are unchanged. (#1183)
 - `EcdhMask.encrypt` takes a `Uint<248>` value instead of a `Uint<128>`, the full range of its 248-bit pad. Ciphertexts for `Uint<128>` values are unchanged. The hiding margin shrinks with the value's width and is gone at the full 248 bits. (#1150)
 - `ElGamal.encryptPoint` takes its ephemeral and mask from `Ecdh.deriveShared`, so its weak-input guards now read `Ecdh: identity pk` / `Ecdh: zero ephemeral` instead of `ElGamal: identity pk` / `ElGamal: zero randomness`. Ciphertexts are unchanged. (#1110)
+- **Breaking:** Rename the `ShieldedMultiSigV2` preset module to `NativeShieldedStatelessTreasury`, and its example to `NativeShieldedStatelessTreasuryExample`. The EIP-712 domain name changes with it, so `_domainSeparator` and every `execute` digest change: existing signatures must be re-signed. `execute`'s recipient error reads `NativeShieldedStatelessTreasury: recipient must be a coin public key`. `_nonce` is exported, and the example's `ledger()` exposes it. (#891)
 
 ### Fixed
 

@@ -21,6 +21,16 @@ export circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
   return EcdhMask_kdf(sShared, domain);
 }
 
+export circuit pointDigest(sShared: JubjubPoint): Bytes<32> {
+  _invocations.increment(1);
+  return EcdhMask_pointDigest(sShared);
+}
+
+export circuit kdfFromDigest(digest: Bytes<32>, domain: Bytes<32>): Field {
+  _invocations.increment(1);
+  return EcdhMask_kdfFromDigest(digest, domain);
+}
+
 export circuit encrypt(
                       recipientPk: JubjubPoint,
                       value: Uint<248>,

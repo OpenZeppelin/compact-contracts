@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.5.0-alpha.1 (multisig/ShieldedTreasuryStateless.compact)
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (multisig/ShieldedTreasuryStateless.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -63,16 +63,10 @@ module ShieldedTreasuryStateless {
    * self — `sendShielded` already routes it to self.) No balance or
    * received/sent accounting is tracked on the ledger.
    *
-   * @warning The returned `ShieldedSendResult` holds the sent and change coins
-   * in plaintext (`nonce`, `color`, `value`). Consuming it in-circuit is safe
-   * (passing `result.change` to `sendImmediateShielded`, for instance). Returning
-   * it from your entry point, writing it to ledger, or passing it to another
-   * contract publishes those coin details, including the amount left over from
-   * the coin that was spent. Note the compiler will NOT stop you: the
-   * `disclose` calls below clear the witness taint, so such a return compiles
-   * with no `disclose` of your own and no marker at the disclosure site. If you
-   * do not need in-circuit change handling, ignore the result. The change is
-   * recoverable off-chain from the transaction's private proving state.
+   * @warning The result holds the sent and change coins in plaintext.
+   * - Returning it from an entry point is safe: it stays with the caller.
+   * - Writing it to the ledger publishes both coins. The compiler will not
+   *   warn, because `_send` already wraps its inputs in `disclose`.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own

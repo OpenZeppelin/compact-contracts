@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (multisig/examples/NativeShieldedStatelessTreasuryExample.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @title NativeShieldedStatelessTreasuryExample
+ * @description Deployable reference contract for the `NativeShieldedStatelessTreasury`
+ * preset: a 2-of-3 wallet whose spends are authorized by ECDSA signatures
+ * collected off-chain and verified in a single transaction.
+ *
+ * Coin data never reaches the public ledger. The operator tracks the wallet's
+ * UTXOs off-chain and passes the coin to spend as a circuit argument.
+ */
+
+import CompactStandardLibrary;
+
+import "../presets/NativeShieldedStatelessTreasury"<2> prefix NativeShieldedStatelessTreasury_;
+
+export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
+
+// Surface the preset's replay counter and domain separator unprefixed so
+// `ledger()` readers see the key names the preset published.
+import { _nonce, _domainSeparator } from "../presets/NativeShieldedStatelessTreasury"<2>;
+export { _nonce, _domainSeparator };
+
+/**
+ * @description Deploys the wallet with 3 signer commitments.
+ *
+ * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
+ * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
+ */
+constructor(
+  instanceSalt: Bytes<32>,
+  signerCommitments: Vector<3, Bytes<32>>
+) {
+  NativeShieldedStatelessTreasury_initialize<3>(instanceSalt, signerCommitments);
+}
+
+export pure circuit _calculateSignerId(
+  pk: Secp256k1Point,
+  salt: Bytes<32>
+): Bytes<32> {
+  return NativeShieldedStatelessTreasury__calculateSignerId(pk, salt);
+}
+
+export circuit deposit(coin: ShieldedCoinInfo): [] {
+  return NativeShieldedStatelessTreasury_deposit(coin);
+}
+
+export circuit execute(
+  to: NativeShieldedStatelessTreasury_Proposal_Recipient,
+  amount: Uint<128>,
+  coin: QualifiedShieldedCoinInfo,
+  pubkeys: Vector<2, Secp256k1Point>,
+  signatures: Vector<2, Secp256k1EcdsaSignature>
+): ShieldedSendResult {
+  return NativeShieldedStatelessTreasury_execute(to, amount, coin, pubkeys, signatures);
+}
+
+export circuit getNonce(): Uint<64> {
+  return NativeShieldedStatelessTreasury_getNonce();
+}
+
+export circuit getSignerCount(): Uint<8> {
+  return NativeShieldedStatelessTreasury_getSignerCount();
+}
+
+export circuit getThreshold(): Uint<8> {
+  return NativeShieldedStatelessTreasury_getThreshold();
+}
+
+export circuit isSigner(commitment: Bytes<32>): Boolean {
+  return NativeShieldedStatelessTreasury_isSigner(commitment);
+}
