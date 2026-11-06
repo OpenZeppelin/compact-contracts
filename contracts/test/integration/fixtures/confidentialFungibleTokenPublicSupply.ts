@@ -8,6 +8,7 @@ import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
+import { deriveEncryptionPk } from '#test-utils/fixtures/elgamal.js';
 import {
   type ElGamal_Ciphertext,
   ledger,
@@ -81,8 +82,10 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
     return this.circuits.impure.totalSupply();
   }
 
-  public register(): Promise<Uint8Array> {
-    return this.circuits.impure.register();
+  /** @description Registers the active identity with the key derived from its EK. */
+  public async register(): Promise<Uint8Array> {
+    const ek = (await this.getPrivateState()).encryptionKey;
+    return this.circuits.impure.registerWithKey(deriveEncryptionPk(ek));
   }
 
   public isRegistered(account: Uint8Array): Promise<boolean> {
