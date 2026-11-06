@@ -177,7 +177,7 @@ module MultiToken {
   /**
    * @description Initializes the contract by setting the base URI for all tokens.
    *
-   * @constraints k=6, rows=31
+   * @constraints k=7, rows=71
    *
    * Requirements:
    *
@@ -225,7 +225,7 @@ module MultiToken {
    * Clients calling this function must replace the `\{id\}` substring with the
    * actual token type ID.
    *
-   * @constraints k=8, rows=176
+   * @constraints k=7, rows=99
    *
    * Requirements:
    *
@@ -242,7 +242,7 @@ module MultiToken {
   /**
    * @description Returns the amount of `id` tokens owned by `account`.
    *
-   * @constraints k=10, rows=867
+   * @constraints k=9, rows=344
    *
    * Requirements:
    *
@@ -271,7 +271,7 @@ module MultiToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_MultiTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @constraints k=13, rows=2938
+   * @constraints k=13, rows=2297
    *
    * Requirements:
    *
@@ -296,7 +296,7 @@ module MultiToken {
   /**
    * @description Queries if `operator` is an authorized operator for `account`.
    *
-   * @constraints k=11, rows=1347
+   * @constraints k=10, rows=511
    *
    * Requirements:
    *
@@ -333,7 +333,7 @@ module MultiToken {
    * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @constraints k=13, rows=4833
+   * @constraints k=13, rows=3026
    *
    * Requirements:
    *
@@ -370,7 +370,7 @@ module MultiToken {
    * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @constraints k=12, rows=2381
+   * @constraints k=10, rows=975
    *
    * Requirements:
    *
@@ -464,7 +464,7 @@ module MultiToken {
    * Tokens sent to a contract address may become irretrievable.
    * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
-   * @constraints k=13, rows=4832
+   * @constraints k=13, rows=3025
    *
    * Requirements:
    *
@@ -507,7 +507,7 @@ module MultiToken {
    * Tokens sent to a contract address may become irretrievable.
    * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
-   * @constraints k=12, rows=2380
+   * @constraints k=10, rows=974
    *
    * Requirements:
    *
@@ -549,7 +549,7 @@ module MultiToken {
    * `https://token-cdn-domain/000000000000000000000000000000000000000000000000000000000004cce0.json`
    * for token type ID 0x4cce0.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=47
    *
    * Requirements:
    *
@@ -570,7 +570,7 @@ module MultiToken {
    * contract-to-contract calls. This restriction prevents assets from
    * being inadvertently locked in contracts that cannot currently handle token receipt.
    *
-   * @constraints k=11, rows=1449
+   * @constraints k=10, rows=595
    *
    * Requirements:
    *
@@ -600,7 +600,7 @@ module MultiToken {
    * Tokens sent to a contract address may become irretrievable.
    * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
-   * @constraints k=11, rows=1448
+   * @constraints k=10, rows=594
    *
    * Requirements:
    *
@@ -625,7 +625,7 @@ module MultiToken {
   /**
    * @description Destroys a `value` amount of tokens of type `id` from `fromAddress`.
    *
-   * @constraints k=11, rows=1275
+   * @constraints k=10, rows=509
    *
    * Requirements:
    *
@@ -653,7 +653,7 @@ module MultiToken {
    * @notice This circuit does not check for access permissions but can be useful as a building block
    * for more complex contract logic.
    *
-   * @constraints k=11, rows=1280
+   * @constraints k=10, rows=526
    *
    * Requirements:
    *

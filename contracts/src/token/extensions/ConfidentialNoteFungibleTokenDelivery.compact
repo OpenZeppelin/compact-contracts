@@ -186,7 +186,7 @@ module ConfidentialNoteFungibleTokenDelivery {
    * `_deliveries` entry. Call it beside the core's note creation, once per
    * output and intended key.
    *
-   * @constraints k=15, rows=24782
+   * @constraints k=15, rows=21748
    *
    * @warning No authorization:
    * The composer gates who may call this.
@@ -240,7 +240,7 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @description Strips the pads from an entry with the owner's secret scalar.
    * Pure and off-chain: a wallet reads its notes with no proof.
    *
-   * @constraints k=14, rows=15063
+   * @constraints k=14, rows=13319
    *
    * @notice Raw result:
    * Nothing derived from `ekScalar` or the recovered pair is checked, so the

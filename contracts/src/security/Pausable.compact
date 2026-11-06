@@ -21,7 +21,7 @@ module Pausable {
   /**
    * @description Returns true if the contract is paused, and false otherwise.
    *
-   * @constraints k=6, rows=24
+   * @constraints k=6, rows=34
    *
    * @return {Boolean} True if paused.
    */
@@ -32,7 +32,7 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is paused.
    *
-   * @constraints k=6, rows=25
+   * @constraints k=6, rows=35
    *
    * Requirements:
    *
@@ -47,7 +47,7 @@ module Pausable {
   /**
    * @description Makes a circuit only callable when the contract is not paused.
    *
-   * @constraints k=6, rows=28
+   * @constraints k=6, rows=37
    *
    * Requirements:
    *
@@ -62,7 +62,7 @@ module Pausable {
   /**
    * @description Triggers a stopped state.
    *
-   * @constraints k=6, rows=28
+   * @constraints k=6, rows=48
    *
    * Requirements:
    *
@@ -78,7 +78,7 @@ module Pausable {
   /**
    * @description Lifts the pause on the contract.
    *
-   * @constraints k=6, rows=25
+   * @constraints k=6, rows=46
    *
    * Requirements:
    *

@@ -130,7 +130,6 @@ module FungibleToken {
    * @dev This MUST be called in the implementing contract's constructor. Failure to do so
    * can lead to an irreparable contract.
    *
-   * @constraints k=10, rows=71
    *
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
@@ -178,7 +177,7 @@ module FungibleToken {
   /**
    * @description Returns the token name.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -194,7 +193,7 @@ module FungibleToken {
   /**
    * @description Returns the symbol of the token.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -210,7 +209,7 @@ module FungibleToken {
   /**
    * @description Returns the number of decimals used to get its user representation.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -226,7 +225,7 @@ module FungibleToken {
   /**
    * @description Returns the value of tokens in existence.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -242,7 +241,7 @@ module FungibleToken {
   /**
    * @description Returns the value of tokens owned by `account`.
    *
-   * @constraints k=10, rows=668
+   * @constraints k=9, rows=282
    *
    * @dev Manually checks if `account` is a key in the map and returns 0 if it is not.
    *
@@ -267,7 +266,7 @@ module FungibleToken {
   /**
    * @description Moves a `value` amount of tokens from the caller's account to `to`.
    *
-   * @constraints k=13, rows=3743
+   * @constraints k=13, rows=2615
    *
    * @notice Transfers to contract addresses are disallowed until this library migrates to
    * contract-to-contract calls. This restriction prevents assets from
@@ -298,7 +297,7 @@ module FungibleToken {
   /**
    * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
    *
-   * @constraints k=13, rows=3740
+   * @constraints k=13, rows=2603
    *
    * @warning Transfers to contract addresses are considered unsafe because this library has not yet
    * migrated to contract-to-contract calls.
@@ -329,7 +328,7 @@ module FungibleToken {
    * @description Returns the remaining number of tokens that `spender` will be allowed to spend on behalf of `owner`
    * through `transferFrom`. This value changes when `approve` or `transferFrom` are called.
    *
-   * @constraints k=11, rows=1350
+   * @constraints k=10, rows=511
    *
    * @dev Manually checks if `owner` and `spender` are keys in the map and returns 0 if they are not.
    *
@@ -359,7 +358,7 @@ module FungibleToken {
   /**
    * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
    *
-   * @constraints k=13, rows=3066
+   * @constraints k=13, rows=2329
    *
    * Requirements:
    *
@@ -384,7 +383,7 @@ module FungibleToken {
    * @description Moves `value` tokens from `fromAddress` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
    *
-   * @constraints k=13, rows=4906
+   * @constraints k=13, rows=3089
    *
    * @notice Transfers to contract addresses are disallowed until this library migrates to
    * contract-to-contract calls. This restriction prevents assets from
@@ -418,7 +417,7 @@ module FungibleToken {
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    *
-   * @constraints k=13, rows=4903
+   * @constraints k=13, rows=3077
    *
    * @warning Transfers to contract addresses are considered unsafe because this library has not yet
    * migrated to contract-to-contract calls.
@@ -456,7 +455,7 @@ module FungibleToken {
    * This circuit is equivalent to {transfer}, and can be used to
    * e.g. implement automatic token fees, slashing mechanisms, etc.
    *
-   * @constraints k=12, rows=2125
+   * @constraints k=10, rows=871
    *
    * @notice Transfers to contract addresses are disallowed until this library migrates to
    * contract-to-contract calls. This restriction prevents assets from
@@ -489,7 +488,7 @@ module FungibleToken {
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    *
-   * @constraints k=12, rows=2122
+   * @constraints k=10, rows=859
    *
    * @warning Transfers to contract addresses are considered unsafe because this library has not yet
    * migrated to contract-to-contract calls.
@@ -524,7 +523,7 @@ module FungibleToken {
    * (or `to`) is the zero address.
    * @dev Checks for a mint overflow in order to output a more readable error message.
    *
-   * @constraints k=11, rows=1305
+   * @constraints k=10, rows=820
    *
    * Requirements:
    *
@@ -568,7 +567,7 @@ module FungibleToken {
    * @description Creates a `value` amount of tokens and assigns them to `account`,
    * by transferring it from the zero address. Relies on the `update` mechanism.
    *
-   * @constraints k=11, rows=1328
+   * @constraints k=10, rows=570
    *
    * @notice Transfers to contract addresses are disallowed until this library migrates to
    * contract-to-contract calls. This restriction prevents assets from
@@ -594,7 +593,7 @@ module FungibleToken {
   /**
    * @description Unsafe variant of `_mint` which allows transfers to contract addresses.
    *
-   * @constraints k=11, rows=1325
+   * @constraints k=10, rows=558
    *
    * @warning Transfers to contract addresses are considered unsafe because this library has not yet
    * migrated to contract-to-contract calls.
@@ -623,7 +622,7 @@ module FungibleToken {
    * @description Destroys a `value` amount of tokens from `account`, lowering the total supply.
    * Relies on the `_update` mechanism.
    *
-   * @constraints k=11, rows=1268
+   * @constraints k=10, rows=547
    *
    * Requirements:
    *
@@ -646,7 +645,7 @@ module FungibleToken {
    * This circuit is equivalent to `approve`, and can be used to
    * e.g. set automatic allowances for certain subsystems, etc.
    *
-   * @constraints k=11, rows=1407
+   * @constraints k=10, rows=557
    *
    * Requirements:
    *
@@ -685,7 +684,7 @@ module FungibleToken {
    * @description Updates `owner`'s allowance for `spender` based on spent `value`.
    * Does not update the allowance value in case of infinite allowance.
    *
-   * @constraints k=11, rows=1935
+   * @constraints k=10, rows=731
    *
    * Requirements:
    *
