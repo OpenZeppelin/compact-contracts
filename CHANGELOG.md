@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (breaking)
 
-- CFT: replace `register()` with `registerWithKey(pk: JubjubPoint)`, which takes the caller's encryption public key and checks it against the key derived from `wit_ConfidentialTokenEK` with `ElGamal.assertKeyPair` (`ElGamal: ek/pk mismatch`). Callers derive `pk` off-chain with `ElGamal.derivePk` (#???)
+- CFT: replace `register()` with `registerWithKey(pk: JubjubPoint)`, which takes the caller's encryption public key and checks it against the key derived from `wit_ConfidentialTokenEK` with `ElGamal.assertKeyPair` (`ElGamal: ek/pk mismatch`). Callers derive `pk` off-chain with `ElGamal.derivePk` (#1228)
 
 ## 0.5.0-alpha.2 (2026-11-04)
 
