@@ -20,9 +20,9 @@
  *
  * Never regenerate a value without deciding which of the three it is.
  *
- * PROVENANCE. Every value below is byte-identical under compiler 0.34.0 (CI,
- * language 0.26.0) and 0.31.1 (language 0.23.0), on runtime 0.19.0. Digests,
- * layout, and circuit surface alike.
+ * PROVENANCE. Every value below is byte-identical under compiler 0.36.0 (CI,
+ * language 0.28.0, runtime 0.21.0), 0.34.0 (language 0.26.0) and 0.31.1
+ * (language 0.23.0, runtime 0.19.0). Digests, layout, and circuit surface alike.
  *
  * Recorded, not asserted. Those compilers differ in name and agree on every byte,
  * so a pinned `compiler-version` would fail with nothing broken. The enforceable

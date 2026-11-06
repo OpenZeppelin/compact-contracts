@@ -116,7 +116,7 @@ module Eip712 {
    * so the name and version arrive already hashed. Compact has no dynamic
    * types, so a consumer hashes its own fixed-length literals.
    *
-   * @constraints k=14, rows=4561 (zkir-v3)
+   * @constraints k=14, rows=4561
    *
    * @param {Bytes<32>} hashedName - `keccak256(bytes(name))`.
    * @param {Bytes<32>} hashedVersion - `keccak256(bytes(version))`.
@@ -140,7 +140,7 @@ module Eip712 {
    * @description Wraps a struct hash in the typed-data envelope, yielding the
    * digest an EVM signer actually signs.
    *
-   * @constraints k=14, rows=4463 (zkir-v3)
+   * @constraints k=14, rows=4463
    *
    * Requirements:
    *

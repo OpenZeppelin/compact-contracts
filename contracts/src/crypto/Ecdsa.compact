@@ -21,7 +21,7 @@ module Ecdsa {
    * @description Returns whether `s` is canonical, i.e. `s <= n / 2` where `n`
    * is the secp256k1 group order.
    *
-   * @constraints k=13, rows=5125 (zkir-v3)
+   * @constraints k=13, rows=5446
    *
    * @param {Secp256k1Scalar} s - The `s` component of a signature.
    * @returns {Boolean} True if `s` is in the low half.
@@ -72,7 +72,7 @@ module Ecdsa {
   /**
    * @description Rejects a signature in the high half.
    *
-   * @constraints k=13, rows=5156 (zkir-v3)
+   * @constraints k=13, rows=5797
    *
    * Requirements:
    *
@@ -88,9 +88,11 @@ module Ecdsa {
   /**
    * @description Verifies `sig` over `msgHash` under `pk`, accepting only the
    * low-s encoding. Reports the result instead of asserting, so a caller can
-   * fold it into a count or a threshold.
+   * fold it into a count or a threshold. The one exception is the identity
+   * point as `pk`: since toolchain 0.35.0 the standard library's
+   * `secp256k1EcdsaVerify` fails the circuit on it instead of returning false.
    *
-   * @constraints k=16, rows=34056 (zkir-v3)
+   * @constraints k=16, rows=50859
    *
    * @param {Bytes<32>} msgHash - The digest that was signed.
    * @param {Secp256k1EcdsaSignature} sig - The signature over `msgHash`.

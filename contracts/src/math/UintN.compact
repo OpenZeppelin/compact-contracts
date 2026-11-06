@@ -29,8 +29,7 @@ module UintN<#N> {
    * @description `2^N` as a `Field`: the modulus of every circuit in this
    * module.
    *
-   * @constraints k=5, rows=23 (zkir-v2, any N)
-   * @constraints k=6, rows=31 (zkir-v3, any N)
+   * @constraints k=6, rows=31 (any N)
    *
    * @returns {Field} `2^N`.
    */
@@ -47,9 +46,9 @@ module UintN<#N> {
    * @dev The wrap test is `a > MAX - b`, which needs no `Uint<N + 1>`.
    *
    * @constraints depends on N:
-   * - UintN<8>: k=9, rows=98 (zkir-v2), k=9, rows=85 (zkir-v3)
-   * - UintN<64>: k=9, rows=308 (zkir-v2), k=9, rows=133 (zkir-v3)
-   * - UintN<248>: k=10, rows=980 (zkir-v2), k=9, rows=307 (zkir-v3)
+   * - UintN<8>: k=9, rows=85
+   * - UintN<64>: k=9, rows=133
+   * - UintN<248>: k=9, rows=307
    *
    * @param {Uint<N>} a - The first operand.
    * @param {Uint<N>} b - The second operand.
@@ -67,9 +66,9 @@ module UintN<#N> {
    * around at the boundary of the type.
    *
    * @constraints depends on N:
-   * - UintN<8>: k=9, rows=84 (zkir-v2), k=9, rows=73 (zkir-v3)
-   * - UintN<64>: k=9, rows=273 (zkir-v2), k=9, rows=118 (zkir-v3)
-   * - UintN<248>: k=10, rows=885 (zkir-v2), k=9, rows=274 (zkir-v3)
+   * - UintN<8>: k=9, rows=73
+   * - UintN<64>: k=9, rows=118
+   * - UintN<248>: k=9, rows=274
    *
    * @param {Uint<N>} a - The minuend.
    * @param {Uint<N>} b - The subtrahend.

@@ -116,7 +116,7 @@ module Ownable {
    * @description Initializes the contract by setting the `initialOwner`.
    * This must be called in the contract's constructor.
    *
-   * @constraints k=10, rows=626
+   * @constraints k=9, rows=284
    *
    * Requirements:
    *
@@ -163,7 +163,7 @@ module Ownable {
   /**
    * @description Returns the current contract owner.
    *
-   * @constraints k=7, rows=74
+   * @constraints k=7, rows=99
    *
    * Requirements:
    *
@@ -183,7 +183,7 @@ module Ownable {
    * contract-to-contract calls.
    * This restriction prevents permanently disabling access to a circuit.
    *
-   * @constraints k=13, rows=2947
+   * @constraints k=13, rows=2280
    *
    * Requirements:
    *
@@ -210,7 +210,7 @@ module Ownable {
    * Ownership privileges sent to a contract address may become uncallable.
    * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
-   * @constraints k=13, rows=2944
+   * @constraints k=13, rows=2268
    *
    * Requirements:
    *
@@ -233,7 +233,7 @@ module Ownable {
    * It will not be possible to call `assertOnlyOwner` circuits anymore.
    * Can only be called by the current owner.
    *
-   * @constraints k=13, rows=2353
+   * @constraints k=13, rows=2072
    *
    * Requirements:
    *
@@ -261,7 +261,7 @@ module Ownable {
    * In the case of an external (non-contract) caller, the caller’s identity is
    * derived from the `wit_OwnableSK` witness as `persistentHash(secretKey)`.
    *
-   * @constraints k=13, rows=2349
+   * @constraints k=13, rows=2033
    *
    * Requirements:
    *
@@ -287,7 +287,7 @@ module Ownable {
    * contract-to-contract calls.
    * This restriction prevents circuits from being inadvertently locked in contracts.
    *
-   * @constraints k=10, rows=598
+   * @constraints k=8, rows=246
    *
    * Requirements:
    *
@@ -312,7 +312,7 @@ module Ownable {
    * Ownership privileges sent to a contract address may become uncallable.
    * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
-   * @constraints k=10, rows=595
+   * @constraints k=8, rows=234
    *
    * Requirements:
    *

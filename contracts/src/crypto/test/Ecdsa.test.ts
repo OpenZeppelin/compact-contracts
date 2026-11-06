@@ -165,12 +165,14 @@ describe('Ecdsa', () => {
       ).toBe(false);
     });
 
-    // The identity contributes nothing to `u1*G + u2*pk`, so the recovered
-    // x-coordinate is that of `u1*G` and simply misses `r`. No trap.
+    // Since toolchain 0.35.0 the standard library's `secp256k1EcdsaVerify`
+    // asserts on an identity key instead of returning false.
     it('rejects the identity point as the public key', async () => {
-      expect(
-        await contract.secp256k1EcdsaVerifyLowS(DIGEST, LOW_S_SIG, IDENTITY),
-      ).toBe(false);
+      await expect(
+        contract.secp256k1EcdsaVerifyLowS(DIGEST, LOW_S_SIG, IDENTITY),
+      ).rejects.toThrow(
+        'Secp256k1Point identity is not a permitted secp256k1EcdsaVerify verification key',
+      );
     });
   });
 });
