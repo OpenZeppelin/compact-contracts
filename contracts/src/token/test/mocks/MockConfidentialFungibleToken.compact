@@ -57,8 +57,8 @@ export circuit isRegistered(account: Bytes<32>): Boolean {
   return CFT_isRegistered(account);
 }
 
-export circuit register(): Bytes<32> {
-  return CFT_register();
+export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
+  return CFT_registerWithKey(pk);
 }
 
 export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {

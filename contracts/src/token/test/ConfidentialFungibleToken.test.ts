@@ -8,6 +8,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { deriveEncryptionPk, padTag } from '#test-utils/fixtures/elgamal.js';
 import { pureCircuits as cftPure } from '../../../artifacts/token/test/mocks/MockConfidentialFungibleToken/contract/index.js';
 // The crypto simulators double as an off-chain mirror to predict ciphertexts
 // the contract derives internally.
@@ -16,40 +17,9 @@ import { ElGamalSimulator } from '../../crypto/test/simulators/ElGamalSimulator.
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
 
-// Mirrors Compact's `pad(32, s)`: UTF-8 bytes of `s`, zero-padded to 32 bytes.
-const padTag = (s: string): Uint8Array => {
-  const b = new Uint8Array(32);
-  b.set(new TextEncoder().encode(s));
-  return b;
-};
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** The domain-separation tag `ElGamal.secretToScalar` prefixes its input with. */
-const SECRET_TO_SCALAR_TAG = padTag('ElGamal:secretToScalar');
-
-/**
- * @description Derives the expected pk for a given EK, mirroring the
- * in-circuit `_derivePk`:
- *   pk = ecMulGenerator(degradeToTransient(persistentHash([TAG, ek])))
- *
- * @note The tag is what keeps this scalar unrelated to the account identifier,
- * which is `persistentHash([sk])` (untagged, and public as a ledger map key).
- * Without it, a secret used in both roles would have its encryption key
- * recoverable from the published identifier. See `buildAccountIdHash` below —
- * that one is deliberately untagged and must stay so.
- *
- * @note `degradeToTransient` truncates the hash to 31 bytes, so the effective
- * collision resistance is 248 bits.
- */
-const derivePk = (ek: Uint8Array) => {
-  const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
-  const ekHash = persistentHash(rt_type, [SECRET_TO_SCALAR_TAG, ek]);
-  const ekField = degradeToTransient(ekHash);
-  return ecMulGenerator(ekField);
-};
 
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
@@ -155,6 +125,29 @@ describe.skipIf(isLiveBackend())(
         expect(await cft.isRegistered(CHARLIE.accountId)).toBe(true);
       });
 
+      it('rejects a supplied key that is not derived from the caller EK', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+
+        await expect(
+          cft.registerWithKey(deriveEncryptionPk(BOB.encryptionKey)),
+        ).rejects.toThrow('ElGamal: ek/pk mismatch');
+        expect(await cft.isRegistered(ALICE.accountId)).toBe(false);
+      });
+
+      it('rejects the identity point as the supplied key', async () => {
+        await cft.privateState.switchIdentity(
+          ALICE.secretKey,
+          ALICE.encryptionKey,
+        );
+
+        await expect(cft.registerWithKey(ecMulGenerator(0n))).rejects.toThrow(
+          'ElGamal: ek/pk mismatch',
+        );
+      });
+
       it('should store the expected pk for the registered EK', async () => {
         await cft.privateState.switchIdentity(
           ALICE.secretKey,
@@ -164,7 +157,7 @@ describe.skipIf(isLiveBackend())(
 
         const ledger = await cft.getPublicState();
         const storedPk = ledger.CFT__encryptionKeys.lookup(ALICE.accountId);
-        const expectedPk = derivePk(ALICE.encryptionKey);
+        const expectedPk = deriveEncryptionPk(ALICE.encryptionKey);
 
         expect(storedPk).toEqual(expectedPk);
       });
@@ -180,7 +173,7 @@ describe.skipIf(isLiveBackend())(
         expect(storedPk).not.toEqual(
           ecMulGenerator(degradeToTransient(ALICE.accountId)),
         );
-        expect(storedPk).toEqual(derivePk(ALICE.secretKey));
+        expect(storedPk).toEqual(deriveEncryptionPk(ALICE.secretKey));
       });
 
       it('should store distinct pks for distinct EKs', async () => {
