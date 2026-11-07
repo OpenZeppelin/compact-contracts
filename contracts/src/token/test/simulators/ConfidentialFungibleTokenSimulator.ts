@@ -3,12 +3,14 @@ import {
   type CircuitContext,
   type CircuitResults,
   CostModel,
+  type JubjubPoint,
   type Transcript,
 } from '@midnight-ntwrk/compact-runtime';
 import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
+import { deriveEncryptionPk } from '#test-utils/fixtures/elgamal.js';
 import {
   type CFT_EscrowEntry,
   type ElGamal_Ciphertext,
@@ -210,8 +212,17 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
     return this.circuits.impure.clearMemos(expectedEpoch);
   }
 
-  public register(): Promise<Uint8Array> {
-    return this.circuits.impure.register();
+  /**
+   * @description Registers the active identity, deriving the key the circuit
+   * expects from the private state's EK, as a wallet would off-chain.
+   */
+  public async register(): Promise<Uint8Array> {
+    const ek = (await this.getPrivateState()).encryptionKey;
+    return this.registerWithKey(deriveEncryptionPk(ek));
+  }
+
+  public registerWithKey(pk: JubjubPoint): Promise<Uint8Array> {
+    return this.circuits.impure.registerWithKey(pk);
   }
 
   public isRegistered(account: Uint8Array): Promise<boolean> {

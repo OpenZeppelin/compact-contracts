@@ -315,7 +315,7 @@ module NativeShieldedStatelessTreasury<#t> {
    * and extracting mt_index. Combined with the known ShieldedCoinInfo,
    * this produces the QualifiedShieldedCoinInfo needed for spending.
    *
-   * @constraints k=13, rows=5898 (zkir-v3)
+   * @constraints k=13, rows=5898
    *
    * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
    */
@@ -340,7 +340,7 @@ module NativeShieldedStatelessTreasury<#t> {
    * @notice `to` must be a `ShieldedUser`. A contract-addressed coin would be
    * unclaimable, making the transaction malformed.
    *
-   * @constraints k=17, rows=98969 (zkir-v3)
+   * @constraints k=18, rows=131823
    *
    * Requirements:
    *
@@ -399,7 +399,7 @@ module NativeShieldedStatelessTreasury<#t> {
   /**
    * @description Returns the nonce the next `execute` digest will bind to.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<64>} The current nonce.
    */
@@ -410,7 +410,7 @@ module NativeShieldedStatelessTreasury<#t> {
   /**
    * @description Returns the number of registered signers.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<8>} The signer count.
    */
@@ -421,7 +421,7 @@ module NativeShieldedStatelessTreasury<#t> {
   /**
    * @description Returns the approval threshold.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<8>} The threshold.
    */
@@ -432,7 +432,7 @@ module NativeShieldedStatelessTreasury<#t> {
   /**
    * @description Returns whether the given commitment is a registered signer.
    *
-   * @constraints k=8, rows=129 (zkir-v3)
+   * @constraints k=8, rows=129
    *
    * @param {Bytes<32>} commitment - The signer commitment to check.
    * @returns {Boolean} True if registered.

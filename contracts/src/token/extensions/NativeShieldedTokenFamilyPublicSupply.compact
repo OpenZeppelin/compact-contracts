@@ -76,7 +76,7 @@ module NativeShieldedTokenFamilyPublicSupply {
    * @description Adds `amount` to the exact minted total for `domain`. Call
    * once per successful `NativeShieldedTokenFamily._mint`.
    *
-   * @constraints k=10, rows=645
+   * @constraints k=9, rows=253
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {Uint<64>} amount - The minted amount.
@@ -93,7 +93,7 @@ module NativeShieldedTokenFamilyPublicSupply {
    * @dev Enforces per-domain `burned <= minted`; an unpaired, duplicate, or
    * wrong-domain burn reverts.
    *
-   * @constraints k=10, rows=747
+   * @constraints k=9, rows=304
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {Uint<128>} amount - The burned amount.
@@ -106,7 +106,7 @@ module NativeShieldedTokenFamilyPublicSupply {
   /**
    * @description Returns the exact amount ever minted for `domain`.
    *
-   * @constraints k=9, rows=342
+   * @constraints k=8, rows=146
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The total amount minted.
@@ -120,7 +120,7 @@ module NativeShieldedTokenFamilyPublicSupply {
    * @notice This is a lower bound: coins sent directly to the burn address
    * without going through the contract are not counted.
    *
-   * @constraints k=9, rows=339
+   * @constraints k=8, rows=146
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The total amount burned through the contract.
@@ -134,7 +134,7 @@ module NativeShieldedTokenFamilyPublicSupply {
    * @notice This is an UPPER BOUND on circulating supply, not an exact value:
    * burns that bypass the contract are invisible. See the module notes.
    *
-   * @constraints k=9, rows=437
+   * @constraints k=9, rows=200
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @return {Uint<128>} - The upper bound on tokens in existence.

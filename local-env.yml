@@ -1,7 +1,9 @@
 # WARNING: Insecure default credentials below. For local development only — do not use in production.
 services:
   proof-server:
-    image: 'midnightntwrk/proof-server:9.0.0-rc.6'
+    # 9.0.0 proves the ZKIR 3.1 that compactc 0.36.0 emits; 9.0.0-rc.6 rejects
+    # it and rc.8 fails scalar-returning circuits. Pairs with node 2.1.0-rc.4.
+    image: 'midnightntwrk/proof-server:9.0.0'
     command: ['midnight-proof-server -v']
     ports:
       - '6300:6300'
@@ -19,8 +21,8 @@ services:
   indexer:
     # Pinned: `latest` drifted to the Cardano-bridge indexer line, whose config
     # requires an `infra.spo_node.blockfrost_id` not set here, so it crash-loops
-    # on boot. This is the ledger-9 line matching node 2.0.0-rc.4.
-    image: 'midnightntwrk/indexer-standalone:4.4.0-rc.2'
+    # on boot. This is the ledger-9 line matching node 2.1.0-rc.4.
+    image: 'midnightntwrk/indexer-standalone:4.4.0-rc.6'
     ports:
       - '8088:8088'
     environment:
@@ -53,7 +55,7 @@ services:
         max-file: '3'
 
   node:
-    image: 'midnightntwrk/midnight-node:2.0.0-rc.4'
+    image: 'midnightntwrk/midnight-node:2.1.0-rc.4'
     ports:
       - '9944:9944'
     healthcheck:

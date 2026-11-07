@@ -199,7 +199,7 @@ pragma language_version >= 0.26.0;
  * `wit_ConfidentialTokenSK`, and a separate witness call in the wrapper could
  * return a different secret than the one this module authenticates with,
  * letting a frozen account slip a clean id past the gate. To make caller-side
- * gates sound, every caller-authenticating circuit (`register`, `_burn`,
+ * gates sound, every caller-authenticating circuit (`registerWithKey`, `_burn`,
  * `transfer`, `_move`, `approve`, `transferFrom`, `sweep`, `_burnFrom`)
  * RETURNS the caller's `accountId`, the principal it authenticated from the
  * witness. A
@@ -247,7 +247,7 @@ pragma language_version >= 0.26.0;
  * holds data so whatever that data was written under has to stay fixed e.g. slot
  * indices, nonce and key derivation, stored encodings. Slot changes at least
  * show up in a diff. Key derivation is the quiet one. `_encryptionKeys` holds
- * the key `derivePk` returned at `register` time, `register` refuses a second
+ * the key checked at `registerWithKey` time, `registerWithKey` refuses a second
  * key for an account id, and the id does not move (untagged by design, see
  * `Utils.computeAccountId`), so a circuit deriving a different key leaves
  * `assertDecryptsTo` and `_assertOwnsEncryptionKey` rejecting the stored one
@@ -573,7 +573,7 @@ module ConfidentialFungibleToken {
    * ciphertext if the account is unregistered. The amount is encrypted; only the
    * account (or an authorized viewer) can decrypt it.
    *
-   * @constraints k=10, rows=984
+   * @constraints k=10, rows=901
    *
    * Requirements:
    *
@@ -599,7 +599,7 @@ module ConfidentialFungibleToken {
    * balance is `balanceOf`; a wallet's total is the sum of the two. See the
    * dual-balance note on the ledger declarations.
    *
-   * @constraints k=10, rows=981
+   * @constraints k=10, rows=901
    *
    * Requirements:
    *
@@ -630,7 +630,7 @@ module ConfidentialFungibleToken {
    * getter grants nothing, the spend path (`transferFrom`/`burnFrom`) gates on
    * `_escrow` membership independently, so a non-existent allowance is unspendable.
    *
-   * @constraints k=10, rows=936
+   * @constraints k=9, rows=435
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
@@ -656,7 +656,7 @@ module ConfidentialFungibleToken {
   /**
    * @description Returns whether `account` has registered an encryption key.
    *
-   * @constraints k=9, rows=303
+   * @constraints k=8, rows=129
    *
    * @param {Bytes<32>} account - The account to query.
    * @return {Boolean} - True if `account` is registered.
@@ -670,31 +670,58 @@ module ConfidentialFungibleToken {
   // ---------------------------------------------------------------------------
 
   /**
-   * @description Registers the caller: derives their encryption public key from
-   * `wit_ConfidentialTokenEK` and initializes their balance to an encryption of
-   * zero. Registration is a prerequisite for sending or receiving.
+   * @description Registers the caller: records `pk` as their encryption public
+   * key and initializes their balance and pending balance to encryptions of
+   * zero. Registration is a prerequisite for sending or receiving. `pk` must be
+   * the key `ElGamal.derivePk` derives from `wit_ConfidentialTokenEK`, which
+   * `ElGamal.assertKeyPair` checks (`ElGamal: ek/pk mismatch`); a caller
+   * computes it off-chain from the same secret.
    *
-   * @constraints k=13, rows=8046
+   * @notice Why the key is an argument: on ZKIR v3 a circuit that produces
+   * Jubjub points without taking one as an input cannot generate keys
+   * ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)).
+   * `pk` is that input. It is a private input like every circuit argument, and
+   * the circuit discloses it exactly as a witness-derived key would be.
    *
    * @notice Returns the caller's `accountId`. A composing contract can gate on
    * the returned value (e.g. assert it is KYC-approved) to restrict who may
    * register. See the module header note on caller-identity gating.
+   *
+   * @constraints k=13, rows=7540
+   *
+   * Requirements:
+   *
+   * - `pk` is the key derived from the caller's EK.
+   * - Contract is initialized.
+   * - The caller is not already registered.
+   *
+   * @param {JubjubPoint} pk - The caller's encryption public key.
+   * @return {Bytes<32>} - The registered (caller's) accountId.
+   */
+  export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
+    ElGamal_assertKeyPair(pk, wit_ConfidentialTokenEK());
+    return _register(pk);
+  }
+
+  /**
+   * @description Registration body, kept apart from the key check so a
+   * `register()` that derives `pk` in circuit can be added once ZKIR v3 can
+   * generate keys for it: records `pk` as the caller's encryption key and
+   * initializes their balance and pending balance to encryptions of zero.
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - The caller is not already registered.
    *
+   * @param {JubjubPoint} pk - The caller's encryption public key.
    * @return {Bytes<32>} - The registered (caller's) accountId.
    */
-  export circuit register(): Bytes<32> {
+  circuit _register(pk: JubjubPoint): Bytes<32> {
     assertInitialized();
     const accountId = _computeAccountId();
     assert(!_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: already registered");
-
-    const ek = wit_ConfidentialTokenEK();
-    const pk = ElGamal_derivePk(ek);
 
     _encryptionKeys.insert(disclose(accountId), disclose(pk));
     _balances.insert(disclose(accountId), disclose(ElGamal_encryptZero()));
@@ -881,7 +908,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @constraints k=15, rows=26962
+   * @constraints k=15, rows=25048
    *
    * Requirements:
    *
@@ -904,7 +931,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @constraints k=14, rows=14889
+   * @constraints k=14, rows=13766
    *
    * Requirements:
    *
@@ -928,7 +955,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @constraints k=16, rows=41623
+   * @constraints k=16, rows=38002
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -966,7 +993,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @constraints k=16, rows=41612
+   * @constraints k=16, rows=37994
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -1008,7 +1035,7 @@ module ConfidentialFungibleToken {
    * to change, which is what would otherwise invalidate the victim's in-flight
    * spend proofs (a liveness grief).
    *
-   * @constraints k=13, rows=7541
+   * @constraints k=13, rows=7287
    *
    * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
    * pending to Enc(0). No plaintext is needed; the wallet already learned the
@@ -1041,7 +1068,7 @@ module ConfidentialFungibleToken {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @constraints k=16, rows=42938
+   * @constraints k=16, rows=38349
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
@@ -1125,7 +1152,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * ???? @constraints k=17, rows=68920
+   * ???? @constraints k=16, rows=62483
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1172,7 +1199,7 @@ module ConfidentialFungibleToken {
    * therefore reads its memo list and its epoch together, folds the memos into
    * its cache, and passes that epoch back here.
    *
-   * @constraints k=13, rows=7019
+   * @constraints k=13, rows=6573
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -1374,7 +1401,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * ???? @constraints k=16, rows=42201
+   * ???? @constraints k=16, rows=38235
    *
    * Requirements:
    *

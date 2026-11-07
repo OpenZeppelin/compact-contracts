@@ -10,7 +10,8 @@
  * regenerate in the same commit; post-release it is a migration.
  *
  * PROVENANCE. Every value below was recorded under compiler 0.34.0 (language
- * 0.26.0, runtime 0.19.0), the CI compiler.
+ * 0.26.0, runtime 0.19.0) and is byte-identical under 0.36.0 (language 0.28.0,
+ * runtime 0.21.0), the CI compiler.
  */
 
 import { readFileSync } from 'node:fs';
