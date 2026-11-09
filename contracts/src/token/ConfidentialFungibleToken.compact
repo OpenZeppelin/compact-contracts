@@ -674,8 +674,10 @@ module ConfidentialFungibleToken {
    * key and initializes their balance and pending balance to encryptions of
    * zero. Registration is a prerequisite for sending or receiving. `pk` must be
    * the key `ElGamal.derivePk` derives from `wit_ConfidentialTokenEK`, which
-   * `ElGamal.assertKeyPair` checks (`ElGamal: ek/pk mismatch`); a caller
-   * computes it off-chain from the same secret.
+   * `ElGamal.assertKeyPair` checks (`ElGamal: ek/pk mismatch`). A caller
+   * computes it off-chain either by re-exporting `ElGamal_derivePk` as a pure
+   * circuit and calling it through the generated `pureCircuits` or by
+   * mirroring `ElGamal.secretToScalar` in the client.
    *
    * @notice Why the key is an argument: on ZKIR v3 a circuit that produces
    * Jubjub points without taking one as an input cannot generate keys
