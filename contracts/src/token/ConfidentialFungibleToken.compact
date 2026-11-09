@@ -677,7 +677,7 @@ module ConfidentialFungibleToken {
    * `ElGamal.assertKeyPair` checks (`ElGamal: ek/pk mismatch`). A caller
    * computes it off-chain either by re-exporting `ElGamal_derivePk` as a pure
    * circuit and calling it through the generated `pureCircuits` or by
-   * mirroring `ElGamal.secretToScalar` in the client.
+   * mirroring `ElGamal.derivePk` in the client.
    *
    * @notice Why the key is an argument: on ZKIR v3 a circuit that produces
    * Jubjub points without taking one as an input cannot generate keys
