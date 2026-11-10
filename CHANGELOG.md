@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `@openzeppelin/compact-simulator` `^0.4.1` → `^0.5.0`
   - `@openzeppelin/compact-cli` `^0.1.1` → `^0.2.0`
   - `@openzeppelin/compact-deployer` `^0.3.1` → `^0.4.0`
-  Artifacts built with an older compiler fail the runtime version check and must be rebuilt, and `--feature-zkir-v3` is now a compiler error (#1229)
+  Artifacts built with an older compiler fail the runtime version check and must be rebuilt, and `--feature-zkir-v3` is now a compiler error. A contract already deployed with ZKIR v2 verifier keys cannot be called with the rebuilt artifacts until its keys are rotated through the CMA (`VerifierKeyRemove` and `VerifierKeyInsert` per circuit) or it is redeployed; a contract that makes cross-contract calls must also have its old keys removed, since proofs under them do not bind the callee circuit (#1229)
 - CFT: replace `register()` with `registerWithKey(pk: JubjubPoint)`, which takes the caller's encryption public key and checks it against the key derived from `wit_ConfidentialTokenEK` with `ElGamal.assertKeyPair` (`ElGamal: ek/pk mismatch`). Callers derive `pk` off-chain, either through a re-exported pure `ElGamal_derivePk` via the generated `pureCircuits` or by mirroring `ElGamal.derivePk` in the client (#1228)
 
 ### Changed
