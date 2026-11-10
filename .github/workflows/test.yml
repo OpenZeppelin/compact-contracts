@@ -44,8 +44,8 @@ jobs:
       - name: Run type checks
         run: yarn types
 
-      - name: Run tests
-        run: yarn test
+      - name: Run tests with the coverage gate
+        run: yarn test:coverage
 
       - name: Run integration tests
         run: yarn test:integration
