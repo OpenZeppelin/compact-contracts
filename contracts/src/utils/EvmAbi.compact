@@ -33,9 +33,9 @@ pragma language_version >= 0.26.0;
  * (a raw digest, EIP-191, or EIP-712 typed data) belongs to the contract that
  * owns the message.
  *
- * @notice The module itself needs no `keccak256`, so it compiles on either
- * ZKIR backend and `compile:utils` can keep emitting v2. Every `@constraints`
- * below is a v3 figure, and tagged as such.
+ * @notice The module itself calls no `keccak256`; the caller hashes the
+ * assembled words. Compiler 0.36.0 emits ZKIR v3 only, so every
+ * `@constraints` below is a v3 figure like the rest of the library.
  */
 module EvmAbi {
   import CompactStandardLibrary;

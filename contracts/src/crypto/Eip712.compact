@@ -40,8 +40,6 @@ pragma language_version >= 0.26.0;
  *
  * A consumer doing neither has one domain shared by every deployment of the
  * contract, and nothing distinguishing them.
- *
- * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  */
 module Eip712 {
   import CompactStandardLibrary;

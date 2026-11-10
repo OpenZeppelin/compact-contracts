@@ -180,8 +180,6 @@ pragma language_version >= 0.26.0;
  * - Proposal lifecycle: wire in the rest of `ProposalManager` for on-chain
  *   proposals, at the cost its own `@warning` names: every proposal's
  *   recipient, color and amount becomes public.
- *
- * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  */
 module NativeShieldedStatelessTreasury<#t> {
   import CompactStandardLibrary;

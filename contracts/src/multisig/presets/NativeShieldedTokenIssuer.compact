@@ -227,8 +227,6 @@ pragma language_version >= 0.26.0;
  *   `NST__mint` / `NST__mintToSelf` instead of `NSTDerivedNonce__deriveNonce()`.
  * - Deposits: no deposit-and-hold path; `burn` receives and spends the
  *   holder's coin in one call.
- *
- * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  */
 module NativeShieldedTokenIssuer<#t> {
   import CompactStandardLibrary;
