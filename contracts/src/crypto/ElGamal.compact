@@ -219,13 +219,13 @@ module ElGamal {
    * @notice This is a fixed, deterministic value `(O, O)` — NOT a hiding
    * encryption. It is publicly recognizable, so a slot left at `encryptZero` is
    * distinguishable as never-written. Rerandomize (or credit with fresh `r`)
+   * before treating it as private.
+   *
    * @dev ZKIR v3 key generation (toolchain 0.36.0): an exported circuit that
    * reaches this and takes no `JubjubScalar` or `JubjubPoint` input, as an
    * argument, witness value or ledger read, fails key generation with
    * `ZkStdLibArch must enable jubjub`. See the module header and
    * `ConfidentialFungibleToken.registerWithKey`.
-   *
-   * before treating it as private.
    */
   export pure circuit encryptZero(): Ciphertext {
     const id = ecMulGenerator(0 as JubjubScalar);
