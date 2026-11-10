@@ -90,17 +90,19 @@ pragma language_version >= 0.26.0;
  *
  * @dev ZKIR v3 key generation. The `zkir-v3` binary shipped with toolchain
  * 0.36.0 enables its Jubjub gadget only for a circuit whose inputs include a
- * `JubjubPoint`: a circuit argument, a witness value or a ledger read. An
- * exported circuit that only produces points or scalars from bytes, through
- * `secretToScalar`, `derivePk`, `expandRandomness` or `encryptZero`, has no
- * such input and fails key generation with `ZkStdLibArch must enable jubjub`
+ * `JubjubScalar` or a `JubjubPoint`: a circuit argument, a witness value or a
+ * ledger read. An exported circuit that only produces points or scalars from
+ * bytes, through `secretToScalar`, `derivePk`, `expandRandomness` or
+ * `encryptZero`, has no such input and fails key generation with
+ * `ZkStdLibArch must enable jubjub`
  * ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)).
  * Every other circuit here takes a point or a ciphertext, so a caller reaching
  * them is unaffected. For key setup, take the derived key as an argument and
  * check it with `assertKeyPair` rather than deriving and storing it;
- * `ConfidentialFungibleToken.registerWithKey` is the worked example. Nothing in
- * this module can change the outcome: the inputs that matter are the exported
- * circuit's, not this module's.
+ * `ConfidentialFungibleToken.registerWithKey` is the worked example. An
+ * otherwise unused `JubjubScalar` argument or witness value also suffices.
+ * Nothing in this module can change the outcome: the inputs that matter are
+ * the exported circuit's, not this module's.
  */
 module ElGamal {
   import CompactStandardLibrary;
@@ -148,9 +150,10 @@ module ElGamal {
    * passing the domain constant as the *seed*. Do not normalise the orderings.
    *
    * @dev ZKIR v3 key generation (toolchain 0.36.0): an exported circuit that
-   * reaches this and takes no `JubjubPoint` input, as an argument, witness
-   * value or ledger read, fails key generation with `ZkStdLibArch must enable
-   * jubjub`. See the module header and `ConfidentialFungibleToken.registerWithKey`.
+   * reaches this and takes no `JubjubScalar` or `JubjubPoint` input, as an
+   * argument, witness value or ledger read, fails key generation with
+   * `ZkStdLibArch must enable jubjub`. See the module header and
+   * `ConfidentialFungibleToken.registerWithKey`.
    *
    * @param secret - The 32-byte secret to map.
    * @return A valid Jubjub scalar.
@@ -168,9 +171,10 @@ module ElGamal {
    * from a secret `ek`.
    *
    * @dev ZKIR v3 key generation (toolchain 0.36.0): an exported circuit that
-   * reaches this and takes no `JubjubPoint` input, as an argument, witness
-   * value or ledger read, fails key generation with `ZkStdLibArch must enable
-   * jubjub`. See the module header and `ConfidentialFungibleToken.registerWithKey`.
+   * reaches this and takes no `JubjubScalar` or `JubjubPoint` input, as an
+   * argument, witness value or ledger read, fails key generation with
+   * `ZkStdLibArch must enable jubjub`. See the module header and
+   * `ConfidentialFungibleToken.registerWithKey`.
    *
    * @param ek - The 32-byte encryption secret.
    * @return The corresponding public key point.
@@ -187,9 +191,10 @@ module ElGamal {
    * caller is responsible for using distinct tags.
    *
    * @dev ZKIR v3 key generation (toolchain 0.36.0): an exported circuit that
-   * reaches this and takes no `JubjubPoint` input, as an argument, witness
-   * value or ledger read, fails key generation with `ZkStdLibArch must enable
-   * jubjub`. See the module header and `ConfidentialFungibleToken.registerWithKey`.
+   * reaches this and takes no `JubjubScalar` or `JubjubPoint` input, as an
+   * argument, witness value or ledger read, fails key generation with
+   * `ZkStdLibArch must enable jubjub`. See the module header and
+   * `ConfidentialFungibleToken.registerWithKey`.
    *
    * @param seed - The seed to expand.
    * @param tag - A 32-byte tag distinguishing this expansion from its siblings.
@@ -215,9 +220,10 @@ module ElGamal {
    * encryption. It is publicly recognizable, so a slot left at `encryptZero` is
    * distinguishable as never-written. Rerandomize (or credit with fresh `r`)
    * @dev ZKIR v3 key generation (toolchain 0.36.0): an exported circuit that
-   * reaches this and takes no `JubjubPoint` input, as an argument, witness
-   * value or ledger read, fails key generation with `ZkStdLibArch must enable
-   * jubjub`. See the module header and `ConfidentialFungibleToken.registerWithKey`.
+   * reaches this and takes no `JubjubScalar` or `JubjubPoint` input, as an
+   * argument, witness value or ledger read, fails key generation with
+   * `ZkStdLibArch must enable jubjub`. See the module header and
+   * `ConfidentialFungibleToken.registerWithKey`.
    *
    * before treating it as private.
    */

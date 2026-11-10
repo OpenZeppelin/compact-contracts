@@ -19,7 +19,7 @@ export { ElGamal_Ciphertext }
 ledger _invocations: Counter;
 
 // ZKIR v3 enables its Jubjub gadget only for a circuit that takes a
-// `JubjubPoint` input (argument, witness value or ledger read). The four
+// `JubjubScalar` or `JubjubPoint` input (argument, witness value or ledger read). The four
 // wrappers below produce points or scalars from bytes and would otherwise fail
 // key generation (LFDT-Minokawa/compact#616); reading this cell is the input.
 // It changes nothing about what they compute or return.

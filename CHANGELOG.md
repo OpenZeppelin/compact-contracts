@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known issues
 
-- Under toolchain 0.36.0, key generation panics with `ZkStdLibArch must enable jubjub` for any circuit that produces Jubjub points without taking a `JubjubPoint` input, as an argument or a ledger read ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)). No library circuit is affected, but a consumer circuit that derives a key from a secret and stores it reaches the same shape through `ElGamal.secretToScalar`, `derivePk`, `expandRandomness` or `encryptZero`; take the key as an argument and check it with `ElGamal.assertKeyPair` instead, as `ConfidentialFungibleToken.registerWithKey` does. There is no v2 backend to fall back to
+- Under toolchain 0.36.0, key generation panics with `ZkStdLibArch must enable jubjub` for any circuit that produces Jubjub points without taking a `JubjubScalar` or `JubjubPoint` input, as an argument, a witness value or a ledger read ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)). No library circuit is affected, but a consumer circuit that derives a key from a secret and stores it reaches the same shape through `ElGamal.secretToScalar`, `derivePk`, `expandRandomness` or `encryptZero`; take the key as an argument and check it with `ElGamal.assertKeyPair` instead, as `ConfidentialFungibleToken.registerWithKey` does, or give the circuit an otherwise unused `JubjubScalar` argument or witness value. There is no v2 backend to fall back to
 
 ## 0.5.0-alpha.2 (2026-11-04)
 

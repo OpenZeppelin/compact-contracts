@@ -680,7 +680,8 @@ module ConfidentialFungibleToken {
    * mirroring `ElGamal.derivePk` in the client.
    *
    * @notice Why the key is an argument: on ZKIR v3 a circuit that produces
-   * Jubjub points without taking one as an input cannot generate keys
+   * Jubjub points without taking a Jubjub scalar or point as an input cannot
+   * generate keys
    * ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)).
    * `pk` is that input. It is a private input like every circuit argument, and
    * the circuit discloses it exactly as a witness-derived key would be.
