@@ -90,8 +90,8 @@ export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
 
 // ─── Registration and wallet maintenance ─────────────────────────────────
 
-export circuit register(): Bytes<32> {
-  return Token_register();
+export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
+  return Token_registerWithKey(pk);
 }
 
 export circuit sweep(): Bytes<32> {

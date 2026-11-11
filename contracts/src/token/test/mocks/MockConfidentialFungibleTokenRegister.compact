@@ -1,0 +1,31 @@
+// TEST-ONLY. Registration-only slice of ConfidentialFungibleToken, small enough
+// to deploy on the local node: the full base mock exceeds the deploy block
+// budget, so the on-chain proof of `registerWithKey` runs here. Three circuits,
+// no value movement. DO NOT deploy this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../ConfidentialFungibleToken" prefix CFT_;
+import "../../../crypto/ElGamal" prefix ElGamal_;
+
+export { ElGamal_Ciphertext };
+export { CFT__encryptionKeys, CFT__balances };
+
+constructor(
+    name_: Opaque<"string">,
+    symbol_: Opaque<"string">,
+    decimals_: Uint<8>,
+) {
+  CFT_initialize(name_, symbol_, decimals_);
+}
+
+export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
+  return CFT_registerWithKey(pk);
+}
+
+export circuit isRegistered(account: Bytes<32>): Boolean {
+  return CFT_isRegistered(account);
+}
+
+export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return CFT_balanceOf(account);
+}
