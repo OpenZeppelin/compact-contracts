@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the `ConfidentialNoteFungibleTokenIssuer` extension: `assertOnlyIssuer` passes only for the holder of the secret behind the public `_issuerPk`, derived by the pure `derivePk` under the deployment salt, and `rotateIssuer` lets the issuer replace its key, so a composer gates the core's ungated `_mint` / `_mintNote` behind one hidden-key issuer. `_setIssuer` is ungated, for a composer's own recovery path.
 - Add the `crypto/Prf` module: `prf<T>(domain, input, key)` hashes a purpose tag, an input and a secret key in the fixed `{domain, input, key}` layout, and `prfField` reduces the hash to a `Field`. `ConfidentialNoteFungibleToken.derivePk` delegates to it and derives the same keys as before.
 
 ### Changed (breaking)

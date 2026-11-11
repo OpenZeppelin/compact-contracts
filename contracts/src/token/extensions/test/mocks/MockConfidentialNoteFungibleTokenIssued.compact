@@ -1,0 +1,37 @@
+// TEST-ONLY. Composes the ConfidentialNoteFungibleToken core at depth 32 with
+// the Issuer extension the way a deployed token would: `mint` is gated by
+// `assertOnlyIssuer`, and only the issuer can rotate. `_setIssuer` is not
+// exported, so no ungated path writes the issuer key. Both modules are
+// initialized with one salt. DO NOT deploy this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../../ConfidentialNoteFungibleToken"<32> prefix Core_;
+import "../../ConfidentialNoteFungibleTokenIssuer" prefix Issuer_;
+
+export { Core_Note }
+
+export { Core__isInitialized, Core__instanceSalt, Core__commitments, Core__nullifiers, Core__issuedNonces, Issuer__isInitialized, Issuer__instanceSalt, Issuer__issuerPk };
+
+constructor(instanceSalt: Bytes<32>, issuerPk: Field) {
+  Core_initialize(instanceSalt);
+  Issuer_initialize(issuerPk, instanceSalt);
+}
+
+export circuit mint(recipientPk: Field, value: Uint<128>): Core_Note {
+  Issuer_assertOnlyIssuer();
+  return Core__mint(recipientPk, value);
+}
+
+export circuit rotateIssuer(newIssuerPk: Field): [] {
+  return Issuer_rotateIssuer(newIssuerPk);
+}
+
+// Both derivations from one artifact, so a spec compares the note identity and
+// the issuer key of one secret.
+export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
+  return Core_derivePk(sk, salt);
+}
+
+export pure circuit deriveIssuerPk(sk: Bytes<32>, salt: Bytes<32>): Field {
+  return Issuer_derivePk(sk, salt);
+}

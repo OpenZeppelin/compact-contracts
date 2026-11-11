@@ -1,0 +1,23 @@
+// TEST-ONLY. Drives the ConfidentialNoteFungibleTokenIssuer extension's
+// `initialize` guards, which only a constructor can reach. `misuse` picks the
+// violation: 1 calls `assertOnlyIssuer` before `initialize`, 2 `rotateIssuer`,
+// 3 `_setIssuer`, anything else runs `initialize` twice. Every deployment fails
+// by design. DO NOT deploy this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../ConfidentialNoteFungibleTokenIssuer" prefix Issuer_;
+
+export { Issuer__isInitialized, Issuer__instanceSalt, Issuer__issuerPk };
+
+constructor(issuerPk: Field, instanceSalt: Bytes<32>, misuse: Uint<8>) {
+  if (disclose(misuse) == 1) {
+    Issuer_assertOnlyIssuer();
+  } else if (disclose(misuse) == 2) {
+    Issuer_rotateIssuer(issuerPk);
+  } else if (disclose(misuse) == 3) {
+    Issuer__setIssuer(issuerPk);
+  } else {
+    Issuer_initialize(issuerPk, instanceSalt);
+  }
+  Issuer_initialize(issuerPk, instanceSalt);
+}

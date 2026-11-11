@@ -1,0 +1,233 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialNoteFungibleTokenIssuer.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenIssuer
+ * @description Extension that binds one hidden-key issuer to a
+ * `ConfidentialNoteFungibleToken` deployment. The issuer is whoever proves, in
+ * circuit, the secret behind the public `_issuerPk`. It imports no token
+ * module: the composer puts `assertOnlyIssuer()` in front of the core's
+ * ungated `_mint` / `_mintNote`.
+ *
+ * ```compact
+ * export circuit mint(recipientPk: Field, value: Uint<128>): Core_Note {
+ *   Issuer_assertOnlyIssuer();
+ *   return Core__mint(recipientPk, value);
+ * }
+ * ```
+ *
+ * @dev Notation:
+ * - `Hf(...)`: `persistentHash` reduced to a `Field` via `degradeToTransient`.
+ * - `pk = Hf(domain, salt, sk)`: the issuer key, with tag `"CNFT:issuer:pk"`
+ *   and `salt` the deployment's `_instanceSalt`. The tag differs from the
+ *   core's `"CNFT:pk"`, so one secret gives an issuer key unrelated to its
+ *   note identity.
+ * - The tag and the `crypto/Prf` layout are wire format: changing either
+ *   orphans `_issuerPk`.
+ *
+ * @notice Privacy:
+ * - Public, per tx: the entry point, and the reads of `_isInitialized`,
+ *   `_instanceSalt` and `_issuerPk`. A rotation also publishes the new key.
+ * - Public, as state: `_isInitialized`, `_instanceSalt`, `_issuerPk`.
+ * - Private: the secret, and who the issuer is. A call publishes nothing
+ *   derived from the secret beyond the already public `_issuerPk`.
+ *
+ * @notice Security:
+ * - The secret MUST be 32 bytes from a CSPRNG. `_issuerPk` and the salt are
+ *   public, so a guessable secret is found offline.
+ * - `_setIssuer` is ungated. Re-exporting it ungated lets anyone become the
+ *   issuer.
+ * - Rotating to a wrong key locks the issuer out, unless the composer wired
+ *   `_setIssuer` behind a recovery authority.
+ * - A zero key is rejected and there is no renounce.
+ * - Passing the gate consumes nothing, so single use is the gated circuit's
+ *   job. The core's mint is single-use through its issued-nonce set.
+ *
+ * @notice Concurrency:
+ * - `assertOnlyIssuer` only reads `_isInitialized`, `_instanceSalt` and
+ *   `_issuerPk`, so issuer calls commute with each other.
+ * - Only `_setIssuer` writes `_issuerPk`. A rotation that lands first
+ *   invalidates in-flight issuer calls by design; the caller re-proves with
+ *   the new key.
+ * - `_setIssuer` reads no key, so two of them built on one state both land
+ *   and the last write wins.
+ *
+ * @dev Composition:
+ * - `initialize` runs in the constructor, since `_instanceSalt` is `sealed`.
+ *   Pass it the core's salt and an `issuerPk` computed off-chain with
+ *   `derivePk(sk, instanceSalt)`.
+ * - Both modules export `_isInitialized` and `_instanceSalt`. Under distinct
+ *   import prefixes they stay separate cells, so a composed ledger holds two
+ *   flags and two copies of the salt.
+ */
+module ConfidentialNoteFungibleTokenIssuer {
+  import CompactStandardLibrary;
+  import "../../crypto/Prf" prefix Prf_;
+
+  /**
+   * @description Initialization flag, tracked per-module so that two modules
+   * sharing a transitive dependency do not share one flag.
+   */
+  export sealed ledger _isInitialized: Boolean;
+
+  /**
+   * @description The salt the issuer key is derived under. Set once by
+   * `initialize`.
+   * @type {Bytes<32>} _instanceSalt - The deployment salt.
+   */
+  export sealed ledger _instanceSalt: Bytes<32>;
+
+  /**
+   * @description The public issuer key, `derivePk(sk, _instanceSalt)`.
+   * Overwritten on rotation; a change of value is the rotation signal.
+   * @type {Field} _issuerPk - The current issuer key, never zero once
+   * initialized.
+   */
+  export ledger _issuerPk: Field;
+
+  /**
+   * @witness wit_ConfidentialNoteIssuerSK
+   * @description Returns the issuer's secret, from which `assertOnlyIssuer`
+   * derives `derivePk(sk, _instanceSalt)`. Independent of the core's spend
+   * secret.
+   *
+   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random
+   * value.
+   */
+  witness wit_ConfidentialNoteIssuerSK(): Bytes<32>;
+
+  /**
+   * @description Sets the salt and the first issuer key.
+   *
+   * @constraints k=8, rows=183
+   *
+   * @dev Sealed:
+   * `_isInitialized` and `_instanceSalt` are writable only during
+   * construction.
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   * - `instanceSalt` is not zero.
+   * - `issuerPk` is not zero.
+   *
+   * @param {Field} issuerPk - `derivePk(sk, instanceSalt)`, computed off-chain.
+   * @param {Bytes<32>} instanceSalt - The deployment salt the key is derived
+   * under.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(issuerPk: Field, instanceSalt: Bytes<32>): [] {
+    assertNotInitialized();
+    assert(instanceSalt != default<Bytes<32>>,
+           "ConfidentialNoteFungibleTokenIssuer: instance salt must not be zero");
+    _isInitialized = true;
+    _instanceSalt = disclose(instanceSalt);
+    _setIssuer(issuerPk);
+  }
+
+  /**
+   * @description Asserts that the contract has been initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenIssuer: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract has not been initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenIssuer: contract already initialized");
+  }
+
+  /**
+   * @description The gate. Passes when the caller's secret derives
+   * `_issuerPk` under this deployment's salt.
+   *
+   * @constraints k=13, rows=3893
+   *
+   * @notice Not single-use:
+   * Nothing is consumed, so the same secret passes again on every later call.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `derivePk(wit_ConfidentialNoteIssuerSK(), _instanceSalt) == _issuerPk`.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertOnlyIssuer(): [] {
+    assertInitialized();
+    assert(derivePk(wit_ConfidentialNoteIssuerSK(), _instanceSalt) == _issuerPk,
+           "ConfidentialNoteFungibleTokenIssuer: caller is not the issuer");
+  }
+
+  /**
+   * @description Replaces the issuer key. The caller proves the current
+   * secret.
+   *
+   * @constraints k=13, rows=3920
+   *
+   * @warning One step:
+   * A wrong `newIssuerPk` locks the issuer out unless the composer gates
+   * `_setIssuer` behind a recovery authority.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - Caller is the issuer.
+   * - `newIssuerPk` is not zero.
+   *
+   * @param {Field} newIssuerPk - `derivePk(newSk, _instanceSalt)`.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit rotateIssuer(newIssuerPk: Field): [] {
+    assertOnlyIssuer();
+    _setIssuer(newIssuerPk);
+  }
+
+  /**
+   * @description Writes `_issuerPk`, the module's only write path for it.
+   *
+   * @constraints k=6, rows=51
+   *
+   * @warning No authorization:
+   * The composer gates who may call this. Re-exporting it ungated lets anyone
+   * become the issuer.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `newIssuerPk` is not zero.
+   *
+   * @param {Field} newIssuerPk - The new issuer key.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _setIssuer(newIssuerPk: Field): [] {
+    assertInitialized();
+    assert(newIssuerPk != 0 as Field,
+           "ConfidentialNoteFungibleTokenIssuer: issuer key must not be zero");
+    _issuerPk = disclose(newIssuerPk);
+  }
+
+  /**
+   * @description `pk = Hf(domain, salt, sk)`. Exported so the issuer and
+   * deploy scripts derive the key the way the gate does.
+   *
+   * @dev Instance salt:
+   * One `sk` maps to an unrelated key on every deployment with its own salt,
+   * and never to the core's `derivePk(sk, salt)`.
+   *
+   * @param {Bytes<32>} sk - The issuer's secret.
+   * @param {Bytes<32>} salt - The deployment's `_instanceSalt`.
+   * @return {Field} - The issuer key.
+   */
+  export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
+    return Prf_prfField<Bytes<32>>(pad(32, "CNFT:issuer:pk"), salt, sk);
+  }
+}

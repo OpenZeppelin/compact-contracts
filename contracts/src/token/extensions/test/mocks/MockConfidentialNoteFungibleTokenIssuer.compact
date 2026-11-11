@@ -1,0 +1,30 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenIssuer extension in
+// isolation. `_setIssuer` is re-exported UNGATED on purpose, so anyone can
+// replace the issuer; a consumer gates it behind its own authority or keeps it
+// internal. The extension imports no token module, so nothing here mints.
+// DO NOT deploy this mock.
+pragma language_version >= 0.26.0;
+import CompactStandardLibrary;
+import "../../ConfidentialNoteFungibleTokenIssuer" prefix Issuer_;
+
+export { Issuer__isInitialized, Issuer__instanceSalt, Issuer__issuerPk };
+
+constructor(issuerPk: Field, instanceSalt: Bytes<32>) {
+  Issuer_initialize(issuerPk, instanceSalt);
+}
+
+export circuit assertOnlyIssuer(): [] {
+  return Issuer_assertOnlyIssuer();
+}
+
+export circuit rotateIssuer(newIssuerPk: Field): [] {
+  return Issuer_rotateIssuer(newIssuerPk);
+}
+
+export circuit _setIssuer(newIssuerPk: Field): [] {
+  return Issuer__setIssuer(newIssuerPk);
+}
+
+export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
+  return Issuer_derivePk(sk, salt);
+}
