@@ -20,6 +20,38 @@ constructor(instanceSalt: Bytes<32>) {
   Core_initialize(instanceSalt);
 }
 
+export pure circuit DOMAIN_PK(): Bytes<32> {
+  return Core_DOMAIN_PK();
+}
+
+export pure circuit DOMAIN_COMMITMENT(): Bytes<32> {
+  return Core_DOMAIN_COMMITMENT();
+}
+
+export pure circuit DOMAIN_NULLIFIER(): Bytes<32> {
+  return Core_DOMAIN_NULLIFIER();
+}
+
+export pure circuit DOMAIN_ISSUED(): Bytes<32> {
+  return Core_DOMAIN_ISSUED();
+}
+
+export pure circuit DOMAIN_NONCE(): Bytes<32> {
+  return Core_DOMAIN_NONCE();
+}
+
+export pure circuit DOMAIN_NONCE_MINT(): Bytes<32> {
+  return Core_DOMAIN_NONCE_MINT();
+}
+
+export pure circuit DOMAIN_NONCE_OUT(): Bytes<32> {
+  return Core_DOMAIN_NONCE_OUT();
+}
+
+export pure circuit DOMAIN_NONCE_CHANGE(): Bytes<32> {
+  return Core_DOMAIN_NONCE_CHANGE();
+}
+
 export circuit _mint(recipientPk: Field, value: Uint<128>): Core_Note {
   return Core__mint(recipientPk, value);
 }

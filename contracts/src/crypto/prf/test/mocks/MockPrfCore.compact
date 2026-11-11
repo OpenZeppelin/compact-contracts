@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the PrfCore module's circuit so it can be driven from off-chain
+// tests. DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+import "../../PrfCore" prefix PrfCore_;
+
+// Keeps the circuits impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys, leaving
+// the code evaluated but never proven.
+ledger _invocations: Counter;
+
+// Tagged inputs, the tag first as `PrfCore` asks of its callers.
+struct TaggedBytes {
+  domain: Bytes<32>;
+  input: Bytes<32>;
+}
+
+struct TaggedField {
+  domain: Bytes<32>;
+  input: Field;
+}
+
+// Flat copies of the nested `{ { domain, input }, key }` preimage. The `ref*`
+// circuits hash them without calling `PrfCore`, so a spec checks `PrfCore`
+// against an independent encoding.
+struct RefBytesPreimage {
+  domain: Bytes<32>;
+  input: Bytes<32>;
+  key: Bytes<32>;
+}
+
+struct RefFieldPreimage {
+  domain: Bytes<32>;
+  input: Field;
+  key: Bytes<32>;
+}
+
+// Exported circuits cannot be generic: one wrapper per input type.
+
+export circuit evaluateOfBytes(domain: Bytes<32>, input: Bytes<32>, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return PrfCore_evaluate<TaggedBytes>(TaggedBytes { domain: domain, input: input }, key);
+}
+
+export circuit evaluateOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return PrfCore_evaluate<TaggedField>(TaggedField { domain: domain, input: input }, key);
+}
+
+// `PrfCore` has no `Field` output. This is the reduction a caller applies.
+export circuit evaluateReducedOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Field {
+  _invocations.increment(1);
+  return degradeToTransient(
+    PrfCore_evaluate<TaggedField>(TaggedField { domain: domain, input: input }, key)
+  );
+}
+
+export circuit refEvaluateOfBytes(domain: Bytes<32>, input: Bytes<32>, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefBytesPreimage>(RefBytesPreimage { domain: domain, input: input, key: key });
+}
+
+export circuit refEvaluateOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefFieldPreimage>(RefFieldPreimage { domain: domain, input: input, key: key });
+}
+
+export circuit refEvaluateReducedOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Field {
+  _invocations.increment(1);
+  return degradeToTransient(
+    persistentHash<RefFieldPreimage>(RefFieldPreimage { domain: domain, input: input, key: key })
+  );
+}

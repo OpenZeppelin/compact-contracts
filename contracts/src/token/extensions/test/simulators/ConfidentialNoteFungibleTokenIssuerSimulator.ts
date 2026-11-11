@@ -88,6 +88,11 @@ export class ConfidentialNoteFungibleTokenIssuerSimulator extends ConfidentialNo
     return simulator;
   }
 
+  /** Domain tag of `derivePk`. */
+  public DOMAIN(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN();
+  }
+
   /** Passes when the wallet's secret derives `_issuerPk`. */
   public assertOnlyIssuer(): Promise<[]> {
     return this.circuits.impure.assertOnlyIssuer();

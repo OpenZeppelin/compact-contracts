@@ -326,7 +326,10 @@ const sourceOf = (relative: string): string =>
 const EXTENSION_SOURCE = sourceOf(
   '../ConfidentialNoteFungibleTokenIssuer.compact',
 );
-const PRF_SOURCE = sourceOf('../../../crypto/Prf.compact');
+const PRF_SOURCES = [
+  sourceOf('../../../crypto/prf/PrfCore.compact'),
+  sourceOf('../../../crypto/prf/PrfAddr.compact'),
+];
 
 /** Source lines with doc and line comments dropped. */
 const codeLines = (source: string): string[] =>
@@ -623,8 +626,10 @@ describe.skipIf(isLiveBackend())(
       expect(EXTENSION_SOURCE).not.toMatch(/disclose\(\s*wit_/);
     });
 
-    it('should keep Prf free of disclose', () => {
-      expect(PRF_SOURCE).not.toContain('disclose(');
+    it('should keep PrfCore and PrfAddr free of disclose', () => {
+      for (const source of PRF_SOURCES) {
+        expect(source).not.toContain('disclose(');
+      }
     });
 
     // Three of the five span two lines, so the scan joins the code into one

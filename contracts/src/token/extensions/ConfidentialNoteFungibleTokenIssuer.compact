@@ -20,12 +20,12 @@ pragma language_version >= 0.26.0;
  *
  * @dev Notation:
  * - `Hf(...)`: `persistentHash` reduced to a `Field` via `degradeToTransient`.
- * - `pk = Hf(domain, salt, sk)`: the issuer key, with tag `"CNFT:issuer:pk"`
- *   and `salt` the deployment's `_instanceSalt`. The tag differs from the
- *   core's `"CNFT:pk"`, so one secret gives an issuer key unrelated to its
- *   note identity.
- * - The tag and the `crypto/Prf` layout are wire format: changing either
- *   orphans `_issuerPk`.
+ * - `pk = Hf(domain, salt, sk)`: the issuer key, with tag `DOMAIN()` and
+ *   `salt` the deployment's `_instanceSalt`. The tag differs from the core's
+ *   `DOMAIN_PK()`, so one secret gives an issuer key unrelated to its note
+ *   identity.
+ * - `DOMAIN()` and the `crypto/prf/PrfAddr` layout are wire format: changing
+ *   either orphans `_issuerPk`.
  *
  * @notice Privacy:
  * - Public, per tx: the entry point, and the reads of `_isInitialized`,
@@ -64,7 +64,7 @@ pragma language_version >= 0.26.0;
  */
 module ConfidentialNoteFungibleTokenIssuer {
   import CompactStandardLibrary;
-  import "../../crypto/Prf" prefix Prf_;
+  import "../../crypto/prf/PrfAddr" prefix PrfAddr_;
 
   /**
    * @description Initialization flag, tracked per-module so that two modules
@@ -97,6 +97,15 @@ module ConfidentialNoteFungibleTokenIssuer {
    * value.
    */
   witness wit_ConfidentialNoteIssuerSK(): Bytes<32>;
+
+  /**
+   * @description Domain tag of `derivePk`.
+   *
+   * @return {Bytes<32>} - `"CNFT:issuer:pk"`, padded to 32 bytes.
+   */
+  export pure circuit DOMAIN(): Bytes<32> {
+    return pad(32, "CNFT:issuer:pk");
+  }
 
   /**
    * @description Sets the salt and the first issuer key.
@@ -228,6 +237,6 @@ module ConfidentialNoteFungibleTokenIssuer {
    * @return {Field} - The issuer key.
    */
   export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
-    return Prf_prfField<Bytes<32>>(pad(32, "CNFT:issuer:pk"), salt, sk);
+    return PrfAddr_derivePk(DOMAIN(), salt, sk);
   }
 }

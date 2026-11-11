@@ -2,8 +2,8 @@
  * Compatibility claims for the ConfidentialNoteFungibleTokenIssuer extension.
  *
  * An issuer derives its key off-chain and a deploy script installs it, so the
- * key derivation is wire format: move the tag, the salt binding or the `Prf`
- * layout and no secret derives the installed key any more. A client also reads
+ * key derivation is wire format: move the tag, the salt binding or the
+ * `PrfAddr` layout and no secret derives the installed key any more. A client also reads
  * the ledger by slot and calls circuits by name. This suite pins absolute
  * values and the published surface, as the core's does.
  *
@@ -37,7 +37,11 @@ import {
   type Ledger,
   type ProvableCircuits,
 } from '../../../../artifacts/token/extensions/test/mocks/MockConfidentialNoteFungibleTokenIssuer/contract/index.js';
-import { PrfSimulator } from '../../../crypto/test/simulators/PrfSimulator.js';
+import {
+  type Circuits as CoreCircuits,
+  pureCircuits as core,
+} from '../../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
+import { PrfAddrSimulator } from '../../../crypto/prf/test/simulators/PrfAddrSimulator.js';
 import { INSTANCE_SALT } from '../../test/witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
 import { ConfidentialNoteFungibleTokenIssuedSimulator } from './simulators/ConfidentialNoteFungibleTokenIssuedSimulator.js';
 import { ConfidentialNoteFungibleTokenIssuerSimulator } from './simulators/ConfidentialNoteFungibleTokenIssuerSimulator.js';
@@ -68,28 +72,31 @@ const PINNED_CORE_PK =
 const ISSUER_TAG = 'CNFT:issuer:pk';
 const CORE_TAG = 'CNFT:pk';
 
+/** Compact's `pad(32, label)`. */
 const tag = (label: string): Uint8Array => secretKey(label);
 
-const sourceOf = (relative: string): string =>
-  readFileSync(new URL(relative, import.meta.url), 'utf8');
+/** Lowercase hex, so a failed comparison prints readably. */
+const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
-const EXTENSION_SOURCE = sourceOf(
-  '../ConfidentialNoteFungibleTokenIssuer.compact',
+/** Every core tag circuit. Keyed on the core's `Circuits`, so a new tag joins. */
+const CORE_TAGS: Exhaustive<
+  Extract<NameOf<CoreCircuits<never>>, `DOMAIN_${string}`>,
+  () => Uint8Array
+> = {
+  DOMAIN_PK: core.DOMAIN_PK,
+  DOMAIN_COMMITMENT: core.DOMAIN_COMMITMENT,
+  DOMAIN_NULLIFIER: core.DOMAIN_NULLIFIER,
+  DOMAIN_ISSUED: core.DOMAIN_ISSUED,
+  DOMAIN_NONCE: core.DOMAIN_NONCE,
+  DOMAIN_NONCE_MINT: core.DOMAIN_NONCE_MINT,
+  DOMAIN_NONCE_OUT: core.DOMAIN_NONCE_OUT,
+  DOMAIN_NONCE_CHANGE: core.DOMAIN_NONCE_CHANGE,
+};
+
+const EXTENSION_SOURCE = readFileSync(
+  new URL('../ConfidentialNoteFungibleTokenIssuer.compact', import.meta.url),
+  'utf8',
 );
-const CORE_SOURCE = sourceOf('../../ConfidentialNoteFungibleToken.compact');
-
-/** The distinct `pad(32, "...")` literals in a source, in order of appearance. */
-const tagsOf = (source: string): string[] => [
-  ...new Set(
-    [...source.matchAll(/pad\(32, "([^"]+)"\)/g)].map(([, found]) => found),
-  ),
-];
-
-/** The tag a module's `derivePk` body hashes under. */
-const derivePkTagOf = (source: string): string | undefined =>
-  source.match(
-    /pure circuit derivePk\([^)]*\): Field \{\s*return Prf_prfField<Bytes<32>>\(pad\(32, "([^"]+)"\)/,
-  )?.[1];
 
 /** Source lines with doc and line comments dropped. */
 const codeLines = (source: string): string[] =>
@@ -144,42 +151,42 @@ describe('ConfidentialNoteFungibleTokenIssuer compatibility: key derivation', ()
 });
 
 // ---------------------------------------------------------------------------
-// Tags and the Prf layout
+// Tags and the PrfAddr layout
 // ---------------------------------------------------------------------------
 
 describe('ConfidentialNoteFungibleTokenIssuer compatibility: tags', () => {
-  let prf: PrfSimulator;
+  let token: ConfidentialNoteFungibleTokenIssuerSimulator;
+  let addr: PrfAddrSimulator;
 
   beforeAll(async () => {
-    prf = await PrfSimulator.create();
+    token = await ConfidentialNoteFungibleTokenIssuerSimulator.create({
+      instanceSalt: SALT,
+    });
+    addr = await PrfAddrSimulator.create();
   });
 
-  it('should keep the pinned issuer tag', () => {
-    expect(tagsOf(EXTENSION_SOURCE)).toStrictEqual([ISSUER_TAG]);
-    expect(derivePkTagOf(EXTENSION_SOURCE)).toBe(ISSUER_TAG);
+  it('should keep the pinned issuer tag', async () => {
+    expect(hex(await token.DOMAIN())).toBe(hex(tag(ISSUER_TAG)));
   });
 
-  it("should keep the core's identity tag on its derivePk", () => {
-    expect(derivePkTagOf(CORE_SOURCE)).toBe(CORE_TAG);
+  it("should keep the core's identity tag", () => {
+    expect(hex(core.DOMAIN_PK())).toBe(hex(tag(CORE_TAG)));
   });
 
-  it('should share no tag with the core', () => {
-    const coreTags = new Set(tagsOf(CORE_SOURCE));
+  it('should share no tag with the core', async () => {
+    const coreTags = Object.values(CORE_TAGS).map((read) => hex(read()));
 
-    expect(coreTags.has(CORE_TAG)).toBe(true);
-    expect(ISSUER_TAG).not.toBe(CORE_TAG);
-    for (const found of tagsOf(EXTENSION_SOURCE)) {
-      expect(coreTags.has(found)).toBe(false);
-    }
+    expect(coreTags).toHaveLength(8);
+    expect(coreTags).not.toContain(hex(await token.DOMAIN()));
   });
 
-  // Deploys `MockPrf`: both pinned keys are `Prf.prfField` over
-  // `{tag, salt, sk}`, each under its own tag.
-  it('should derive both pinned keys as Prf.prfField under their tags', async () => {
-    expect(await prf.prfFieldOfBytes(tag(ISSUER_TAG), SALT, ALICE_SK)).toBe(
+  // Deploys `MockPrfAddr`: both pinned keys are `PrfAddr.derivePk` over
+  // `{tag, salt, sk}`, each under its module's tag circuit.
+  it('should derive both pinned keys as PrfAddr.derivePk under their tags', async () => {
+    expect(await addr.derivePk(issuer.DOMAIN(), SALT, ALICE_SK)).toBe(
       PINNED_ISSUER_PK,
     );
-    expect(await prf.prfFieldOfBytes(tag(CORE_TAG), SALT, ALICE_SK)).toBe(
+    expect(await addr.derivePk(core.DOMAIN_PK(), SALT, ALICE_SK)).toBe(
       PINNED_CORE_PK,
     );
   });
@@ -240,16 +247,18 @@ describe('ConfidentialNoteFungibleTokenIssuer compatibility: published surface',
     NameOf<Circuits<never>>,
     Pick<CircuitSurface, 'pure' | 'proof'>
   > = {
+    DOMAIN: { pure: true, proof: false },
     _setIssuer: { pure: false, proof: true },
     assertOnlyIssuer: { pure: false, proof: true },
     derivePk: { pure: true, proof: false },
     rotateIssuer: { pure: false, proof: true },
   };
 
+  // Code-unit order, as `circuitSurface` sorts: `DOMAIN` before `_setIssuer`.
   it('should keep the pinned circuit surface', () => {
-    const expected = Object.entries(SURFACE)
-      .map(([name, flags]) => ({ name, ...flags }))
-      .sort((left, right) => left.name.localeCompare(right.name));
+    const expected = (Object.keys(SURFACE) as (keyof typeof SURFACE)[])
+      .sort()
+      .map((name) => ({ name, ...SURFACE[name] }));
 
     expect(circuitSurface(contractInfo())).toStrictEqual(expected);
   });

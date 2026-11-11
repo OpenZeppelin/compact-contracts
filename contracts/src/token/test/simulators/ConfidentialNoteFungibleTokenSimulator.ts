@@ -77,6 +77,46 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
     return simulator;
   }
 
+  /** Domain tag of `derivePk`. */
+  public DOMAIN_PK(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_PK();
+  }
+
+  /** Domain tag of `commitOf`. */
+  public DOMAIN_COMMITMENT(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_COMMITMENT();
+  }
+
+  /** Domain tag of `nullifierOf`. */
+  public DOMAIN_NULLIFIER(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_NULLIFIER();
+  }
+
+  /** Domain tag of `issuedTagOf`. */
+  public DOMAIN_ISSUED(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_ISSUED();
+  }
+
+  /** Domain tag of every derived output nonce. */
+  public DOMAIN_NONCE(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_NONCE();
+  }
+
+  /** Nonce slot of a minted note. */
+  public DOMAIN_NONCE_MINT(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_NONCE_MINT();
+  }
+
+  /** Nonce slot of a transfer's output note. */
+  public DOMAIN_NONCE_OUT(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_NONCE_OUT();
+  }
+
+  /** Nonce slot of a change note. */
+  public DOMAIN_NONCE_CHANGE(): Promise<Uint8Array> {
+    return this.circuits.pure.DOMAIN_NONCE_CHANGE();
+  }
+
   /** Mints `value` to `recipientPk` with a core-derived nonce. Ungated. */
   public _mint(recipientPk: bigint, value: bigint): Promise<Note> {
     return this.circuits.impure._mint(recipientPk, value);

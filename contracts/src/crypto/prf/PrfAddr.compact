@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/prf/PrfAddr.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module PrfAddr
+ * @description Address key derivation. `derivePk` maps a secret to a public
+ * `Field` key under a purpose tag and a salt.
+ *
+ * ```compact
+ * import "../crypto/prf/PrfAddr" prefix PrfAddr_;
+ *
+ * export pure circuit DOMAIN(): Bytes<32> {
+ *   return pad(32, "MyModule:pk");
+ * }
+ *
+ * export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
+ *   return PrfAddr_derivePk(DOMAIN(), salt, sk);
+ * }
+ * ```
+ *
+ * @see https://eprint.iacr.org/2014/349 Ben-Sasson et al., Zerocash: Decentralized Anonymous Payments from Bitcoin (IEEE S&P 2014)
+ *
+ * @dev Structure:
+ * Zerocash derives `PRF^addr_x(z) = PRF_x(00 || z)` and sets the address key
+ * `a_pk = PRF^addr_{a_sk}(0)`. Here `domain` is the tag, `salt` is `z` and
+ * `sk` is the seed `x`. The tag is an argument, so each caller keeps its own
+ * key space. Zerocash hashes the seed first. This layout hashes it last.
+ *
+ * @dev Layout:
+ * `PrfCore.evaluate` over `{domain, salt}` with `sk` as key, reduced to a `Field` via
+ * `degradeToTransient`. The hash covers `domain`, `salt`, `sk` in that order,
+ * and it is wire format: changing it orphans every derived key.
+ *
+ * @notice Caller duties:
+ * - One tag per purpose. Two callers sharing a tag derive the same key from
+ *   one secret and salt.
+ * - `sk` MUST be 32 bytes from a CSPRNG. With the tag and salt public, a
+ *   guessable secret is found offline.
+ *
+ * @dev No ledger state, no witnesses, no asserts.
+ */
+module PrfAddr {
+  import CompactStandardLibrary;
+  import "./PrfCore" prefix PrfCore_;
+
+  /**
+   * @description The `PrfCore.evaluate` input, in wire-format order.
+   * @type {Bytes<32>} domain - The purpose tag.
+   * @type {Bytes<32>} salt - The salt the key is derived under.
+   */
+  struct Input {
+    domain: Bytes<32>;
+    salt: Bytes<32>;
+  }
+
+  /**
+   * @description `pk = PrfCore.evaluate({domain, salt}, sk)` reduced to a `Field`.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {Bytes<32>} salt - The salt the key is derived under.
+   * @param {Bytes<32>} sk - The secret.
+   * @return {Field} - The public key.
+   */
+  export pure circuit derivePk(domain: Bytes<32>, salt: Bytes<32>, sk: Bytes<32>): Field {
+    return degradeToTransient(PrfCore_evaluate<Input>(Input { domain: domain, salt: salt }, sk));
+  }
+}

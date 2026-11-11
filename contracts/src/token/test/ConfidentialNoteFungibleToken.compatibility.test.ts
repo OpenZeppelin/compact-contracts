@@ -39,7 +39,7 @@ import {
   degradeToTransient,
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   type CircuitSurface,
   circuitSurface,
@@ -150,6 +150,63 @@ describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
       '0x27eaf0b7591acabab03a7b8f370edb87ced140a090678267592a272a812ae9e1',
     );
     expect(core.issuedTagOf(NOTE)).not.toEqual(core.nullifierOf(NOTE));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Domain tags
+// ---------------------------------------------------------------------------
+
+type TagName = Extract<NameOf<Circuits<never>>, `DOMAIN_${string}`>;
+
+/** Each tag circuit and the string it pads. Keyed on `Circuits`, so a new tag must be listed. */
+const TAGS: Exhaustive<TagName, string> = {
+  DOMAIN_PK: 'CNFT:pk',
+  DOMAIN_COMMITMENT: 'CNFT:commitment',
+  DOMAIN_NULLIFIER: 'CNFT:nullifier',
+  DOMAIN_ISSUED: 'CNFT:issued',
+  DOMAIN_NONCE: 'CNFT:nonce:core',
+  DOMAIN_NONCE_MINT: 'CNFT:mint',
+  DOMAIN_NONCE_OUT: 'CNFT:out',
+  DOMAIN_NONCE_CHANGE: 'CNFT:change',
+};
+
+/** Compact's `pad(32, s)`: the UTF-8 bytes of `s`, zero-padded to 32. */
+const pad32 = (label: string): Uint8Array => {
+  const bytes = new Uint8Array(32);
+  bytes.set(new TextEncoder().encode(label));
+  return bytes;
+};
+
+describe('ConfidentialNoteFungibleToken compatibility: domain tags', () => {
+  let token: ConfidentialNoteFungibleTokenSimulator;
+  let tags: Exhaustive<TagName, Uint8Array>;
+
+  beforeAll(async () => {
+    token = await ConfidentialNoteFungibleTokenSimulator.create();
+    tags = {
+      DOMAIN_PK: await token.DOMAIN_PK(),
+      DOMAIN_COMMITMENT: await token.DOMAIN_COMMITMENT(),
+      DOMAIN_NULLIFIER: await token.DOMAIN_NULLIFIER(),
+      DOMAIN_ISSUED: await token.DOMAIN_ISSUED(),
+      DOMAIN_NONCE: await token.DOMAIN_NONCE(),
+      DOMAIN_NONCE_MINT: await token.DOMAIN_NONCE_MINT(),
+      DOMAIN_NONCE_OUT: await token.DOMAIN_NONCE_OUT(),
+      DOMAIN_NONCE_CHANGE: await token.DOMAIN_NONCE_CHANGE(),
+    };
+  });
+
+  it.each(Object.entries(TAGS) as [TagName, string][])(
+    'should keep %s at the padded bytes of %s',
+    (name, label) => {
+      expect(hex(tags[name])).toBe(hex(pad32(label)));
+    },
+  );
+
+  it('should keep the tags pairwise distinct', () => {
+    const distinct = new Set(Object.values(tags).map(hex));
+
+    expect(distinct.size).toBe(Object.keys(TAGS).length);
   });
 });
 
@@ -269,6 +326,14 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
     NameOf<Circuits<never>>,
     Pick<CircuitSurface, 'pure' | 'proof'>
   > = {
+    DOMAIN_COMMITMENT: { pure: true, proof: false },
+    DOMAIN_ISSUED: { pure: true, proof: false },
+    DOMAIN_NONCE: { pure: true, proof: false },
+    DOMAIN_NONCE_CHANGE: { pure: true, proof: false },
+    DOMAIN_NONCE_MINT: { pure: true, proof: false },
+    DOMAIN_NONCE_OUT: { pure: true, proof: false },
+    DOMAIN_NULLIFIER: { pure: true, proof: false },
+    DOMAIN_PK: { pure: true, proof: false },
     _burn: { pure: false, proof: true },
     _consumeNote: { pure: false, proof: true },
     _inputNote: { pure: false, proof: false },
@@ -284,10 +349,11 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
     transfer: { pure: false, proof: true },
   };
 
+  // Code-unit order, as `circuitSurface` sorts: `DOMAIN_*` before `_burn`.
   it('should keep the pinned circuit surface', () => {
-    const expected = Object.entries(SURFACE)
-      .map(([name, flags]) => ({ name, ...flags }))
-      .sort((left, right) => left.name.localeCompare(right.name));
+    const expected = (Object.keys(SURFACE) as (keyof typeof SURFACE)[])
+      .sort()
+      .map((name) => ({ name, ...SURFACE[name] }));
 
     expect(circuitSurface(contractInfo())).toStrictEqual(expected);
   });

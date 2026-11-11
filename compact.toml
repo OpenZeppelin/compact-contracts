@@ -48,6 +48,9 @@ artifact = "archive/test/mocks/{name}"
 [contracts."src/crypto/test/mocks/*"]
 artifact = "crypto/test/mocks/{name}"
 
+[contracts."src/crypto/prf/test/mocks/*"]
+artifact = "crypto/prf/test/mocks/{name}"
+
 [contracts."src/math/test/mocks/*"]
 artifact = "math/test/mocks/{name}"
 

@@ -1,20 +1,20 @@
 /**
- * Properties of the Prf module over generated tags, inputs and keys.
+ * Properties of the PrfCore module over generated tags, inputs and keys.
  *
  * The unit and compatibility suites state each claim at fixed points. This
- * states them where nobody chose: each wrapper equals its reference, `prfField`
- * is the reduction of `prf`, and each of the three inputs alone moves the
- * output.
+ * states them where nobody chose: each wrapper equals its flat reference, the
+ * reduction is the runtime reduction of the digest, and each of the three
+ * inputs alone moves the output.
  *
- * Runs on either backend. Every wrapper is an impure circuit on `MockPrf`, so
- * each call is a transaction on live, and the properties run twice there.
+ * Runs on either backend. Every wrapper is an impure circuit on `MockPrfCore`,
+ * so each call is a transaction on live, and the properties run twice there.
  */
 
 import { degradeToTransient } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PrfSimulator } from './simulators/PrfSimulator.js';
+import { PrfCoreSimulator } from './simulators/PrfCoreSimulator.js';
 
 // ---------------------------------------------------------------------------
 // Generators, each pinned to the circuit's own type
@@ -37,25 +37,22 @@ const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
 const PROPERTY_RUNS = isLiveBackend() ? 2 : 100;
 
-let prf: PrfSimulator;
+let prf: PrfCoreSimulator;
 
 beforeAll(async () => {
-  prf = await PrfSimulator.create();
+  prf = await PrfCoreSimulator.create();
 });
 
 // ---------------------------------------------------------------------------
 // Layout and reduction
 // ---------------------------------------------------------------------------
 
-describe('Prf property: layout and reduction', () => {
-  it('should match the references over Bytes<32> for any tag, input and key', async () => {
+describe('PrfCore property: layout and reduction', () => {
+  it('should match the reference over Bytes<32> for any tag, input and key', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), bytes32(), bytes32(), async (d, i, k) => {
-        expect(await prf.prfOfBytes(d, i, k)).toStrictEqual(
-          await prf.refPrfOfBytes(d, i, k),
-        );
-        expect(await prf.prfFieldOfBytes(d, i, k)).toBe(
-          await prf.refPrfFieldOfBytes(d, i, k),
+        expect(await prf.evaluateOfBytes(d, i, k)).toStrictEqual(
+          await prf.refEvaluateOfBytes(d, i, k),
         );
       }),
       { numRuns: PROPERTY_RUNS },
@@ -65,33 +62,22 @@ describe('Prf property: layout and reduction', () => {
   it('should match the references over Field for any tag, input and key', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), field(), bytes32(), async (d, i, k) => {
-        expect(await prf.prfOfField(d, i, k)).toStrictEqual(
-          await prf.refPrfOfField(d, i, k),
+        expect(await prf.evaluateOfField(d, i, k)).toStrictEqual(
+          await prf.refEvaluateOfField(d, i, k),
         );
-        expect(await prf.prfFieldOfField(d, i, k)).toBe(
-          await prf.refPrfFieldOfField(d, i, k),
-        );
-      }),
-      { numRuns: PROPERTY_RUNS },
-    );
-  });
-
-  it('should reduce prf to prfField over Bytes<32> for any tag, input and key', async () => {
-    await fc.assert(
-      fc.asyncProperty(bytes32(), bytes32(), bytes32(), async (d, i, k) => {
-        expect(await prf.prfFieldOfBytes(d, i, k)).toBe(
-          degradeToTransient(await prf.prfOfBytes(d, i, k)),
+        expect(await prf.evaluateReducedOfField(d, i, k)).toBe(
+          await prf.refEvaluateReducedOfField(d, i, k),
         );
       }),
       { numRuns: PROPERTY_RUNS },
     );
   });
 
-  it('should reduce prf to prfField over Field for any tag, input and key', async () => {
+  it('should reduce the digest over Field for any tag, input and key', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), field(), bytes32(), async (d, i, k) => {
-        expect(await prf.prfFieldOfField(d, i, k)).toBe(
-          degradeToTransient(await prf.prfOfField(d, i, k)),
+        expect(await prf.evaluateReducedOfField(d, i, k)).toBe(
+          degradeToTransient(await prf.evaluateOfField(d, i, k)),
         );
       }),
       { numRuns: PROPERTY_RUNS },
@@ -107,8 +93,8 @@ describe('Prf property: layout and reduction', () => {
  * Each run draws two values for one input and holds the other two fixed, so a
  * failure names the input that did not separate.
  */
-describe('Prf property: separation', () => {
-  it('should move both outputs over Bytes<32> when any one input changes', async () => {
+describe('PrfCore property: separation', () => {
+  it('should move the digest over Bytes<32> when any one input changes', async () => {
     await fc.assert(
       fc.asyncProperty(
         component(),
@@ -124,11 +110,8 @@ describe('Prf property: separation', () => {
             k: moved === 'key' ? other : k,
           };
 
-          expect(hex(await prf.prfOfBytes(d, i, k))).not.toBe(
-            hex(await prf.prfOfBytes(next.d, next.i, next.k)),
-          );
-          expect(await prf.prfFieldOfBytes(d, i, k)).not.toBe(
-            await prf.prfFieldOfBytes(next.d, next.i, next.k),
+          expect(hex(await prf.evaluateOfBytes(d, i, k))).not.toBe(
+            hex(await prf.evaluateOfBytes(next.d, next.i, next.k)),
           );
         },
       ),
@@ -136,7 +119,7 @@ describe('Prf property: separation', () => {
     );
   });
 
-  it('should move both outputs over Field when any one input changes', async () => {
+  it('should move the digest and its reduction over Field when any one input changes', async () => {
     await fc.assert(
       fc.asyncProperty(
         component(),
@@ -157,11 +140,11 @@ describe('Prf property: separation', () => {
             k: moved === 'key' ? otherBytes : k,
           };
 
-          expect(hex(await prf.prfOfField(d, i, k))).not.toBe(
-            hex(await prf.prfOfField(next.d, next.i, next.k)),
+          expect(hex(await prf.evaluateOfField(d, i, k))).not.toBe(
+            hex(await prf.evaluateOfField(next.d, next.i, next.k)),
           );
-          expect(await prf.prfFieldOfField(d, i, k)).not.toBe(
-            await prf.prfFieldOfField(next.d, next.i, next.k),
+          expect(await prf.evaluateReducedOfField(d, i, k)).not.toBe(
+            await prf.evaluateReducedOfField(next.d, next.i, next.k),
           );
         },
       ),
