@@ -14,7 +14,8 @@ pragma language_version >= 0.26.0;
  * - `Hf(...)`: `H` reduced to a `Field` via `degradeToTransient`.
  * - NOTE: a UTxO `(value, nonce)`. A balance is the sum of one's unspent notes.
  * - `pk = Hf(domain, salt, sk)`: the owner identity, `salt` being the
- *   deployment's `_instanceSalt`.
+ *   deployment's `_instanceSalt`. Hashed in the `crypto/Prf` layout, with
+ *   `salt` as input and `sk` as key.
  * - `cm = H(domain, value, nonce, pk)`: the commitment stored in the tree.
  * - `nf = H(domain, nonce)`: the nullifier that marks a note spent.
  * - `tag = H(domain, nonce)`: the issued tag that reserves a nonce at mint.
@@ -149,6 +150,7 @@ pragma language_version >= 0.26.0;
  */
 module ConfidentialNoteFungibleToken<#depth> {
   import CompactStandardLibrary;
+  import "../crypto/Prf" prefix Prf_;
 
   /**
    * @description A unit of value. Ownership is not a field: a note belongs to
@@ -160,18 +162,6 @@ module ConfidentialNoteFungibleToken<#depth> {
   export struct Note {
     value: Uint<128>;
     nonce: Field;
-  }
-
-  /**
-   * @description Domain-separated preimage of an owner identity.
-   * @type {Bytes<32>} domain - The pk domain tag.
-   * @type {Bytes<32>} salt - The deployment salt.
-   * @type {Bytes<32>} sk - The owner's spend secret.
-   */
-  struct PkPreimage {
-    domain: Bytes<32>;
-    salt: Bytes<32>;
-    sk: Bytes<32>;
   }
 
   /**
@@ -541,8 +531,8 @@ module ConfidentialNoteFungibleToken<#depth> {
   }
 
   /**
-   * @description `pk = Hf(domain, salt, sk)`. Exported so wallets and auditors
-   * derive identities the way the circuits do.
+   * @description `pk = Prf.prfField("CNFT:pk", salt, sk)`. Exported so
+   * wallets and auditors derive identities the way the circuits do.
    *
    * @dev Instance salt:
    * The circuits pass `_instanceSalt`, so one `sk` maps to an unrelated `pk`
@@ -554,11 +544,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {Field} - The spend identity that owns notes.
    */
   export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<PkPreimage>(PkPreimage {
-      domain: pad(32, "CNFT:pk"),
-      salt: salt,
-      sk: sk
-    }));
+    return Prf_prfField<Bytes<32>>(pad(32, "CNFT:pk"), salt, sk);
   }
 
   /**

@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/Prf.compact)
+
+pragma language_version >= 0.26.0;
+
+/**
+ * @module Prf
+ * @description Domain-tagged keyed hash. `prf` hashes a purpose tag, an input
+ * and a secret key. `prfField` reduces that hash to a `Field`.
+ *
+ * ```compact
+ * import "../crypto/Prf" prefix Prf_;
+ *
+ * export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
+ *   return Prf_prfField<Bytes<32>>(pad(32, "MyModule:pk"), salt, sk);
+ * }
+ * ```
+ *
+ * @see https://eprint.iacr.org/2014/349 Ben-Sasson et al., Zerocash: Decentralized Anonymous Payments from Bitcoin (IEEE S&P 2014)
+ *
+ * @dev Layout:
+ * The preimage is `{domain, input, key}`, and it is wire format. The field
+ * order is fixed. The struct name is not hashed, so any struct with these
+ * three fields in this order gives the same output.
+ *
+ * @dev Structure:
+ * Zerocash derives `PRF^addr`, `PRF^sn` and `PRF^pk` from one PRF by tag, with
+ * the address key `a_pk = PRF^addr_{a_sk}(0)`. `domain` is the tag here.
+ * Zerocash puts the key first. This layout puts it last.
+ *
+ * @notice Assumption:
+ * `persistentHash` is collision-resistant and behaves as a pseudorandom
+ * function of `key`.
+ *
+ * @notice Caller duties:
+ * - One tag per purpose. Never use one tag with two input types, or with
+ *   both `prf` and `prfField`. The type name is not hashed, and `prfField` is
+ *   computable from `prf`, so the tag is the only separator.
+ * - A published output needs a 32-byte `key` from a CSPRNG. With the tag and
+ *   input public, a guessable key is found offline.
+ *
+ * @dev No ledger state, no witnesses, no asserts. Whether an output is
+ * published is the caller's choice.
+ */
+module Prf {
+  import CompactStandardLibrary;
+
+  /**
+   * @description The hashed preimage, in wire-format order.
+   * @type {Bytes<32>} domain - The purpose tag.
+   * @type {T} input - The input the output is bound to.
+   * @type {Bytes<32>} key - The secret key.
+   */
+  struct Preimage<T> {
+    domain: Bytes<32>;
+    input: T;
+    key: Bytes<32>;
+  }
+
+  /**
+   * @description The keyed hash, `persistentHash` over
+   * `{domain, input, key}`.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {T} input - The input the output is bound to.
+   * @param {Bytes<32>} key - The secret key.
+   * @return {Bytes<32>} - The digest.
+   */
+  export pure circuit prf<T>(domain: Bytes<32>, input: T, key: Bytes<32>): Bytes<32> {
+    return persistentHash<Preimage<T>>(Preimage<T> { domain: domain, input: input, key: key });
+  }
+
+  /**
+   * @description `prf` reduced to a `Field` via `degradeToTransient`.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {T} input - The input the output is bound to.
+   * @param {Bytes<32>} key - The secret key.
+   * @return {Field} - The reduced digest.
+   */
+  export pure circuit prfField<T>(domain: Bytes<32>, input: T, key: Bytes<32>): Field {
+    return degradeToTransient(prf<T>(domain, input, key));
+  }
+}

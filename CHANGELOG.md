@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Add the `crypto/Prf` module: `prf<T>(domain, input, key)` hashes a purpose tag, an input and a secret key in the fixed `{domain, input, key}` layout, and `prfField` reduces the hash to a `Field`. `ConfidentialNoteFungibleToken.derivePk` delegates to it and derives the same keys as before.
+
 ### Changed (breaking)
 
 - Upgrade the Compact toolchain and Midnight dependencies:

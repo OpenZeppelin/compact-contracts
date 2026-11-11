@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the Prf module's circuits so they can be driven from off-chain
+// tests. DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.26.0;
+
+import CompactStandardLibrary;
+import "../../Prf" prefix Prf_;
+
+// Keeps the circuits impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys, leaving
+// the code evaluated but never proven.
+ledger _invocations: Counter;
+
+// Hand-written copies of the `Prf` layout under other struct names. The
+// `ref*` circuits hash them without calling `Prf`, so a spec checks `Prf`
+// against an independent encoding.
+struct RefBytesPreimage {
+  domain: Bytes<32>;
+  input: Bytes<32>;
+  key: Bytes<32>;
+}
+
+struct RefFieldPreimage {
+  domain: Bytes<32>;
+  input: Field;
+  key: Bytes<32>;
+}
+
+// Exported circuits cannot be generic: one wrapper per input type.
+
+export circuit prfOfBytes(domain: Bytes<32>, input: Bytes<32>, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return Prf_prf<Bytes<32>>(domain, input, key);
+}
+
+export circuit prfFieldOfBytes(domain: Bytes<32>, input: Bytes<32>, key: Bytes<32>): Field {
+  _invocations.increment(1);
+  return Prf_prfField<Bytes<32>>(domain, input, key);
+}
+
+export circuit prfOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return Prf_prf<Field>(domain, input, key);
+}
+
+export circuit prfFieldOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Field {
+  _invocations.increment(1);
+  return Prf_prfField<Field>(domain, input, key);
+}
+
+export circuit refPrfOfBytes(domain: Bytes<32>, input: Bytes<32>, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefBytesPreimage>(RefBytesPreimage { domain: domain, input: input, key: key });
+}
+
+export circuit refPrfFieldOfBytes(domain: Bytes<32>, input: Bytes<32>, key: Bytes<32>): Field {
+  _invocations.increment(1);
+  return degradeToTransient(
+    persistentHash<RefBytesPreimage>(RefBytesPreimage { domain: domain, input: input, key: key })
+  );
+}
+
+export circuit refPrfOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefFieldPreimage>(RefFieldPreimage { domain: domain, input: input, key: key });
+}
+
+export circuit refPrfFieldOfField(domain: Bytes<32>, input: Field, key: Bytes<32>): Field {
+  _invocations.increment(1);
+  return degradeToTransient(
+    persistentHash<RefFieldPreimage>(RefFieldPreimage { domain: domain, input: input, key: key })
+  );
+}
