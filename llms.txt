@@ -23,7 +23,7 @@ One npm package, organized by category under `contracts/src/`. The
 describes the layout of each module directory.
 
 - [access](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/access): ownership and role-based access control, transparent and shielded
-- [crypto](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/crypto): ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712
+- [crypto](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/crypto): ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712, pseudorandom functions
 - [math](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/math): wrapping arithmetic on `Uint<N>` at any width
 - [multisig](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/multisig): signer registry, threshold approvals, proposals, treasuries, forwarders, presets
 - [security](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/security): initialization, pausing, allowlists and blocklists
