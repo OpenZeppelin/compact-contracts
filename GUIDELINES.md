@@ -142,8 +142,10 @@ TypeScript:
 - Node built-ins use the `node:` prefix (`import { getRandomValues } from 'node:crypto';`).
 - Relative imports carry the `.js` extension; shared test helpers come through the
   `#test-utils/*` alias (`import { expectRejection } from '#test-utils/assertions/rejection.js';`).
-- Compiled artifacts are imported from `contracts/artifacts/<Mock>/contract/index.js`, aliasing
-  `Contract` to the mock's name (`Contract as MockFungibleToken`).
+- Compiled artifacts mirror the source tree: a contract at `contracts/src/<path>/<Name>.compact`
+  is imported from `contracts/artifacts/<path>/<Name>/contract/index.js` (for a module mock,
+  `contracts/artifacts/<category>/test/mocks/<Mock>/contract/index.js`), aliasing `Contract` to
+  the contract's name (`Contract as MockFungibleToken`).
 - Type-only imports use `import type` or inline `type`. Biome sorts imports and rejects unused
   ones; no barrel files and no `export *`.
 
@@ -222,18 +224,28 @@ const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
 _balances.insert(disclose(canonTo), disclose(value));
 ```
 
-**A missing map entry is zero.** Check `member` before `lookup` and return the default rather
-than letting the lookup fail.
+**Decide what absence means; never let a bare `lookup` fail.**
+Check `member` before `lookup`.
+Where the docblock gives absence a meaning, return that value: `balanceOf` returns `0`,
+`_ownerOf` returns `Utils_zeroAccount()`, `getRoleAdmin` returns `DEFAULT_ADMIN_ROLE()`.
+Whereabsence is an error, assert membership with the module's message as
+`ConfidentialFungibleToken` does for an unregistered account.
+A lookup on a missing key fails with the runtime's own error,
+which tells the caller nothing.
 
 ```compact
 // Avoid
 return _balances.lookup(disclose(account));
 
-// Use
+// Use: absence has a documented value
 if (!_balances.member(disclose(account))) {
   return 0;
 }
 return _balances.lookup(disclose(account));
+
+// Use: absence is an error
+assert(_encryptionKeys.member(disclose(account)), "ConfidentialFungibleToken: receiver not registered");
+return _encryptionKeys.lookup(disclose(account));
 ```
 
 **Each module owns its initialization flag.** Importing `Initializable` from two modules in one
