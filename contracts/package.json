@@ -33,7 +33,7 @@
     "compile:token": "rm -rf artifacts/token && compact-compiler +0.36.0 --hierarchical --dir token",
     "compile:utils": "rm -rf artifacts/utils && compact-compiler +0.36.0 --hierarchical --dir utils",
     "compile:integration": "rm -rf artifacts/integration && compact-compiler +0.36.0 --hierarchical --src test/integration/_mocks --out artifacts/integration",
-    "build": "compact-builder --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
+    "build": "compact-builder +0.36.0 --hierarchical --out dist --clean-dist --exclude '*/archive/*' --exclude 'Mock*' --exclude '*.mock.compact' --copy package.json --copy ../README.md && find dist -type d -empty -delete",
     "test": "vitest run --project unit",
     "test:coverage": "vitest run --project unit --coverage",
     "test:integration": "vitest run --project integration",
