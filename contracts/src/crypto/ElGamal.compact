@@ -96,9 +96,8 @@ pragma language_version >= 0.26.0;
  * `encryptZero`, has no such input and fails key generation with
  * `ZkStdLibArch must enable jubjub`
  * ([LFDT-Minokawa/compact#616](https://github.com/LFDT-Minokawa/compact/issues/616)).
- * Every other circuit here takes a point or a ciphertext, so a caller reaching
- * them is unaffected. For key setup, take the derived key as an argument and
- * check it with `assertKeyPair` rather than deriving and storing it;
+ * For key setup, take the derived key as an argument and check it with
+ * `assertKeyPair` rather than deriving and storing it;
  * `ConfidentialFungibleToken.registerWithKey` is the worked example. An
  * otherwise unused `JubjubScalar` argument or witness value also suffices.
  * Nothing in this module can change the outcome: the inputs that matter are
