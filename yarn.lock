@@ -494,6 +494,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/midnight-js-network-id@npm:5.0.0-rc.5":
+  version: 5.0.0-rc.5
+  resolution: "@midnight-ntwrk/midnight-js-network-id@npm:5.0.0-rc.5"
+  checksum: 10/85c6781bc67aa84a90ad63a82a67c3d513814bc3223c7834c4d2b975d8594ff95554ae1e55363c074292d53dff1183e1f9bfcc61e37c413af1701fc3ca6a8979
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/midnight-js-node-zk-config-provider@npm:5.0.0-beta.7":
   version: 5.0.0-beta.7
   resolution: "@midnight-ntwrk/midnight-js-node-zk-config-provider@npm:5.0.0-beta.7"
@@ -1003,7 +1010,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-contracts": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "npm:5.0.0-beta.7"
-    "@midnight-ntwrk/midnight-js-network-id": "npm:5.0.0-beta.7"
+    "@midnight-ntwrk/midnight-js-network-id": "npm:5.0.0-rc.5"
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/midnight-js-protocol": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/midnight-js-types": "npm:5.0.0-beta.7"
