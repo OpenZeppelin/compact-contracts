@@ -190,8 +190,8 @@ Overall progress [====================] 14/14
 
 ZKIR v3: compiler 0.36.0 emits ZKIR v3 only, and `--feature-zkir-v3` is gone.
 Every `@constraints` annotation in the library is a ZKIR v3 measurement.
-Key generation for a circuit that produces Jubjub points without taking one as
-an input still fails upstream; see [Known issues](CHANGELOG.md#known-issues).
+Key generation for a circuit that produces Jubjub points without taking a Jubjub
+scalar or point as an input still fails upstream; see [Known issues](CHANGELOG.md#known-issues).
 
 ## Development
 
