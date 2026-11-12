@@ -63,7 +63,7 @@ Import the modules through `./node_modules/@openzeppelin/compact-contracts/...`.
 ```typescript
 // MyContract.compact
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin/compact-contracts/access/Ownable"

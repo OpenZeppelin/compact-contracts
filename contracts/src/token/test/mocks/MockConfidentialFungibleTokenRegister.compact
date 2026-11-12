@@ -2,7 +2,7 @@
 // to deploy on the local node: the full base mock exceeds the deploy block
 // budget, so the on-chain proof of `registerWithKey` runs here. Three circuits,
 // no value movement. DO NOT deploy this mock.
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 import CompactStandardLibrary;
 import "../../ConfidentialFungibleToken" prefix CFT_;
 import "../../../crypto/ElGamal" prefix ElGamal_;

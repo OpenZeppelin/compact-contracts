@@ -3,7 +3,7 @@
 // committed and delivered in one circuit, the constructor mint included, so a
 // wallet finds every note by scanning `Delivery__deliveries`. `mint` is
 // ungated, so anyone can create value. DO NOT deploy this mock.
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 import CompactStandardLibrary;
 import "../../../ConfidentialNoteFungibleToken"<32> prefix Core_;
 import "../../ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;

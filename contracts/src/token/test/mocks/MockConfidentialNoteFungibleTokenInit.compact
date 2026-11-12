@@ -2,7 +2,7 @@
 // guards, which only a constructor can reach. `misuse` picks the violation:
 // 1 mints before `initialize`, 2 spends before it, anything else runs
 // `initialize` twice. Every deployment fails by design. DO NOT deploy this mock.
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 import CompactStandardLibrary;
 import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
 
