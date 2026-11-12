@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (multisig/ProposalManager.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module ProposalManager
@@ -293,7 +293,7 @@ module ProposalManager {
    * - Proposal must not be executed or cancelled.
    * - Proposal must not have expired.
    *
-   * @constraints k=9, rows=129
+   * @constraints k=9, rows=117
    *
    * @param {Uint<64>} id - The proposal ID.
    *
@@ -356,7 +356,7 @@ module ProposalManager {
    * - `expiry` must be greater than `cancelledState()`.
    * - `expiry` must be in the future.
    *
-   * @constraints k=10, rows=913
+   * @constraints k=9, rows=411
    *
    * @param {Recipient} to - The recipient (constructed via helper circuits).
    * @param {Bytes<32>} color - The token color.
@@ -508,7 +508,7 @@ module ProposalManager {
    * field and the current block time. Returns `Inactive` for an id that was
    * never created rather than failing.
    *
-   * @constraints k=9, rows=252
+   * @constraints k=8, rows=137
    *
    * @param {Uint<64>} id - The proposal ID.
    *

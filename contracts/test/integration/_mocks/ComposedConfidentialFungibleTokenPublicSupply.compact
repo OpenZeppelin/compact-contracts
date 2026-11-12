@@ -21,7 +21,7 @@
 // The `Composed` prefix is load-bearing: the deployer looks a contract up by
 // its source basename, so this file must not share a basename with the
 // `src/token/extensions` extension it composes.
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 

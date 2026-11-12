@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/EcdhMask.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module EcdhMask
@@ -138,7 +138,7 @@ module EcdhMask {
    *
    * @notice `e` MUST be fresh per call (see the module freshness precondition).
    *
-   * @constraints k=14, rows=9318 (zkir-v3)
+   * @constraints k=14, rows=9589
    *
    * Requirements:
    *
@@ -175,7 +175,7 @@ module EcdhMask {
    * @dev Uses `persistentHash` deliberately: the recipient reproduces this mask
    * to decrypt, possibly across a platform upgrade, so it must be upgrade-stable.
    *
-   * @constraints k=13, rows=7914 (zkir-v3)
+   * @constraints k=13, rows=7914
    *
    * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
    *                  `E^ek` for the recipient; equal by construction).
@@ -191,7 +191,7 @@ module EcdhMask {
    * several masks from one shared point digests it once and calls
    * `kdfFromDigest` per tag.
    *
-   * @constraints k=13, rows=4098 (zkir-v3)
+   * @constraints k=13, rows=4098
    *
    * @param sShared - The ECDH shared secret point.
    * @return The point's digest, secret while `sShared` is.
@@ -208,7 +208,7 @@ module EcdhMask {
    * and give every mask drawn from one digest its own tag; two values under
    * one pair share the pad and leak their difference.
    *
-   * @constraints k=13, rows=3956 (zkir-v3)
+   * @constraints k=13, rows=3956
    *
    * @param digest - `pointDigest` of the shared point.
    * @param domain - The consumer's domain-separation tag.
@@ -228,7 +228,7 @@ module EcdhMask {
    * (SEC 1 §5.1.4, action 3). `encrypt` cannot produce one, so a wallet that
    * meets one holds a placeholder, not an encryption.
    *
-   * @constraints k=14, rows=8976 (zkir-v3)
+   * @constraints k=14, rows=9247
    *
    * @param ciphertext - The ciphertext to decrypt.
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s

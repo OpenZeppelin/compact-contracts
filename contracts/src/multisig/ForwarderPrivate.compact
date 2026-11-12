@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (multisig/ForwarderPrivate.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module ForwarderPrivate
@@ -82,7 +82,7 @@ module ForwarderPrivate {
    * @description Receives a shielded coin into the forwarder's custody.
    * No ledger write — coins dwell at the contract address until drained.
    *
-   * @constraints k=13, rows=6522
+   * @constraints k=13, rows=5909
    *
    * Requirements:
    *
@@ -116,7 +116,7 @@ module ForwarderPrivate {
    * would defeat the private-parent guarantee. A coin public key is encrypted
    * inside the Zswap output and never appears on the public transcript.
    *
-   * @constraints k=15, rows=23837
+   * @constraints k=15, rows=21754
    *
    * Requirements:
    *

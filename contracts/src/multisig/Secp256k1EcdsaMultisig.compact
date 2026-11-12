@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (multisig/Secp256k1EcdsaMultisig.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module Secp256k1EcdsaMultisig<#t>
@@ -87,8 +87,8 @@ pragma language_version >= 0.26.0;
  * @dev Performance:
  * - Cost is per entry: one ECDSA verify and one `H` for each of the `t`
  *   approvals, plus `t(t-1)/2` `Bytes<32>` compares.
- * - `assertApprovals` (zkir-v3): `t = 1` is k=16, rows=40538; `t = 2` is
- *   k=17, rows=64908; `t = 3` is k=17, rows=94995.
+ * - `assertApprovals`: `t = 1` is k=16, rows=57341; `t = 2` is
+ *   k=17, rows=92974; `t = 3` is k=18, rows=131913.
  *
  * @dev Composition:
  * - Import this module at exactly one width per contract. Two widths
@@ -242,7 +242,7 @@ module Secp256k1EcdsaMultisig<#t> {
   /**
    * @description Returns the number of registered signers.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<8>} The signer count.
    */
@@ -253,7 +253,7 @@ module Secp256k1EcdsaMultisig<#t> {
   /**
    * @description Returns the approval threshold.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<8>} The threshold.
    */
@@ -264,7 +264,7 @@ module Secp256k1EcdsaMultisig<#t> {
   /**
    * @description Returns whether the given commitment is a registered signer.
    *
-   * @constraints k=8, rows=129 (zkir-v3)
+   * @constraints k=8, rows=129
    *
    * @param {Bytes<32>} commitment - The signer commitment to check.
    * @returns {Boolean} True if registered.

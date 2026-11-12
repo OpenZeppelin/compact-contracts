@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/NativeShieldedTokenCore.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module NativeShieldedTokenCore
@@ -153,7 +153,7 @@ module NativeShieldedTokenCore {
    * @dev Does not gate on init (it reports it), so it is safe to call before
    * `initialize`.
    *
-   * @constraints k=6, rows=24
+   * @constraints k=6, rows=34
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -164,7 +164,7 @@ module NativeShieldedTokenCore {
   /**
    * @description Returns the token name.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -180,7 +180,7 @@ module NativeShieldedTokenCore {
   /**
    * @description Returns the symbol of the token.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -198,7 +198,7 @@ module NativeShieldedTokenCore {
    * @dev This is a display convention only. The protocol stores and operates
    * on integer values without reference to decimals.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -215,7 +215,7 @@ module NativeShieldedTokenCore {
    * @description Returns the coin color for `domain` under this contract's
    * address: `tokenType(domain, kernel.self())`, computed at call time.
    *
-   * @constraints k=13, rows=4239
+   * @constraints k=13, rows=3923
    *
    * Requirements:
    *
@@ -244,7 +244,7 @@ module NativeShieldedTokenCore {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @constraints k=14, rows=11109
+   * @constraints k=14, rows=10005
    *
    * Requirements:
    *
@@ -292,7 +292,7 @@ module NativeShieldedTokenCore {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @constraints k=16, rows=47764
+   * @constraints k=16, rows=44589
    *
    * Requirements:
    *
@@ -348,7 +348,7 @@ module NativeShieldedTokenCore {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @constraints k=15, rows=23484
+   * @constraints k=15, rows=21595
    *
    * Requirements:
    *

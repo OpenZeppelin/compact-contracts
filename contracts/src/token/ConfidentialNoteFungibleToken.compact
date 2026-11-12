@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/ConfidentialNoteFungibleToken.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module ConfidentialNoteFungibleToken<#depth>
@@ -342,7 +342,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Mints a note of `value` to `recipientPk` with a core-derived
    * nonce and returns it.
    *
-   * @constraints k=15, rows=17319
+   * @constraints k=14, rows=15839
    *
    * @notice Hidden amount and recipient:
    * The entry point makes the mint public; the amount and the recipient stay
@@ -400,7 +400,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Commits a caller-built note to `ownerPk`. No value
    * accounting: the caller owns conservation.
    *
-   * @constraints k=14, rows=10926
+   * @constraints k=14, rows=9985
    *
    * @notice Nonce reservation:
    * A duplicate nonce fails the transaction instead of committing a note born
@@ -496,7 +496,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Burns `value` from the caller's input note: spends the note
    * and re-issues only the change, so `value` leaves circulation.
    *
-   * @constraints k=16, rows=37889
+   * @constraints k=16, rows=34384
    *
    * @notice No supply record:
    * The core writes no supply, so nothing on the ledger records that value was
@@ -532,7 +532,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * `derivePk(wit_ConfidentialNoteSK(), _instanceSalt)`. Exposed so a
    * composer authorizes spends the way the core does.
    *
-   * @constraints k=13, rows=4195
+   * @constraints k=13, rows=3869
    *
    * @return {Field} - The caller's spend identity.
    */
@@ -579,7 +579,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description UNGATED building block: consumes the input note owned by
    * `spenderPk` and re-issues only `changeNote`, so `value` leaves circulation.
    *
-   * @constraints k=15, rows=23151
+   * @constraints k=15, rows=20826
    *
    * @warning No authorization:
    * The composer gates who may call this.
@@ -606,7 +606,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description The heart of the module: consumes the witness-supplied note
    * owned by `ownerPk` and publishes its nullifier.
    *
-   * @constraints k=14, rows=12124
+   * @constraints k=14, rows=10836
    *
    * @notice Where it is used:
    * By `_transfer` / `_burn`, and by custom spend paths such as clawback,
@@ -670,7 +670,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Spends the caller's input note and creates a recipient note
    * of `value` plus a change note back to the caller, conserving value.
    *
-   * @constraints k=16, rows=55048
+   * @constraints k=16, rows=50162
    *
    * @notice Local private result:
    * Both notes return to the caller, who hands the recipient note over out of
@@ -709,7 +709,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Consumes the input note owned by `spenderPk` and commits
    * `outNote` to `recipientPk` plus `changeNote` back, conserving value.
    *
-   * @constraints k=16, rows=33905
+   * @constraints k=15, rows=30751
    *
    * @notice Caller-built outputs:
    * Taking both notes as parameters lets a composer run its own emission

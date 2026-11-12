@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/Ecdh.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module Ecdh
@@ -111,7 +111,7 @@ module Ecdh {
    * @notice `e` MUST be fresh per call and secret (see the module freshness
    * precondition).
    *
-   * @constraints k=11, rows=1385
+   * @constraints k=11, rows=1684
    *
    * Requirements:
    *
@@ -141,7 +141,7 @@ module Ecdh {
    * scanning exchanges not addressed to it learns nothing from this circuit and
    * the module exposes no key-correctness oracle.
    *
-   * @constraints k=9, rows=440
+   * @constraints k=10, rows=719
    *
    * @param ephemeralPk - The sender's published `g^e`.
    * @param ekScalar - The recipient's secret scalar.

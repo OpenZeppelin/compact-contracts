@@ -2,7 +2,7 @@
 // isolation: `_deliver` is re-exported ungated, so anyone can push an entry.
 // The extension imports no token module, so nothing here is committed; a
 // consumer wires it beside the core's note creation. DO NOT deploy this mock.
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 import CompactStandardLibrary;
 import "../../ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
 

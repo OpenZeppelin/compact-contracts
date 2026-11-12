@@ -8,7 +8,7 @@
 // future runtime stops enforcing subgroup membership on curve ops, that test
 // fails loudly. DO NOT deploy.
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 

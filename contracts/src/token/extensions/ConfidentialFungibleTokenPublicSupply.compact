@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialFungibleTokenPublicSupply.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module ConfidentialFungibleTokenPublicSupply
@@ -46,7 +46,7 @@ module ConfidentialFungibleTokenPublicSupply {
    * @description Increases `totalSupply` by `value`. Call alongside the token
    * module's `_mint`. The added amount is disclosed via the supply delta.
    *
-   * @constraints k=9, rows=399
+   * @constraints k=9, rows=161
    *
    * Requirements:
    *
@@ -67,7 +67,7 @@ module ConfidentialFungibleTokenPublicSupply {
    * module's `_burn` or `_burnFrom`. The removed amount is disclosed via the
    * supply delta.
    *
-   * @constraints k=9, rows=254
+   * @constraints k=9, rows=124
    *
    * Requirements:
    *
@@ -85,7 +85,7 @@ module ConfidentialFungibleTokenPublicSupply {
   /**
    * @description Returns the public total token supply.
    *
-   * @constraints k=6, rows=24
+   * @constraints k=6, rows=34
    *
    * @return {Uint<128>} - The total supply.
    */

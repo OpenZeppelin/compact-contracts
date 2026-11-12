@@ -3,7 +3,7 @@
 // mints the same note again so the deployment fails. The self-gated spend
 // surface is exported so the owner can prove the note is live. DO NOT deploy
 // this mock.
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 import CompactStandardLibrary;
 import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
 

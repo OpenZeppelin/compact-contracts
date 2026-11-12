@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/NonFungibleToken.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module NonFungibleToken
@@ -166,7 +166,6 @@ module NonFungibleToken {
    * This MUST be called in the implementing contract's constructor.
    * Failure to do so can lead to an irreparable contract.
    *
-   * @constraints k=6, rows=52
    *
    * Requirements:
    *
@@ -212,7 +211,7 @@ module NonFungibleToken {
   /**
    * @description Returns the number of tokens in `owner`'s account.
    *
-   * @constraints k=10, rows=671
+   * @constraints k=9, rows=282
    *
    * Requirements:
    *
@@ -235,7 +234,7 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId` token.
    *
-   * @constraints k=9, rows=331
+   * @constraints k=8, rows=216
    *
    * Requirements:
    *
@@ -253,7 +252,7 @@ module NonFungibleToken {
   /**
    * @description Returns the token name.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -269,7 +268,7 @@ module NonFungibleToken {
   /**
    * @description Returns the symbol of the token.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -286,7 +285,7 @@ module NonFungibleToken {
    * @description Returns the token URI for the given `tokenId`. Returns the empty
    * string if a tokenURI does not exist.
    *
-   * @constraints k=9, rows=324
+   * @constraints k=8, rows=204
    *
    * Requirements:
    *
@@ -315,7 +314,7 @@ module NonFungibleToken {
   /**
    * @description Sets the URI as `tokenURI` for the given `tokenId`.
    *
-   * @constraints k=9, rows=287
+   * @constraints k=8, rows=189
    *
    * Requirements:
    *
@@ -344,7 +343,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @constraints k=13, rows=3406
+   * @constraints k=13, rows=2484
    *
    * Requirements:
    *
@@ -365,7 +364,7 @@ module NonFungibleToken {
   /**
    * @description Returns the account approved for `tokenId` token.
    *
-   * @constraints k=9, rows=420
+   * @constraints k=9, rows=273
    *
    * Requirements:
    *
@@ -389,7 +388,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @constraints k=13, rows=2938
+   * @constraints k=13, rows=2297
    *
    * Requirements:
    *
@@ -412,7 +411,7 @@ module NonFungibleToken {
   /**
    * @description Returns if the `operator` is allowed to manage all of the assets of `owner`.
    *
-   * @constraints k=11, rows=1341
+   * @constraints k=10, rows=507
    *
    * Requirements:
    *
@@ -445,7 +444,7 @@ module NonFungibleToken {
    * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
    * witness as `persistentHash(secretKey)`.
    *
-   * @constraints k=13, rows=4702
+   * @constraints k=13, rows=3017
    *
    * Requirements:
    *
@@ -484,7 +483,7 @@ module NonFungibleToken {
    * Tokens sent to a contract address may become irretrievable.
    * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
-   * @constraints k=13, rows=4699
+   * @constraints k=13, rows=3005
    *
    * Requirements:
    *
@@ -521,7 +520,7 @@ module NonFungibleToken {
   /**
    * @description Returns the owner of the `tokenId`. Does NOT revert if token doesn't exist.
    *
-   * @constraints k=9, rows=306
+   * @constraints k=8, rows=179
    *
    * Requirements:
    *
@@ -542,7 +541,7 @@ module NonFungibleToken {
   /**
    * @description Returns the approved address for `tokenId`. Returns the zero value if `tokenId` is not minted.
    *
-   * @constraints k=9, rows=306
+   * @constraints k=8, rows=179
    *
    * Requirements:
    *
@@ -563,7 +562,7 @@ module NonFungibleToken {
    * @description Returns whether `spender` is allowed to manage `owner`'s tokens, or `tokenId` in
    * particular (ignoring whether it is owned by `owner`).
    *
-   * @constraints k=11, rows=1796
+   * @constraints k=10, rows=693
    *
    * Requirements:
    *
@@ -595,7 +594,7 @@ module NonFungibleToken {
   /**
    * @description Checks if `spender` can operate on `tokenId`, assuming the provided `owner` is the actual owner.
    *
-   * @constraints k=11, rows=1802
+   * @constraints k=10, rows=700
    *
    * Requirements:
    *
@@ -676,7 +675,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`.
    *
-   * @constraints k=11, rows=1388
+   * @constraints k=10, rows=628
    *
    * Requirements:
    *
@@ -700,7 +699,7 @@ module NonFungibleToken {
   /**
    * @description Mints `tokenId` and transfers it to `to`. It does NOT check if the recipient is a ContractAddress.
    *
-   * @constraints k=11, rows=1385
+   * @constraints k=10, rows=616
    *
    * Requirements:
    *
@@ -734,7 +733,7 @@ module NonFungibleToken {
    * The approval is cleared when the token is burned.
    * This circuit does not check if the sender is authorized to operate on the token.
    *
-   * @constraints k=10, rows=507
+   * @constraints k=9, rows=283
    *
    * Requirements:
    *
@@ -759,7 +758,7 @@ module NonFungibleToken {
    * contract-to-contract calls. This restriction prevents assets from being inadvertently
    * locked in contracts that cannot currently handle token receipt.
    *
-   * @constraints k=11, rows=1982
+   * @constraints k=10, rows=829
    *
    * Requirements:
    *
@@ -790,7 +789,7 @@ module NonFungibleToken {
    * As opposed to {_unsafeTransferFrom}, this imposes no restrictions on the caller's identity.
    * It does NOT check if the recipient is a ContractAddress.
    *
-   * @constraints k=11, rows=1979
+   * @constraints k=10, rows=817
    *
    * Requirements:
    *
@@ -827,7 +826,7 @@ module NonFungibleToken {
   /**
    * @description Approve `to` to operate on `tokenId`.
    *
-   * @constraints k=11, rows=1755
+   * @constraints k=10, rows=717
    *
    * Requirements:
    *
@@ -853,7 +852,7 @@ module NonFungibleToken {
    * @description Approve `to` to operate on `tokenId`, requiring the token to exist
    * only when `isExistenceRequired` is true.
    *
-   * @constraints k=11, rows=1868
+   * @constraints k=10, rows=749
    *
    * @warning Passing false skips the check that `tokenId` was minted. Both
    * `_unsafeTransferFrom` and `_update` read that invariant back, so a planted approval
@@ -909,7 +908,7 @@ module NonFungibleToken {
   /**
    * @description Approve `operator` to operate on all of `owner` tokens.
    *
-   * @constraints k=11, rows=1280
+   * @constraints k=10, rows=526
    *
    * Requirements:
    *
@@ -948,7 +947,7 @@ module NonFungibleToken {
    * @description Reverts if the `tokenId` doesn't have a current owner (it hasn't been minted, or it has been burned).
    * Returns the owner.
    *
-   * @constraints k=9, rows=329
+   * @constraints k=8, rows=205
    *
    * Requirements:
    *

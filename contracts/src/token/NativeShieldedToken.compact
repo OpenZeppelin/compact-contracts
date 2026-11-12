@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/NativeShieldedToken.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module NativeShieldedToken
@@ -110,7 +110,7 @@ module NativeShieldedToken {
   /**
    * @description Returns whether the contract has been initialized.
    *
-   * @constraints k=6, rows=24
+   * @constraints k=6, rows=34
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -121,7 +121,7 @@ module NativeShieldedToken {
   /**
    * @description Returns the token name.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -136,7 +136,7 @@ module NativeShieldedToken {
   /**
    * @description Returns the symbol of the token.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -151,7 +151,7 @@ module NativeShieldedToken {
   /**
    * @description Returns the number of decimals used to get its user representation.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -167,7 +167,7 @@ module NativeShieldedToken {
    * @description Returns this token's coin color:
    * `tokenType(_domain, kernel.self())`, computed at call time.
    *
-   * @constraints k=13, rows=3962
+   * @constraints k=13, rows=3847
    *
    * Requirements:
    *
@@ -194,7 +194,7 @@ module NativeShieldedToken {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @constraints k=14, rows=10450
+   * @constraints k=14, rows=9787
    *
    * Requirements:
    *
@@ -232,7 +232,7 @@ module NativeShieldedToken {
    * ledger state: it is the contract's holding and is not otherwise
    * recoverable.
    *
-   * @constraints k=14, rows=10221
+   * @constraints k=14, rows=9750
    *
    * Requirements:
    *
@@ -273,7 +273,7 @@ module NativeShieldedToken {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @constraints k=16, rows=41327
+   * @constraints k=16, rows=38745
    *
    * Requirements:
    *
@@ -312,7 +312,7 @@ module NativeShieldedToken {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @constraints k=15, rows=23208
+   * @constraints k=15, rows=21519
    *
    * Requirements:
    *

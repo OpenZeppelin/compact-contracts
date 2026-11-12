@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/NativeShieldedTokenFamily.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module NativeShieldedTokenFamily
@@ -101,7 +101,7 @@ module NativeShieldedTokenFamily {
   /**
    * @description Returns whether the contract has been initialized.
    *
-   * @constraints k=6, rows=24
+   * @constraints k=6, rows=34
    *
    * @return {Boolean} - True once `initialize` has run.
    */
@@ -114,7 +114,7 @@ module NativeShieldedTokenFamily {
    * contract. Per-type identity belongs in the consumer's own state; see the
    * module notes.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -130,7 +130,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the family symbol shared by all token types of this
    * contract.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -146,7 +146,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the family-wide number of decimals used to get the
    * user representation.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -162,7 +162,7 @@ module NativeShieldedTokenFamily {
    * @description Returns the coin color (token type) for `domain` under this
    * contract's address, so integrators do not have to re-derive it by hand.
    *
-   * @constraints k=13, rows=4239
+   * @constraints k=13, rows=3923
    *
    * Requirements:
    *
@@ -190,7 +190,7 @@ module NativeShieldedTokenFamily {
    * recipient; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-minted coins by scanning the chain.
    *
-   * @constraints k=14, rows=10727
+   * @constraints k=14, rows=9863
    *
    * Requirements:
    *
@@ -230,7 +230,7 @@ module NativeShieldedTokenFamily {
    * ledger state: it is the contract's holding and is not otherwise
    * recoverable.
    *
-   * @constraints k=14, rows=10497
+   * @constraints k=14, rows=9826
    *
    * Requirements:
    *
@@ -272,7 +272,7 @@ module NativeShieldedTokenFamily {
    * `refundTo`; callers SHOULD deliver it out of band. Wallets cannot detect
    * contract-sent coins by scanning the chain.
    *
-   * @constraints k=16, rows=41603
+   * @constraints k=16, rows=38821
    *
    * Requirements:
    *
@@ -313,7 +313,7 @@ module NativeShieldedTokenFamily {
    * ledger state: the change replaces `coin` as the contract's holding, and
    * its info is not otherwise recoverable.
    *
-   * @constraints k=15, rows=23484
+   * @constraints k=15, rows=21595
    *
    * Requirements:
    *

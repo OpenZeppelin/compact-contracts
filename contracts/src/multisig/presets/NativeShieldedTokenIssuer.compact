@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (multisig/presets/NativeShieldedTokenIssuer.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module NativeShieldedTokenIssuer
@@ -227,8 +227,6 @@ pragma language_version >= 0.26.0;
  *   `NST__mint` / `NST__mintToSelf` instead of `NSTDerivedNonce__deriveNonce()`.
  * - Deposits: no deposit-and-hold path; `burn` receives and spends the
  *   holder's coin in one call.
- *
- * @notice Requires ZKIR v3: `keccak256` is unavailable on the v2 backend.
  */
 module NativeShieldedTokenIssuer<#t> {
   import CompactStandardLibrary;
@@ -428,7 +426,7 @@ module NativeShieldedTokenIssuer<#t> {
    * @notice The returned coin info is the only copy available to the
    * recipient; deliver it out of band.
    *
-   * @constraints k=17, rows=89807 (zkir-v3)
+   * @constraints k=17, rows=126141
    *
    * Requirements:
    *
@@ -476,7 +474,7 @@ module NativeShieldedTokenIssuer<#t> {
    * @notice The returned coin info is the contract's only record of the
    * holding; persist it for `burnFromSelf`.
    *
-   * @constraints k=17, rows=85586 (zkir-v3)
+   * @constraints k=17, rows=121920
    *
    * Requirements:
    *
@@ -520,7 +518,7 @@ module NativeShieldedTokenIssuer<#t> {
    * @notice The returned refund coin info is the only copy available to
    * `refundTo`; deliver it out of band.
    *
-   * @constraints k=17, rows=119818 (zkir-v3)
+   * @constraints k=18, rows=152672
    *
    * Requirements:
    *
@@ -577,7 +575,7 @@ module NativeShieldedTokenIssuer<#t> {
    * The digest binds `coin.nonce` and `coin.value`, so approvals authorize one
    * specific holding rather than an amount.
    *
-   * @constraints k=17, rows=104973 (zkir-v3)
+   * @constraints k=18, rows=141953
    *
    * Requirements:
    *
@@ -624,7 +622,7 @@ module NativeShieldedTokenIssuer<#t> {
   /**
    * @description Returns the counter the next operation's digest will bind to.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<64>} The current counter.
    */
@@ -635,7 +633,7 @@ module NativeShieldedTokenIssuer<#t> {
   /**
    * @description Returns the token name.
    *
-   * @constraints k=6, rows=45 (zkir-v3)
+   * @constraints k=6, rows=45
    *
    * @returns {Opaque<"string">} The token name.
    */
@@ -646,7 +644,7 @@ module NativeShieldedTokenIssuer<#t> {
   /**
    * @description Returns the token symbol.
    *
-   * @constraints k=6, rows=45 (zkir-v3)
+   * @constraints k=6, rows=45
    *
    * @returns {Opaque<"string">} The token symbol.
    */
@@ -657,7 +655,7 @@ module NativeShieldedTokenIssuer<#t> {
   /**
    * @description Returns the token decimals.
    *
-   * @constraints k=6, rows=45 (zkir-v3)
+   * @constraints k=6, rows=45
    *
    * @returns {Uint<8>} The decimals value.
    */
@@ -669,7 +667,7 @@ module NativeShieldedTokenIssuer<#t> {
    * @description Returns this contract's token color,
    * `tokenType(tokenDomain, kernel.self())`.
    *
-   * @constraints k=13, rows=3847 (zkir-v3)
+   * @constraints k=13, rows=3847
    *
    * @returns {Bytes<32>} The coin color.
    */
@@ -680,7 +678,7 @@ module NativeShieldedTokenIssuer<#t> {
   /**
    * @description Returns the number of registered signers.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<8>} The signer count.
    */
@@ -691,7 +689,7 @@ module NativeShieldedTokenIssuer<#t> {
   /**
    * @description Returns the approval threshold.
    *
-   * @constraints k=6, rows=34 (zkir-v3)
+   * @constraints k=6, rows=34
    *
    * @returns {Uint<8>} The threshold.
    */
@@ -702,7 +700,7 @@ module NativeShieldedTokenIssuer<#t> {
   /**
    * @description Returns whether the given commitment is a registered signer.
    *
-   * @constraints k=8, rows=129 (zkir-v3)
+   * @constraints k=8, rows=129
    *
    * @param {Bytes<32>} commitment - The signer commitment to check.
    * @returns {Boolean} True if registered.

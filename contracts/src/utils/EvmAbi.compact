@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (utils/EvmAbi.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module EvmAbi
@@ -33,9 +33,9 @@ pragma language_version >= 0.26.0;
  * (a raw digest, EIP-191, or EIP-712 typed data) belongs to the contract that
  * owns the message.
  *
- * @notice The module itself needs no `keccak256`, so it compiles on either
- * ZKIR backend and `compile:utils` can keep emitting v2. Every `@constraints`
- * below is a v3 figure, and tagged as such.
+ * @notice The module itself calls no `keccak256`; the caller hashes the
+ * assembled words. Compiler 0.36.0 emits ZKIR v3 only, so every
+ * `@constraints` below is a v3 figure like the rest of the library.
  */
 module EvmAbi {
   import CompactStandardLibrary;
@@ -49,7 +49,7 @@ module EvmAbi {
    * also how a Compact `enum` should reach a digest, matching Solidity,
    * where an enum ABI-encodes as its `uint8` ordinal: `uint8Word(kind as Uint<8>)`.
    *
-   * @constraints k=6, rows=55 (zkir-v3)
+   * @constraints k=6, rows=55
    *
    * @param {Uint<8>} value - The value to encode.
    * @returns {Bytes<32>} The value as an EVM ABI word.
@@ -74,7 +74,7 @@ module EvmAbi {
    * than 32; the wider cast costs roughly four times as many constraints for
    * an identical result.
    *
-   * @constraints k=11, rows=1348 (zkir-v3)
+   * @constraints k=13, rows=5444
    *
    * @param {Uint<64>} value - The value to encode.
    * @returns {Bytes<32>} The value as a big-endian EVM ABI word.
@@ -101,7 +101,7 @@ module EvmAbi {
    * encoder when the value genuinely fits in 64 bits. The width here is
    * the value's, not the word's.
    *
-   * @constraints k=12, rows=2503 (zkir-v3)
+   * @constraints k=13, rows=6628
    *
    * @param {Uint<128>} value - The value to encode.
    * @returns {Bytes<32>} The value as a big-endian EVM ABI word.
@@ -123,7 +123,7 @@ module EvmAbi {
    * @description Encodes a `Boolean` as an `abi.encode(bool)` word: zero
    * everywhere except the least significant byte, which is 1 for true.
    *
-   * @constraints k=6, rows=54 (zkir-v3)
+   * @constraints k=6, rows=54
    *
    * @param {Boolean} value - The value to encode.
    * @returns {Bytes<32>} The value as an EVM ABI word.

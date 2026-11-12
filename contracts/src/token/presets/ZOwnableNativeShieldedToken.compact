@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/presets/ZOwnableNativeShieldedToken.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module ZOwnableNativeShieldedToken
@@ -145,7 +145,7 @@ module ZOwnableNativeShieldedToken {
    * @description Mints `amount` to `recipient` and adds it to the minted total.
    * Owner only.
    *
-   * @constraints k=15, rows=21252
+   * @constraints k=15, rows=19624
    *
    * Requirements:
    *
@@ -168,7 +168,7 @@ module ZOwnableNativeShieldedToken {
    * @description Burns `amount` of `coin`, paid into the tx by the caller's
    * wallet, and refunds the rest to `refundTo`. Owner only.
    *
-   * @constraints k=16, rows=51814
+   * @constraints k=16, rows=48448
    *
    * Requirements:
    *
@@ -195,7 +195,7 @@ module ZOwnableNativeShieldedToken {
    * The circuit cannot check this; any other key leaves the contract with no
    * usable owner and no recovery.
    *
-   * @constraints k=15, rows=17023
+   * @constraints k=14, rows=15690
    *
    * Requirements:
    *
@@ -213,7 +213,7 @@ module ZOwnableNativeShieldedToken {
    *
    * @warning Irreversible: mint and burn stop forever.
    *
-   * @constraints k=14, rows=10579
+   * @constraints k=14, rows=9767
    *
    * Requirements:
    *
@@ -226,7 +226,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the current owner commitment.
    *
-   * @constraints k=6, rows=48
+   * @constraints k=7, rows=68
    *
    * Requirements:
    *
@@ -253,7 +253,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the total amount ever minted.
    *
-   * @constraints k=7, rows=63
+   * @constraints k=7, rows=58
    */
   export circuit totalMinted(): Uint<128> {
     return NSTPublicSupply_totalMinted();
@@ -262,7 +262,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the token name.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -275,7 +275,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the token symbol.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -288,7 +288,7 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Returns the token decimals.
    *
-   * @constraints k=6, rows=26
+   * @constraints k=6, rows=45
    *
    * Requirements:
    *
@@ -302,7 +302,7 @@ module ZOwnableNativeShieldedToken {
    * @description Returns this contract's token color,
    * `tokenType(tokenDomain, kernel.self())`.
    *
-   * @constraints k=13, rows=3962
+   * @constraints k=13, rows=3847
    *
    * Requirements:
    *

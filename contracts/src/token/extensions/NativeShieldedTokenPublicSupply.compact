@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/NativeShieldedTokenPublicSupply.compact)
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 /**
  * @module NativeShieldedTokenPublicSupply
@@ -80,7 +80,7 @@ module NativeShieldedTokenPublicSupply {
    * @description Adds `amount` to the exact minted total. Call once per
    * successful `NativeShieldedToken._mint`.
    *
-   * @constraints k=9, rows=373
+   * @constraints k=9, rows=165
    *
    * @param {Uint<64>} amount - The minted amount.
    * @return {[]} - Empty tuple.
@@ -94,7 +94,7 @@ module NativeShieldedTokenPublicSupply {
    * per successful `NativeShieldedToken._burn` / `_burnFromSelf`.
    * @dev Enforces `burned <= minted`; an unpaired or duplicate burn reverts.
    *
-   * @constraints k=9, rows=475
+   * @constraints k=9, rows=216
    *
    * @param {Uint<128>} amount - The burned amount.
    * @return {[]} - Empty tuple.
@@ -106,7 +106,7 @@ module NativeShieldedTokenPublicSupply {
   /**
    * @description Returns the exact amount ever minted.
    *
-   * @constraints k=7, rows=63
+   * @constraints k=7, rows=58
    *
    * @return {Uint<128>} - The total amount minted.
    */
@@ -119,7 +119,7 @@ module NativeShieldedTokenPublicSupply {
    * @notice This is a lower bound: coins sent directly to the burn address
    * without going through the contract are not counted.
    *
-   * @constraints k=7, rows=60
+   * @constraints k=7, rows=58
    *
    * @return {Uint<128>} - The total amount burned through the contract.
    */
@@ -132,7 +132,7 @@ module NativeShieldedTokenPublicSupply {
    * @notice This is an UPPER BOUND on circulating supply, not an exact value:
    * burns that bypass the contract are invisible. See the module notes.
    *
-   * @constraints k=9, rows=158
+   * @constraints k=9, rows=112
    *
    * @return {Uint<128>} - The upper bound on tokens in existence.
    */
