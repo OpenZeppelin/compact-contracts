@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/utils/ConfidentialNoteFungibleTokenUtils.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenUtils
+ * @description The note of `ConfidentialNoteFungibleToken` and the three
+ * digests taken over it: the commitment stored in the tree, the nullifier
+ * that marks the note spent and the issued tag that reserves its nonce. No
+ * witness and no ledger state.
+ *
+ * A module imports what it uses by name, with no prefix.
+ *
+ * ```compact
+ * import { Note, commitOf } from "./utils/ConfidentialNoteFungibleTokenUtils";
+ *
+ * export pure circuit leafOf(note: Note, pk: Bytes<32>): Bytes<32> {
+ *   return commitOf<Bytes<32>>(note, pk);
+ * }
+ * ```
+ *
+ * @dev Notation:
+ * - `PRF_k(x)`: `PrfCore.evaluate(x, k)`.
+ * - `COMM_r(m)`: `HashCommitment.commit(domain, m, r)`.
+ * - `pk`: the owner key, a value of the type the token is instantiated with.
+ * - `cm = COMM_nonce(value, pk)` under `"CNFT:commitment"`.
+ * - `nf = PRF_nonce("CNFT:nullifier")`.
+ * - `tag = PRF_nonce("CNFT:issued")`.
+ * - A tag is its string padded to 32 bytes.
+ *
+ * @dev Compatibility:
+ * The three tags and each preimage layout are wire format: changing one
+ * orphans every existing note. Every hash covers its fields' Compact
+ * encodings in order, with no names and no boundaries, so do not reimplement
+ * one. The compatibility suite pins a vector for each.
+ */
+module ConfidentialNoteFungibleTokenUtils {
+  import CompactStandardLibrary;
+
+  import "../../crypto/commitment/HashCommitment" prefix HashCommitment_;
+  import "../../crypto/prf/PrfCore" prefix PrfCore_;
+
+  /**
+   * @description A unit of value. Ownership is not a field: a note belongs to
+   * whoever's `pk` was bound into its commitment (see `commitOf`).
+   * @type {Uint<128>} value - The amount the note carries.
+   * @type {Field} nonce - The commitment's hiding entropy and the sole
+   * nullifier preimage, so it is spend-critical.
+   */
+  export struct Note {
+    value: Uint<128>;
+    nonce: Field;
+  }
+
+  /**
+   * @description `cm = COMM_nonce(value, pk)`. Off-chain viewers call it to
+   * recompute commitments for notes they recover.
+   *
+   * @notice Unforgeable ownership:
+   * Binding the owner is what enforces it: a non-owner's `pk` hashes to a leaf
+   * that is not in the tree, so no membership proof exists.
+   *
+   * @param {Note} note - The note to commit to.
+   * @param {T} pk - The owner key.
+   * @return {Bytes<32>} - The hiding commitment stored in the token's
+   * commitment tree.
+   */
+  export pure circuit commitOf<T>(note: Note, pk: T): Bytes<32> {
+    return HashCommitment_commit<[Uint<128>, T]>(
+      pad(32, "CNFT:commitment"),
+      [note.value, pk],
+      note.nonce as Bytes<32>
+    );
+  }
+
+  /**
+   * @description `nf = PRF_nonce(domain)`, derivable by anyone who knows the
+   * nonce. Off-chain viewers call it to watch a note's consumption.
+   *
+   * @dev Owner-free key:
+   * The key is the nonce and no owner secret enters. That is what makes
+   * clawback escrow-free: two parties knowing the nonce race for one spend.
+   *
+   * @param {Note} note - The note to nullify.
+   * @return {Bytes<32>} - The nullifier published when the note is spent.
+   */
+  export pure circuit nullifierOf(note: Note): Bytes<32> {
+    return PrfCore_evaluate<Bytes<32>, Field>(
+      pad(32, "CNFT:nullifier"),
+      note.nonce
+    );
+  }
+
+  /**
+   * @description `tag = PRF_nonce(domain)`. Off-chain viewers call it to
+   * check whether a nonce is already taken.
+   *
+   * @dev Domain separation:
+   * Only the domain distinguishes this from `nullifierOf`, so neither digest
+   * can be read as the other.
+   *
+   * @param {Note} note - The note to tag.
+   * @return {Bytes<32>} - The tag published when the note is committed.
+   */
+  export pure circuit issuedTagOf(note: Note): Bytes<32> {
+    return PrfCore_evaluate<Bytes<32>, Field>(
+      pad(32, "CNFT:issued"),
+      note.nonce
+    );
+  }
+}

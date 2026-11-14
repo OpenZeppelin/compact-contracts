@@ -16,8 +16,8 @@
  *
  * The delivery adds one `pushFront` per output, so layer 3 now also pins which
  * atoms of the entry move: the pads move with the plaintext or the key, the
- * ephemeral moves only with the nonce. Layers 1-3 run dry; the live layer at
- * the foot scans the transaction as the indexer stored it.
+ * ephemeral moves with the nonce, the key or the value. Layers 1-3 run dry;
+ * the live layer at the foot scans the transaction as the indexer stored it.
  */
 
 import { randomBytes } from 'node:crypto';
@@ -551,9 +551,9 @@ describe.skipIf(isLiveBackend())(
       }
     };
 
-    // Same recipient and seed give the same nonce, hence the same tag and the
-    // same ephemeral: only the leaf digest and the value pad can move.
-    it('should move only the leaf digest and the value pad when the minted amount differs', async () => {
+    // Same recipient and seed give the same nonce, hence the same tag. The
+    // ephemeral binds the amount, so it moves and both pads move with it.
+    it('should move only the leaf digest, the ephemeral and the two pads when the minted amount differs', async () => {
       await fc.assert(
         fc.asyncProperty(anyAmount(), anyAmount(), async (a, b) => {
           fc.pre(a !== b);
@@ -563,7 +563,7 @@ describe.skipIf(isLiveBackend())(
             await mintTrace(BOB, ENC_BOB, b),
           );
 
-          expect(moved).toHaveLength(2);
+          expect(moved).toHaveLength(5);
           expectOpaque(moved, [a, b, BOB, ENC_BOB.x, ENC_BOB.y]);
         }),
         { numRuns: 10 },
@@ -598,10 +598,10 @@ describe.skipIf(isLiveBackend())(
       );
     }, 60_000);
 
-    // Both output nonces bind the spent nullifier, not the amount, so the two
-    // ephemerals and both nonce pads stay. The two leaves and the two value
-    // pads are all that moves.
-    it('should move only the two leaves and the two value pads when the transfer amount differs', async () => {
+    // Neither output nonce binds the amount, so both tags stay. Each ephemeral
+    // binds its note's value, so each leg moves its leaf, its ephemeral and its
+    // two pads.
+    it('should move only the two leaves, the two ephemerals and the four pads when the transfer amount differs', async () => {
       await fc.assert(
         fc.asyncProperty(payableAmount(), payableAmount(), async (a, b) => {
           fc.pre(a !== b);
@@ -620,7 +620,7 @@ describe.skipIf(isLiveBackend())(
           expect(outB.value).toBe(b);
 
           const moved = drift(traceA, traceB);
-          expect(moved).toHaveLength(4);
+          expect(moved).toHaveLength(10);
           expectOpaque(moved, [
             a,
             b,
@@ -638,9 +638,10 @@ describe.skipIf(isLiveBackend())(
       );
     }, 60_000);
 
-    // Only the recipient's leg moves: its leaf (the identity), its ephemeral
-    // and its two pads (the key). The change leg does not, so a watcher cannot
-    // tell that the recipient changed from the sender's side of the transaction.
+    // Only the recipient's leg moves: its tag, read and then inserted, and its
+    // leaf (the identity), its ephemeral and its two pads (the key). The change
+    // leg does not, so a watcher cannot tell that the recipient changed from
+    // the sender's side of the transaction.
     it('should move only the recipient leg when the recipient differs', async () => {
       await fc.assert(
         fc.asyncProperty(
@@ -659,7 +660,7 @@ describe.skipIf(isLiveBackend())(
               await transferTrace(secondPk, secondKey, value),
             );
 
-            expect(moved).toHaveLength(5);
+            expect(moved).toHaveLength(7);
             expectOpaque(moved, [
               value,
               ALICE,
@@ -832,8 +833,6 @@ describe.runIf(isLiveBackend())(
       const state = await token.getPublicState();
       expect(Object.keys(state).sort()).toStrictEqual([
         'Core__commitments',
-        'Core__instanceSalt',
-        'Core__isInitialized',
         'Core__issuedNonces',
         'Core__nullifiers',
         'Delivery__deliveries',

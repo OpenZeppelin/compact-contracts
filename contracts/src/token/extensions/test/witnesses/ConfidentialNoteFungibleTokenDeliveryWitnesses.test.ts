@@ -13,15 +13,13 @@ const context = (): WitnessContext<Ledger, PrivateState> =>
 
 const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
-describe('ConfidentialNoteFungibleTokenDeliveryWitnesses: wit_ConfidentialNoteDeliveryRandomness', () => {
+describe('ConfidentialNoteFungibleTokenDeliveryWitnesses: wit_RandPrfExpandSeed', () => {
   it('should return 32 bytes', () => {
     const witnesses = ConfidentialNoteFungibleTokenDeliveryWitnesses<Ledger>(
       createDeliveryWallet(),
     );
 
-    const [, seed] = witnesses.wit_ConfidentialNoteDeliveryRandomness(
-      context(),
-    );
+    const [, seed] = witnesses.wit_RandPrfExpandSeed(context());
 
     expect(seed).toBeInstanceOf(Uint8Array);
     expect(seed.length).toBe(32);
@@ -34,9 +32,7 @@ describe('ConfidentialNoteFungibleTokenDeliveryWitnesses: wit_ConfidentialNoteDe
     const seen = new Set<string>();
 
     for (let i = 0; i < 10; i++) {
-      const [, seed] = witnesses.wit_ConfidentialNoteDeliveryRandomness(
-        context(),
-      );
+      const [, seed] = witnesses.wit_RandPrfExpandSeed(context());
       seen.add(hex(seed));
     }
 
@@ -49,12 +45,8 @@ describe('ConfidentialNoteFungibleTokenDeliveryWitnesses: wit_ConfidentialNoteDe
       deliverySeed: planted,
     });
 
-    const [, first] = witnesses.wit_ConfidentialNoteDeliveryRandomness(
-      context(),
-    );
-    const [, second] = witnesses.wit_ConfidentialNoteDeliveryRandomness(
-      context(),
-    );
+    const [, first] = witnesses.wit_RandPrfExpandSeed(context());
+    const [, second] = witnesses.wit_RandPrfExpandSeed(context());
 
     expect(first).toStrictEqual(planted);
     expect(second).toStrictEqual(planted);
@@ -66,7 +58,7 @@ describe('ConfidentialNoteFungibleTokenDeliveryWitnesses: wit_ConfidentialNoteDe
     );
     const ctx = context();
 
-    const [state] = witnesses.wit_ConfidentialNoteDeliveryRandomness(ctx);
+    const [state] = witnesses.wit_RandPrfExpandSeed(ctx);
 
     expect(state).toBe(ctx.privateState);
   });

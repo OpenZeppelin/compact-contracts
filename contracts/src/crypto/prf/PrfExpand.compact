@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/prf/PrfExpand.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module PrfExpand
+ * @description Seed expansion. `expand` derives one of several independent
+ * 32-byte values from a single secret seed.
+ *
+ * ```compact
+ * import "../crypto/prf/PrfExpand" prefix PrfExpand_;
+ *
+ * circuit nonceFor(recipient: Bytes<32>, seed: Bytes<32>): Field {
+ *   return degradeToTransient(PrfExpand_expand<Bytes<32>>(
+ *     pad(32, "MyModule:rand"),
+ *     pad(32, "MyModule:nonce"),
+ *     recipient,
+ *     seed
+ *   ));
+ * }
+ * ```
+ *
+ * @see https://zips.z.cash/zip-0032 ZIP 32: Shielded Hierarchical Deterministic Wallets
+ * @see https://zips.z.cash/zip-0212 ZIP 212: Allow Recipient to Derive Ephemeral Secret from Note Plaintext
+ *
+ * @dev Structure:
+ * Zcash defines `PRF^expand_sk(t)` and takes several values from one seed
+ * by varying a leading separator in `t`: ZIP 212 derives a note's commitment
+ * randomness and its ephemeral key from one `rseed` that way. Here `seed` is
+ * the key, `slot` is the separator, and `context` is the rest of `t`. The
+ * purpose tag `domain` is an argument, so each caller keeps its own output
+ * space. Zcash hashes the seed first. This layout hashes it last.
+ *
+ * @dev Layout:
+ * `PrfCore.evaluate` over `{domain, slot, context}` with `seed` as key. The
+ * hash covers `domain`, `slot`, the fields of `context` in order, then
+ * `seed`.
+ *
+ * @dev Output:
+ * The value is the 32-byte digest. A caller that needs a `Field` or a
+ * scalar reduces it itself with `degradeToTransient`.
+ *
+ * @notice Caller duties:
+ * - One `domain` per purpose and one `slot` per output. Two outputs sharing
+ *   both, under one seed and context, are equal.
+ * - `context` is what a repeated seed is scoped to. Outputs under one seed
+ *   stay distinct across contexts and repeat within one.
+ * - `seed` MUST be 32 bytes from a CSPRNG. With the other arguments public,
+ *   a guessable seed is found offline.
+ *
+ * @dev No ledger state, no witnesses, no asserts.
+ */
+module PrfExpand {
+  import CompactStandardLibrary;
+
+  import "./PrfCore" prefix PrfCore_;
+
+  /**
+   * @description The `PrfCore.evaluate` input, in wire-format order.
+   * @type {Bytes<32>} domain - The purpose tag.
+   * @type {Bytes<32>} slot - The per-output tag.
+   * @type {T} context - What the output is bound to.
+   */
+  struct Input<T> {
+    domain: Bytes<32>;
+    slot: Bytes<32>;
+    context: T;
+  }
+
+  /**
+   * @description `out = PrfCore.evaluate({domain, slot, context}, seed)`.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {Bytes<32>} slot - The per-output tag.
+   * @param {T} context - What the output is bound to.
+   * @param {Bytes<32>} seed - The secret seed.
+   * @return {Bytes<32>} - The derived value.
+   */
+  export pure circuit expand<T>(
+                        domain: Bytes<32>,
+                        slot: Bytes<32>,
+                        context: T,
+                        seed: Bytes<32>
+                        ): Bytes<32> {
+    return PrfCore_evaluate<Input<T>, Bytes<32>>(
+      Input<T> { domain: domain, slot: slot, context: context },
+      seed
+    );
+  }
+}

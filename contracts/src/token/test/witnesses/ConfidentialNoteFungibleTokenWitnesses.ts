@@ -76,9 +76,7 @@ export interface IConfidentialNoteFungibleTokenWitnesses<
     context: WitnessContext<L, P>,
     cm: Uint8Array,
   ): [P, MerkleTreePath<Uint8Array>];
-  wit_ConfidentialNoteNonceRandomness(
-    context: WitnessContext<L, P>,
-  ): [P, Uint8Array];
+  wit_RandPrfExpandSeed(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 export const ConfidentialNoteFungibleTokenWitnesses = <
@@ -110,7 +108,7 @@ export const ConfidentialNoteFungibleTokenWitnesses = <
   },
   // Fresh and secret per call, as the module requires; a fixed seed is only
   // honored when a spec explicitly plants one.
-  wit_ConfidentialNoteNonceRandomness(context) {
+  wit_RandPrfExpandSeed(context) {
     return [
       context.privateState,
       wallet.nonceSeed ?? new Uint8Array(getRandomValues(Buffer.alloc(32))),
