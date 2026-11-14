@@ -117,13 +117,6 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.pure.computeNullifier(roleCommitment);
   }
 
-  public computeAccountId(
-    secretKey: Uint8Array,
-    instanceSalt: Uint8Array,
-  ): Promise<Uint8Array> {
-    return this.circuits.pure.computeAccountId(secretKey, instanceSalt);
-  }
-
   public readonly privateState = {
     /**
      * @description Replaces the secret key in the private state. Used in tests to

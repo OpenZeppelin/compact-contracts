@@ -5,8 +5,8 @@ pragma language_version >= 0.28.0;
 
 /**
  * @module Blocklist
- * @description A minimal, reusable deny-list keyed by an abstract `Bytes<32>`
- * account identifier. It answers a single question: is this account blocked?
+ * @description A minimal, reusable deny-list keyed by an account: a key account
+ * or a contract account. It answers a single question: is this account blocked?
  *
  * This module is a pure membership MECHANISM, not a policy. It holds no notion
  * of "when" the list is enforced and no access control. The mutators (`_block`,
@@ -15,6 +15,12 @@ pragma language_version >= 0.28.0;
  * gates `_mint` / `_burn`), and decides when to call `assertNotBlocked`. Keeping
  * the enforce-or-not decision in the composing layer leaves this module general
  * enough to back sanctions lists, account freezes, abuse denials, and the like.
+ *
+ * @dev Canonicalization
+ * Every account is canonicalized before it is read from or written to
+ * `_blocked`. Canonicalization zeroes out the inactive branch of the Either,
+ * so two values with the same active branch always resolve to the same entry
+ * regardless of what data the inactive branch carries.
  *
  * @notice This is the PUBLIC (transparent) blocklist: membership status is
  * publicly readable and the blocked set is publicly enumerable. That is the
@@ -25,12 +31,19 @@ pragma language_version >= 0.28.0;
 module Blocklist {
   import CompactStandardLibrary;
 
+  import { Account } from "../account/Account";
+
+  import "../utils/Utils" prefix Utils_;
+
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
 
-  /** @description Blocked accounts. Absent means not blocked. */
-  export ledger _blocked: Set<Bytes<32>>;
+  /**
+   * @description Blocked accounts. Absent means not blocked.
+   * @type {Set<Either<Bytes<32>, ContractAddress>>} _blocked
+   */
+  export ledger _blocked: Set<Account>;
 
   // ---------------------------------------------------------------------------
   // Views
@@ -39,13 +52,14 @@ module Blocklist {
   /**
    * @description Returns whether `account` is currently blocked.
    *
-   * @constraints k=8, rows=129
+   * @constraints k=8, rows=249
    *
-   * @param {Bytes<32>} account - The account to query.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
    * @return {Boolean} - True if `account` is a member of the blocklist.
    */
-  export circuit isBlocked(account: Bytes<32>): Boolean {
-    return _blocked.member(disclose(account));
+  export circuit isBlocked(account: Account): Boolean {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    return _blocked.member(disclose(canonAcct));
   }
 
   // ---------------------------------------------------------------------------
@@ -56,16 +70,16 @@ module Blocklist {
    * @description Asserts that `account` is not blocked. The composing contract
    * decides when this gate applies.
    *
-   * @constraints k=8, rows=131
+   * @constraints k=8, rows=231
    *
    * Requirements:
    *
    * - `account` is not a member of the blocklist.
    *
-   * @param {Bytes<32>} account - The account that must not be blocked.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account that must not be blocked.
    * @return {[]} - Empty tuple.
    */
-  export circuit assertNotBlocked(account: Bytes<32>): [] {
+  export circuit assertNotBlocked(account: Account): [] {
     assert(!isBlocked(account), "Blocklist: account blocked");
   }
 
@@ -76,24 +90,26 @@ module Blocklist {
   /**
    * @description Adds `account` to the blocklist.
    *
-   * @constraints k=8, rows=125
+   * @constraints k=8, rows=225
    *
-   * @param {Bytes<32>} account - The account to block.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to block.
    * @return {[]} - Empty tuple.
    */
-  export circuit _block(account: Bytes<32>): [] {
-    _blocked.insert(disclose(account));
+  export circuit _block(account: Account): [] {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    _blocked.insert(disclose(canonAcct));
   }
 
   /**
    * @description Removes `account` from the blocklist.
    *
-   * @constraints k=8, rows=123
+   * @constraints k=8, rows=223
    *
-   * @param {Bytes<32>} account - The account to unblock.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to unblock.
    * @return {[]} - Empty tuple.
    */
-  export circuit _unblock(account: Bytes<32>): [] {
-    _blocked.remove(disclose(account));
+  export circuit _unblock(account: Account): [] {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    _blocked.remove(disclose(canonAcct));
   }
 }

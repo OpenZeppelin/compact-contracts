@@ -24,12 +24,13 @@ covers each domain's internal layout and the mocks warning. Dependencies are the
 
 | Path | Responsibility and dependencies |
 | --- | --- |
-| `contracts/src/access` | Ownership and role-based access control, transparent and shielded. Imports `utils`. |
-| `contracts/src/crypto` | ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712. No ledger state and no witnesses, so an importer inherits no witness interface it does not need. Imports nothing outside `crypto`. |
+| `contracts/src/access` | Ownership and role-based access control, transparent and shielded. Imports `utils`; `Ownable`, `AccessControl` and `ShieldedAccessControl` also import `account` and `crypto/authentication/interfaces/IAuthenticator`. |
+| `contracts/src/account` | The account type every module stores and takes, with its accessors. No ledger state and no witnesses. Imports only the standard library. |
+| `contracts/src/crypto` | ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712, pseudorandom functions under `prf/`, and caller authentication under `authentication/`. No ledger state. A module declares a witness only when its job needs one: `authentication/AuthPrfAddr` reads the caller's secret key, and no other `crypto` module declares a witness. Imports nothing outside `crypto`, except `authentication/`, which imports `account`. |
 | `contracts/src/math` | Wrapping arithmetic on `Uint<N>` at any width: pure circuits, no ledger state, no witnesses. Imports nothing. |
 | `contracts/src/multisig` | Signer registry, threshold approvals, proposals, treasuries, forwarders, presets. Imports `utils` and `crypto/Ecdsa`; the presets add `crypto/Eip712` and `utils/EvmAbi`. `presets/NativeShieldedTokenIssuer` is the only multisig file that imports `token`. |
-| `contracts/src/security` | Initialization, pausing, allowlists and blocklists. Imports only the standard library. |
-| `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`. `ConfidentialFungibleToken` imports `crypto/ElGamal` and `crypto/EcdhMask`; `extensions/ConfidentialNoteFungibleTokenDelivery` imports `crypto/Ecdh`, `crypto/EcdhMask` and `math/UintN`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
+| `contracts/src/security` | Initialization, pausing, allowlists and blocklists. `Allowlist` and `Blocklist` import `account` and `utils`. |
+| `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`. `FungibleToken`, `NonFungibleToken`, `MultiToken` and `ConfidentialFungibleToken` import `account` and `crypto/authentication/interfaces/IAuthenticator`; `ConfidentialFungibleToken` also imports `crypto/ElGamal` and `crypto/EcdhMask`; `extensions/ConfidentialNoteFungibleTokenDelivery` imports `crypto/Ecdh`, `crypto/EcdhMask` and `math/UintN`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
 | `contracts/src/utils` | Shared helpers and EVM ABI word encoding. Imports only the standard library. |
 | `contracts/src/archive` | Legacy code, excluded from the build and the tests. |
 | `contracts/test-utils` | Live harness, test fixtures and the concurrency replay harness. |
@@ -80,11 +81,13 @@ every amount that changes it. `*PublicSupply` extensions add one where auditabil
 
 ## Privacy and witness model
 
-**Identity.** The modules read no sender address: a caller proves identity in-circuit from secrets
-its witnesses supply. Transparent modules expose a pseudonymous account id the consumer treats as
-public, the `msg.sender` analogue. `ShieldedAccessControl`, `ZOwnablePK` and
-`ConfidentialNoteFungibleToken` commit to a salted, per-instance identity instead;
-`ConfidentialFungibleToken` keeps the transparent account id, and the native shielded tokens hold
+**Identity.** The modules read no sender address. The consumer authenticates the caller in-circuit,
+once per circuit, with a `crypto/authentication` module, and passes the resulting `Caller` to every
+module that circuit drives. Transparent modules store its pseudonymous account id, which the
+consumer treats as public, the `msg.sender` analogue; `ConfidentialFungibleToken` keeps that id too.
+`ShieldedAccessControl` commits to a salted, per-instance role holder instead, and `ZOwnablePK` to
+an owner it derives itself from `ownPublicKey()` and a secret nonce. `ConfidentialNoteFungibleToken`
+derives a salted, per-instance owner key from its own witness, and the native shielded tokens hold
 no identity at all, only coins.
 
 **Witnesses are untrusted.** Each witness value is bound in-circuit to public state or used so a

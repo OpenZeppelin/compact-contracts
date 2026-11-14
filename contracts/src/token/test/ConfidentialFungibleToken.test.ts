@@ -22,8 +22,12 @@ import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialF
 // ---------------------------------------------------------------------------
 
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+  return persistentHash(rt_type, [
+    padTag('AuthPrfAddr:account'),
+    padTag('MockConfidentialFungibleToken'),
+    sk,
+  ]);
 };
 
 /**
@@ -253,38 +257,6 @@ describe.skipIf(isLiveBackend())(
         await cft.register();
 
         expect(await cft.isRegistered(BOB.accountId)).toBe(false);
-      });
-    });
-
-    describe('computeAccountId', () => {
-      it('should match the test helper derivation', async () => {
-        const users = [ALICE, BOB, CHARLIE];
-
-        for (const user of users) {
-          expect(await cft.computeAccountId(user.secretKey)).toEqual(
-            user.accountId,
-          );
-        }
-      });
-
-      it('should produce distinct identifiers for distinct keys', async () => {
-        const users = [ALICE, BOB, CHARLIE];
-        const ids = await Promise.all(
-          users.map((u) => cft.computeAccountId(u.secretKey)),
-        );
-
-        for (let i = 0; i < ids.length; i++) {
-          for (let j = i + 1; j < ids.length; j++) {
-            expect(ids[i]).not.toEqual(ids[j]);
-          }
-        }
-      });
-
-      it('should be deterministic for the same secret key', async () => {
-        const id1 = await cft.computeAccountId(ALICE.secretKey);
-        const id2 = await cft.computeAccountId(ALICE.secretKey);
-
-        expect(id1).toEqual(id2);
       });
     });
   },

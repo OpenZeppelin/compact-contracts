@@ -398,6 +398,8 @@ describe.skipIf(isLiveBackend())(
 
 describe.skipIf(isLiveBackend())(
   'ConfidentialNoteFungibleToken privacy: indistinguishability',
+  // Generated-input cases run many circuits, so they get their own timeout.
+  { timeout: 60_000 },
   () => {
     /** A transfer of `value` to `recipientPk`, from an identical starting note. */
     const transferTrace = async (

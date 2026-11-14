@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/prf/PrfCore.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module PrfCore
+ * @description Pseudorandom function. `evaluate` hashes an input under a
+ * key, the secret the output depends on.
+ *
+ * ```compact
+ * import "../crypto/prf/PrfCore" prefix PrfCore_;
+ *
+ * struct Tagged { domain: Bytes<32>; nonce: Field; }
+ *
+ * export pure circuit tag(nonce: Field, key: Bytes<32>): Bytes<32> {
+ *   return PrfCore_evaluate<Tagged, Bytes<32>>(
+ *     Tagged { domain: pad(32, "MyModule:tag"), nonce: nonce },
+ *     key
+ *   );
+ * }
+ * ```
+ *
+ * @see https://doi.org/10.1145/6490.6503 Goldreich, Goldwasser, Micali, How to Construct Random Functions (JACM 1986)
+ *
+ * @dev Layout:
+ * The preimage is `{input, key}`, and it is wire format. Struct names and
+ * nesting are not hashed: the digest covers the fields of `input` in order,
+ * then `key`.
+ *
+ * @dev Key type:
+ * `K` is hashed in its own encoding. A `Field` key and its `Bytes<32>` cast
+ * give the same digest, so pass the key in the type the caller holds.
+ *
+ * @notice Assumption:
+ * `persistentHash` is collision-resistant and behaves as a pseudorandom
+ * function of `key`.
+ *
+ * @notice Caller duties:
+ * - Separate purposes inside `input`, with a tag as its first field. Two uses
+ *   that hash the same bytes under one key give the same output.
+ * - A published output needs a `key` with the entropy of 32 bytes from a
+ *   CSPRNG. With the input public, a guessable key is found offline.
+ *
+ * @dev No ledger state, no witnesses, no asserts. Whether an output is
+ * published is the caller's choice.
+ */
+module PrfCore {
+  import CompactStandardLibrary;
+
+  /**
+   * @description The hashed preimage, in wire-format order.
+   * @type {T} input - The input the output is bound to.
+   * @type {K} key - The PRF key, a secret. A caller passes a secret key,
+   * a seed or a nonce here.
+   */
+  struct Preimage<T, K> {
+    input: T;
+    key: K;
+  }
+
+  /**
+   * @description `persistentHash` over `{input, key}`.
+   *
+   * @param {T} input - The input the output is bound to.
+   * @param {K} key - The PRF key, a secret. A caller passes a secret key,
+   * a seed or a nonce here.
+   * @return {Bytes<32>} - The digest.
+   */
+  export pure circuit evaluate<T, K>(input: T, key: K): Bytes<32> {
+    return persistentHash<Preimage<T, K>>(
+      Preimage<T, K> { input: input, key: key }
+    );
+  }
+}

@@ -9,16 +9,10 @@ pragma language_version >= 0.28.0;
  * This module provides a role-based access control mechanism, where roles can be used to
  * represent a set of permissions.
  *
- * Authorization is based on a witness-derived identity scheme. Each caller proves knowledge
- * of a secret key by injecting it via the `wit_AccessControlSK` witness. The module computes
- * an account identifier as `persistentHash(secretKey)` which is a commitment that hides the key
- * while providing a stable, pseudonymous on-chain identity.
- *
- * Because the account identifier is `H(secretKey)` with no per-deployment salt or domain
- * separator, the same secret key produces the same identity across all contracts. This is
- * intentional. It provides a linkable pseudonymous identity analogous to Solidity's
- * `msg.sender`. Users who desire cross-contract unlinkability can use different secret keys
- * per contract at the wallet layer.
+ * This module derives no caller. Every authenticating circuit takes a
+ * `Caller`, which the composing contract gets from an authenticator and
+ * passes to every module it drives. How the caller is authenticated is the
+ * authenticator's concern, see `IAuthenticator`.
  *
  * Roles are referred to by their `Bytes<32>` identifier. These should be exposed
  * in the top-level contract and be unique. One way to achieve this is by
@@ -39,7 +33,8 @@ pragma language_version >= 0.28.0;
  *
  * ```compact
  * circuit foo(): [] {
- *  AccessControl_assertOnlyRole(MY_ROLE);
+ *  const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *  AccessControl_assertOnlyRole(caller, MY_ROLE);
  *  // ... rest of circuit logic
  * }
  * ```
@@ -97,14 +92,11 @@ pragma language_version >= 0.28.0;
  *   point, anyone using `_unsafeGrantRole` should have migrated to the now C2C-capable circuits.
  *
  * @dev Security Considerations:
- * - The `secretKey` must be kept private. Loss of the key prevents role holders
- *   from proving access. Key exposure allows impersonation.
- * - It is strongly recommended to use cryptographically secure random values for the secret key
- *   (e.g., `crypto.getRandomValues()`). Weak or predictable keys can be brute-forced.
- * - The `secretKey` is provided via the `wit_AccessControlSK` witness. As with all witnesses,
- *   the contract must not assume that the witness implementation matches the developer's code.
- *   Any DApp may provide any implementation. The ZK proof system constrains what values
- *   can produce valid proofs.
+ * - Credential requirements, and the effect of a lost or leaked credential, are documented
+ *   in the authenticator the contract composes.
+ * - The role check trusts the `caller` it is given. Produce it with an authenticator
+ *   inside the composing circuit. An exported circuit that accepts a caller lets the
+ *   transaction sender choose who passes the check.
  *
  * @dev Canonicalization
  * All `Either<Bytes<32>, ContractAddress>` values used as map keys in `_operatorRoles`
@@ -121,6 +113,11 @@ pragma language_version >= 0.28.0;
  */
 module AccessControl {
   import CompactStandardLibrary;
+
+  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
+
+  import { Account } from "../account/Account";
+
   import "../utils/Utils" prefix Utils_;
 
   /**
@@ -132,7 +129,7 @@ module AccessControl {
    * @type {Map<Bytes<32>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>} _operatorRoles
    */
   export ledger _operatorRoles: Map<Bytes<32>,
-                                    Map<Either<Bytes<32>, ContractAddress>, Boolean>>;
+                                    Map<Account, Boolean>>;
 
   /**
    * @description Mapping from a role identifier to an admin role identifier.
@@ -154,17 +151,6 @@ module AccessControl {
   }
 
   /**
-   * @witness wit_AccessControlSK
-   * @description Returns the caller's secret key used in deriving the account identifier.
-   *
-   * The same key produces the same account identifier across all contracts. Users who
-   * desire cross-contract unlinkability should use different keys per contract.
-   *
-   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   */
-  witness wit_AccessControlSK(): Bytes<32>;
-
-  /**
    * @description Returns `true` if `account` has been granted `roleId`.
    *
    * @constraints k=9, rows=386
@@ -174,7 +160,7 @@ module AccessControl {
    * @return {Boolean} - Whether the account has the specified role.
     */
   export circuit hasRole(roleId: Bytes<32>,
-                         account: Either<Bytes<32>, ContractAddress>
+                         account: Account
                          ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     return _hasRole(roleId, canonAcct);
@@ -190,7 +176,7 @@ module AccessControl {
    * @return {Boolean} - Whether the account has the specified role.
    */
   circuit _hasRole(roleId: Bytes<32>,
-                         account: Either<Bytes<32>, ContractAddress>
+                         account: Account
                          ): Boolean {
     if (_operatorRoles.member(disclose(roleId)) &&
         _operatorRoles.lookup(roleId).member(disclose(account))) {
@@ -201,24 +187,26 @@ module AccessControl {
   }
 
   /**
-   * @description Reverts if the caller cannot prove ownership of `roleId`.
-   * In the case of an external (non-contract) caller, the caller’s identity is
-   * derived from the `wit_AccessControlSK` witness as `persistentHash(secretKey)`.
+   * @description Reverts if `caller` does not hold `roleId`.
    *
-   * @constraints k=13, rows=2132
+   * @constraints k=9, rows=366
    *
    * Requirements:
    *
-   * - The caller must have `roleId`.
+   * - `caller` must have `roleId`.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
    * @return {[]} - Empty tuple.
    */
-  export circuit assertOnlyRole(roleId: Bytes<32>): [] {
-    // The account constructed via left<...>() is already canonical,
+  export circuit assertOnlyRole(
+                   caller: Caller,
+                   roleId: Bytes<32>
+                   ): [] {
+    // An authenticator returns a canonical account,
     // but we route through _checkRole -> hasRole for consistency.
     // The redundant canonicalization is negligible.
-    _checkRole(roleId, left<Bytes<32>, ContractAddress>(_computeAccountId()));
+    _checkRole(roleId, caller.account);
   }
 
   /**
@@ -236,7 +224,7 @@ module AccessControl {
    */
   export circuit _checkRole(
                    roleId: Bytes<32>,
-                   account: Either<Bytes<32>, ContractAddress>
+                   account: Account
                    ): [] {
     assert(hasRole(roleId, account), "AccessControl: unauthorized account");
   }
@@ -262,43 +250,47 @@ module AccessControl {
   /**
    * @description Grants `roleId` to `account`.
    *
-   * @constraints k=13, rows=2487
+   * @constraints k=10, rows=741
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
-   * - The caller must have `roleId`'s admin role.
+   * - `caller` must have `roleId`'s admin role.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
    * @return {[]} - Empty tuple.
    */
   export circuit grantRole(
+                   caller: Caller,
                    roleId: Bytes<32>,
-                   account: Either<Bytes<32>, ContractAddress>
+                   account: Account
                    ): [] {
-    assertOnlyRole(getRoleAdmin(roleId));
+    assertOnlyRole(caller, getRoleAdmin(roleId));
     _grantRole(roleId, account);
   }
 
   /**
    * @description Revokes `roleId` from `account`.
    *
-   * @constraints k=13, rows=2450
+   * @constraints k=10, rows=704
    *
    * Requirements:
    *
-   * - The caller must have `roleId`'s admin role.
+   * - `caller` must have `roleId`'s admin role.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
    * @return {[]} - Empty tuple.
    */
   export circuit revokeRole(
+                   caller: Caller,
                    roleId: Bytes<32>,
-                   account: Either<Bytes<32>, ContractAddress>
+                   account: Account
                    ): [] {
-    assertOnlyRole(getRoleAdmin(roleId));
+    assertOnlyRole(caller, getRoleAdmin(roleId));
     _revokeRole(roleId, account);
   }
 
@@ -309,26 +301,26 @@ module AccessControl {
    * purpose is to provide a mechanism for accounts to lose their privileges
    * if they are compromised (such as when a trusted device is misplaced).
    *
-   * The caller's identity is derived from the `wit_AccessControlSK` witness as
-   * `persistentHash(secretKey)`. The `callerConfirmation` parameter must match
-   * the caller's computed account identifier to prevent accidental renunciation.
+   * The `callerConfirmation` parameter must match `caller`'s account to prevent
+   * accidental renunciation.
    *
-   * @constraints k=13, rows=2359
+   * @constraints k=10, rows=609
    *
    * Requirements:
    *
-   * - The caller's computed account identifier must match `callerConfirmation`.
-   * - The caller must not be a `ContractAddress`.
+   * - `caller`'s account must match `callerConfirmation`.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
-   * @param {Either<Bytes<32>, ContractAddress>} callerConfirmation - The caller's account identifier, must match the internally computed value.
+   * @param {Either<Bytes<32>, ContractAddress>} callerConfirmation - The caller's account identifier, must match `caller`'s account.
    * @return {[]} - Empty tuple.
    */
   export circuit renounceRole(
+                   caller: Caller,
                    roleId: Bytes<32>,
-                   callerConfirmation: Either<Bytes<32>, ContractAddress>
+                   callerConfirmation: Account
                    ): [] {
-    assert(callerConfirmation == left<Bytes<32>, ContractAddress>(_computeAccountId()),
+    assert(callerConfirmation == caller.account,
            "AccessControl: bad confirmation"
            );
 
@@ -364,10 +356,10 @@ module AccessControl {
    */
   export circuit _grantRole(
                    roleId: Bytes<32>,
-                   account: Either<Bytes<32>, ContractAddress>
+                   account: Account
                    ): Boolean {
-    const isCommitment = account.is_left;
-    assert(isCommitment, "AccessControl: unsafe role approval");
+    const isContractAddr = !account.is_left;
+    assert(!isContractAddr, "AccessControl: unsafe role approval");
     return _unsafeGrantRole(roleId, account);
   }
 
@@ -386,7 +378,7 @@ module AccessControl {
    */
   export circuit _unsafeGrantRole(
                    roleId: Bytes<32>,
-                   account: Either<Bytes<32>, ContractAddress>
+                   account: Account
                    ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     if (_hasRole(roleId, canonAcct)) {
@@ -396,7 +388,7 @@ module AccessControl {
     if (!_operatorRoles.member(disclose(roleId))) {
       _operatorRoles.insert(
         disclose(roleId),
-        default<Map<Either<Bytes<32>, ContractAddress>, Boolean>>
+        default<Map<Account, Boolean>>
         );
     }
 
@@ -416,7 +408,7 @@ module AccessControl {
    */
   export circuit _revokeRole(
                    roleId: Bytes<32>,
-                   account: Either<Bytes<32>, ContractAddress>
+                   account: Account
                    ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 
@@ -426,21 +418,5 @@ module AccessControl {
 
     _operatorRoles.lookup(roleId).insert(disclose(canonAcct), false);
     return true;
-  }
-
-  /**
-   * @description Computes the caller's account identifier from the `wit_AccessControlSK` witness.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * The result is a 32-byte commitment that uniquely identifies the caller.
-   *
-   * @constraints k=13, rows=2006
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  circuit _computeAccountId(): Bytes<32> {
-    return Utils_computeAccountId(wit_AccessControlSK());
   }
 }

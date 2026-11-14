@@ -7,6 +7,11 @@ pragma language_version >= 0.28.0;
  * @module FungibleToken
  * @description An unshielded FungibleToken library.
  *
+ * This module derives no caller. Each circuit that acts for the caller takes a
+ * `Caller`, which the composing contract gets from an authenticator and
+ * passes to every module it drives. How the caller is authenticated is the
+ * authenticator's concern, see `IAuthenticator`.
+ *
  * @notice One notable difference regarding this implementation and the EIP20 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
  * cannot be supported.
@@ -64,6 +69,11 @@ pragma language_version >= 0.28.0;
  */
 module FungibleToken {
   import CompactStandardLibrary;
+
+  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
+
+  import { Account } from "../account/Account";
+
   import "../utils/Utils" prefix Utils_;
 
   /**
@@ -80,7 +90,7 @@ module FungibleToken {
    * @type {Map<account, balance>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Uint<128>>} _balances
    */
-  export ledger _balances: Map<Either<Bytes<32>, ContractAddress>, Uint<128>>;
+  export ledger _balances: Map<Account, Uint<128>>;
 
   /**
    * @description Mapping from owner accounts to spender accounts and their allowances.
@@ -90,8 +100,8 @@ module FungibleToken {
    * @type {Map<account, Map<spender, allowance>>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _allowances
    */
-  export ledger _allowances: Map<Either<Bytes<32>, ContractAddress>,
-                                 Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>;
+  export ledger _allowances: Map<Account,
+                                 Map<Account, Uint<128>>>;
 
   /**
    * @description Total tokens in circulation. `_update` raises it on a mint and
@@ -112,18 +122,6 @@ module FungibleToken {
    * construction. Purely presentational; no circuit scales by it.
    */
   export sealed ledger _decimals: Uint<8>;
-
-
-  /**
-   * @witness wit_FungibleTokenSK
-   * @description Returns the caller's secret key used in deriving the account identifier.
-   *
-   * The same key produces the same account identifier across all contracts. Users who
-   * desire cross-contract unlinkability should use different keys per contract.
-   *
-   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   */
-  witness wit_FungibleTokenSK(): Bytes<32>;
 
   /**
    * @description Initializes the contract by setting the name, symbol, and decimals.
@@ -252,7 +250,7 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account id or contract address to query.
    * @return {Uint<128>} - The account's token balance.
    */
-  export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  export circuit balanceOf(account: Account): Uint<128> {
     assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 
@@ -266,7 +264,7 @@ module FungibleToken {
   /**
    * @description Moves a `value` amount of tokens from the caller's account to `to`.
    *
-   * @constraints k=13, rows=2615
+   * @constraints k=10, rows=903
    *
    * @notice Transfers to contract addresses are disallowed until this library migrates to
    * contract-to-contract calls. This restriction prevents assets from
@@ -279,25 +277,27 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has a balance of at least `value`.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transfer(
-                   to: Either<Bytes<32>, ContractAddress>,
+                   caller: Caller,
+                   to: Account,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
 
-    return _unsafeTransfer(to, value);
+    return _unsafeTransfer(caller, to, value);
   }
 
   /**
    * @description Unsafe variant of `transfer` which allows transfers to contract addresses.
    *
-   * @constraints k=13, rows=2603
+   * @constraints k=10, rows=891
    *
    * @warning Transfers to contract addresses are considered unsafe because this library has not yet
    * migrated to contract-to-contract calls.
@@ -310,16 +310,18 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has a balance of at least `value`.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit _unsafeTransfer(
-                   to: Either<Bytes<32>, ContractAddress>,
+                   caller: Caller,
+                   to: Account,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
-    const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
+    const owner = caller.account;
     _unsafeUncheckedTransfer(owner, to, value);
     return true;
   }
@@ -341,8 +343,8 @@ module FungibleToken {
    * @return {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
    */
   export circuit allowance(
-                   owner: Either<Bytes<32>, ContractAddress>,
-                   spender: Either<Bytes<32>, ContractAddress>
+                   owner: Account,
+                   spender: Account
                    ): Uint<128> {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
@@ -358,23 +360,25 @@ module FungibleToken {
   /**
    * @description Sets a `value` amount of tokens as allowance of `spender` over the caller's tokens.
    *
-   * @constraints k=13, rows=2329
+   * @constraints k=10, rows=589
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `spender` is not the zero address.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} spender - The account id or ContractAddress that may spend on behalf of the caller.
    * @param {Uint<128>} value - The amount of tokens the `spender` may spend.
    * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
    */
-  export circuit approve(spender: Either<Bytes<32>, ContractAddress>,
+  export circuit approve(caller: Caller,
+                         spender: Account,
                          value: Uint<128>
                          ): Boolean {
     assertInitialized();
 
-    const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
+    const owner = caller.account;
     _approve(owner, spender, value);
     return true;
   }
@@ -383,7 +387,7 @@ module FungibleToken {
    * @description Moves `value` tokens from `fromAddress` to `to` using the allowance mechanism.
    * `value` is the deducted from the caller's allowance.
    *
-   * @constraints k=13, rows=3089
+   * @constraints k=11, rows=1348
    *
    * @notice Transfers to contract addresses are disallowed until this library migrates to
    * contract-to-contract calls. This restriction prevents assets from
@@ -398,26 +402,28 @@ module FungibleToken {
    * - `to` is not a ContractAddress.
    * - The caller has an allowance of `fromAddress`'s tokens of at least `value`.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transferFrom(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   caller: Caller,
+                   fromAddress: Account,
+                   to: Account,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
-    return _unsafeTransferFrom(fromAddress, to, value);
+    return _unsafeTransferFrom(caller, fromAddress, to, value);
   }
 
   /**
    * @description Unsafe variant of `transferFrom` which allows transfers to contract addresses.
    *
-   * @constraints k=13, rows=3077
+   * @constraints k=11, rows=1336
    *
    * @warning Transfers to contract addresses are considered unsafe because this library has not yet
    * migrated to contract-to-contract calls.
@@ -432,19 +438,21 @@ module FungibleToken {
    * - `to` is not the zero address.
    * - The caller has an allowance of `fromAddress`'s tokens of at least `value`.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit _unsafeTransferFrom(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   caller: Caller,
+                   fromAddress: Account,
+                   to: Account,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
 
-    const spender = left<Bytes<32>, ContractAddress>(_computeAccountId());
+    const spender = caller.account;
     _spendAllowance(fromAddress, spender, value);
     _unsafeUncheckedTransfer(fromAddress, to, value);
     return true;
@@ -475,8 +483,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   fromAddress: Account,
+                   to: Account,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -507,8 +515,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeUncheckedTransfer(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   fromAddress: Account,
+                   to: Account,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -534,8 +542,8 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens moved from `fromAddress` to `to`.
    * @return {[]} - Empty tuple.
    */
-  circuit _update(fromAddress: Either<Bytes<32>, ContractAddress>,
-                  to: Either<Bytes<32>, ContractAddress>,
+  circuit _update(fromAddress: Account,
+                  to: Account,
                   value: Uint<128>
                   ): [] {
     assertInitialized();
@@ -583,7 +591,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens minted.
    * @return {[]} - Empty tuple.
    */
-  export circuit _mint(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
+  export circuit _mint(account: Account, value: Uint<128>): [] {
     assertInitialized();
     const isContractAddr = !account.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
@@ -610,7 +618,7 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(
-                   account: Either<Bytes<32>, ContractAddress>,
+                   account: Account,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -634,7 +642,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens to burn.
    * @return {[]} - Empty tuple.
    */
-  export circuit _burn(account: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
+  export circuit _burn(account: Account, value: Uint<128>): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(account), "FungibleToken: invalid sender");
     _update(account, Utils_zeroAccount(), value);
@@ -659,8 +667,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _approve(
-                   owner: Either<Bytes<32>, ContractAddress>,
-                   spender: Either<Bytes<32>, ContractAddress>,
+                   owner: Account,
+                   spender: Account,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -674,7 +682,7 @@ module FungibleToken {
       // If owner doesn't exist, create and insert a new sub-map directly
       _allowances.insert(
         disclose(canonOwner),
-        default<Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>
+        default<Map<Account, Uint<128>>>
         );
     }
     _allowances.lookup(canonOwner).insert(disclose(canonSpender), disclose(value));
@@ -697,8 +705,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _spendAllowance(
-                   owner: Either<Bytes<32>, ContractAddress>,
-                   spender: Either<Bytes<32>, ContractAddress>,
+                   owner: Account,
+                   spender: Account,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -717,19 +725,5 @@ module FungibleToken {
         _approve(canonOwner, canonSpender, currentAllowance - value as Uint<128>);
       }
     }
-  }
-
-  /**
-   * @description Computes the caller's account identifier from the `wit_FungibleTokenSK` witness.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * The result is a 32-byte commitment that uniquely identifies the caller.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  circuit _computeAccountId(): Bytes<32> {
-    return Utils_computeAccountId(wit_FungibleTokenSK());
   }
 }

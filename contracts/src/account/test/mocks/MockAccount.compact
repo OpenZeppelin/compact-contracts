@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the Account module's circuits so they can be driven from off-chain
+// tests. DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Account } from "../../Account";
+
+import "../../Account" prefix Account_;
+
+// Keeps the circuits impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys, leaving
+// the code evaluated but never proven.
+ledger _invocations: Counter;
+
+export circuit publicKeyOf(account: Account): Bytes<32> {
+  _invocations.increment(1);
+  return Account_publicKeyOf(account);
+}
+
+export circuit contractAddressOf(account: Account): ContractAddress {
+  _invocations.increment(1);
+  return Account_contractAddressOf(account);
+}

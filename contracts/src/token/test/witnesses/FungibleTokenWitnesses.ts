@@ -16,7 +16,7 @@ export interface IFungibleTokenWitnesses<L, P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_FungibleTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
@@ -71,7 +71,7 @@ export const FungibleTokenWitnesses = <L>(): IFungibleTokenWitnesses<
   L,
   FungibleTokenPrivateState
 > => ({
-  wit_FungibleTokenSK(
+  wit_AuthPrfAddrSK(
     context: WitnessContext<L, FungibleTokenPrivateState>,
   ): [FungibleTokenPrivateState, Uint8Array] {
     return [

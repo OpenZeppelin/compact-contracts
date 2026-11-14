@@ -42,11 +42,20 @@ artifact         = "integration/{name}"
 [contracts."src/access/test/mocks/*"]
 artifact = "access/test/mocks/{name}"
 
+[contracts."src/account/test/mocks/*"]
+artifact = "account/test/mocks/{name}"
+
 [contracts."src/archive/test/mocks/*"]
 artifact = "archive/test/mocks/{name}"
 
 [contracts."src/crypto/test/mocks/*"]
 artifact = "crypto/test/mocks/{name}"
+
+[contracts."src/crypto/authentication/test/mocks/*"]
+artifact = "crypto/authentication/test/mocks/{name}"
+
+[contracts."src/crypto/prf/test/mocks/*"]
+artifact = "crypto/prf/test/mocks/{name}"
 
 [contracts."src/math/test/mocks/*"]
 artifact = "math/test/mocks/{name}"

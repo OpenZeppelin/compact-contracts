@@ -50,11 +50,5 @@ describe.skipIf(isLiveBackend())(
       expect(registeredId).toEqual(ALICE.accountId);
       expect(await cft.isRegistered(ALICE.accountId)).toBe(true);
     });
-
-    it('should derive the accountId from the secret key', async () => {
-      expect(await cft.computeAccountId(ALICE.secretKey)).toEqual(
-        ALICE.accountId,
-      );
-    });
   },
 );

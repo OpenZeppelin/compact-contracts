@@ -16,7 +16,7 @@ export interface IAccessControlWitnesses<L, P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_AccessControlSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
@@ -71,7 +71,7 @@ export const AccessControlWitnesses = <L>(): IAccessControlWitnesses<
   L,
   AccessControlPrivateState
 > => ({
-  wit_AccessControlSK(
+  wit_AuthPrfAddrSK(
     context: WitnessContext<L, AccessControlPrivateState>,
   ): [AccessControlPrivateState, Uint8Array] {
     return [
