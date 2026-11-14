@@ -3,21 +3,47 @@
 // committed and delivered in one circuit, the constructor mint included, so a
 // wallet finds every note by scanning `Delivery__deliveries`. `mint` is
 // ungated, so anyone can create value. DO NOT deploy this mock.
+//
+// The spend circuits read the caller's secret, the input note and its Merkle
+// path from witnesses. The caller's key is `derivePk(sk, _instanceSalt)`.
+// `derivePk` is a test helper, not a core circuit.
 pragma language_version >= 0.28.0;
+
 import CompactStandardLibrary;
-import "../../../ConfidentialNoteFungibleToken"<32> prefix Core_;
+
+import "../../../../crypto/prf/PrfAddr" prefix PrfAddr_;
+import "../../../ConfidentialNoteFungibleToken"<32, Field> prefix Core_;
+import "../../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
 import "../../ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
 
 export { Core_Note, Delivery_Delivery, Delivery_RecoveredNote }
 
-export { Core__isInitialized, Core__instanceSalt, Core__commitments, Core__nullifiers, Core__issuedNonces, Delivery__deliveries };
+export { Core__commitments, Core__nullifiers, Core__issuedNonces, Delivery__deliveries };
+
+// The salt every caller key on this deployment is derived under.
+sealed ledger _instanceSalt: Bytes<32>;
+
+witness wit_ConfidentialNoteSK(): Bytes<32>;
+
+witness wit_ConfidentialNoteInputNote(): Core_Note;
+
+// Only the path's sibling entries reach the core, which rebuilds the leaf.
+witness wit_ConfidentialNotePath(cm: Bytes<32>): MerkleTreePath<32, Bytes<32>>;
 
 // Mints `value` to `ownerPk` at deploy and delivers it to `ownerEncPk`. The
 // deployer keeps nothing: the core derives the nonce and the owner scans.
 constructor(instanceSalt: Bytes<32>, ownerPk: Field, ownerEncPk: JubjubPoint, value: Uint<128>) {
-  Core_initialize(instanceSalt);
+  _instanceSalt = disclose(instanceSalt);
   const note = Core__mint(ownerPk, value);
   Delivery__deliver(ownerEncPk, note.value, note.nonce, pad(32, "MockDelivered:ctor"));
+}
+
+circuit callerPk(): Field {
+  return derivePk(wit_ConfidentialNoteSK(), _instanceSalt);
+}
+
+circuit siblingsOf(note: Core_Note, ownerPk: Field): Vector<32, MerkleTreePathEntry> {
+  return wit_ConfidentialNotePath(Utils_commitOf<Field>(note, ownerPk)).path;
 }
 
 export circuit mint(recipientPk: Field, recipientEncPk: JubjubPoint, value: Uint<128>): [] {
@@ -28,28 +54,34 @@ export circuit mint(recipientPk: Field, recipientEncPk: JubjubPoint, value: Uint
 // Both outputs are delivered, the change to the sender's own key, so the
 // entry count per transfer is two whatever the amounts.
 export circuit transfer(recipientPk: Field, recipientEncPk: JubjubPoint, senderEncPk: JubjubPoint, value: Uint<128>): [] {
-  const notes = Core_transfer(recipientPk, value);
+  const pk = callerPk();
+  const note = wit_ConfidentialNoteInputNote();
+  const notes = Core__transfer(pk, recipientPk, value, note, siblingsOf(note, pk));
   Delivery__deliver(recipientEncPk, notes[0].value, notes[0].nonce, pad(32, "MockDelivered:out"));
   Delivery__deliver(senderEncPk, notes[1].value, notes[1].nonce, pad(32, "MockDelivered:change"));
 }
 
 export circuit burn(senderEncPk: JubjubPoint, value: Uint<128>): [] {
-  const changeNote = Core_burn(value);
+  const pk = callerPk();
+  const note = wit_ConfidentialNoteInputNote();
+  const changeNote = Core__burn(pk, value, note, siblingsOf(note, pk));
   Delivery__deliver(senderEncPk, changeNote.value, changeNote.nonce, pad(32, "MockDelivered:change"));
 }
 
 // The pure circuits a wallet needs from one artifact: identity, commitment,
 // nullifier, and the delivery opener.
 export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
-  return Core_derivePk(sk, salt);
+  return degradeToTransient(
+    PrfAddr_derivePk<Bytes<32>>(pad(32, "CNFT:pk"), salt, sk)
+  );
 }
 
 export pure circuit commitOf(note: Core_Note, pk: Field): Bytes<32> {
-  return Core_commitOf(note, pk);
+  return Utils_commitOf<Field>(note, pk);
 }
 
 export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
-  return Core_nullifierOf(note);
+  return Utils_nullifierOf(note);
 }
 
 export pure circuit recoverNote(delivery: Delivery_Delivery, ekScalar: JubjubScalar): Delivery_RecoveredNote {

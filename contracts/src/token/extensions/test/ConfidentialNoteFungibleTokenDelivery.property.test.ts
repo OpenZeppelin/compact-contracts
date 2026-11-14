@@ -176,9 +176,10 @@ describe('ConfidentialNoteFungibleTokenDelivery property: _deliver', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * The ephemeral is `Hf(tag, seed, slot, nonce, encPk)`, so with the seed
- * planted the nonce, the slot and the key are the inputs left to separate two
- * entries. Each run repeats its first delivery to show the seed held.
+ * The ephemeral is `RandPrfExpand.derive(tag, slot, [nonce, encPk, value])`,
+ * so with the seed planted the slot, the nonce, the key and the value are the
+ * inputs left to separate two entries. Each run repeats its first delivery to
+ * show the seed held.
  */
 describe('ConfidentialNoteFungibleTokenDelivery property: pads under a reused seed', () => {
   beforeEach(async () => {

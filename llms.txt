@@ -24,11 +24,11 @@ describes the layout of each module directory.
 
 - [access](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/access): ownership and role-based access control, transparent and shielded
 - [account](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/account): the account type every module stores and takes
-- [crypto](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/crypto): ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712, pseudorandom functions, caller authentication
+- [crypto](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/crypto): ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712, hash commitments, pseudorandom functions, per-call randomness, caller authentication
 - [math](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/math): wrapping arithmetic on `Uint<N>` at any width
 - [multisig](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/multisig): signer registry, threshold approvals, proposals, treasuries, forwarders, presets
 - [security](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/security): initialization, pausing, allowlists and blocklists
-- [token](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token): transparent, confidential and native shielded tokens, extensions, a preset
+- [token](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/token): transparent, confidential and native shielded tokens, extensions, presets
 - [utils](https://github.com/OpenZeppelin/compact-contracts/tree/main/contracts/src/utils): shared helpers and EVM ABI word encoding
 
 ## Examples and API reference

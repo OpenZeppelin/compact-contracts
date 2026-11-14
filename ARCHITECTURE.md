@@ -26,11 +26,11 @@ covers each domain's internal layout and the mocks warning. Dependencies are the
 | --- | --- |
 | `contracts/src/access` | Ownership and role-based access control, transparent and shielded. Imports `utils`; `Ownable`, `AccessControl` and `ShieldedAccessControl` also import `account` and `crypto/authentication/interfaces/IAuthenticator`. |
 | `contracts/src/account` | The account type every module stores and takes, with its accessors. No ledger state and no witnesses. Imports only the standard library. |
-| `contracts/src/crypto` | ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712, pseudorandom functions under `prf/`, and caller authentication under `authentication/`. No ledger state. A module declares a witness only when its job needs one: `authentication/AuthPrfAddr` reads the caller's secret key, and no other `crypto` module declares a witness. Imports nothing outside `crypto`, except `authentication/`, which imports `account`. |
+| `contracts/src/crypto` | ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712, hash commitments under `commitment/`, pseudorandom functions under `prf/`, per-call randomness under `randomness/`, and caller authentication under `authentication/`. No ledger state. A module declares a witness only when its job needs one: `authentication/AuthPrfAddr` reads the caller's secret key, `randomness/RandPrfExpand` reads the caller's seed, and no other `crypto` module declares a witness. Imports nothing outside `crypto`, except `authentication/`, which imports `account`. |
 | `contracts/src/math` | Wrapping arithmetic on `Uint<N>` at any width: pure circuits, no ledger state, no witnesses. Imports nothing. |
 | `contracts/src/multisig` | Signer registry, threshold approvals, proposals, treasuries, forwarders, presets. Imports `utils` and `crypto/Ecdsa`; the presets add `crypto/Eip712` and `utils/EvmAbi`. `presets/NativeShieldedTokenIssuer` is the only multisig file that imports `token`. |
 | `contracts/src/security` | Initialization, pausing, allowlists and blocklists. `Allowlist` and `Blocklist` import `account` and `utils`. |
-| `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`. `FungibleToken`, `NonFungibleToken`, `MultiToken` and `ConfidentialFungibleToken` import `account` and `crypto/authentication/interfaces/IAuthenticator`; `ConfidentialFungibleToken` also imports `crypto/ElGamal` and `crypto/EcdhMask`; `extensions/ConfidentialNoteFungibleTokenDelivery` imports `crypto/Ecdh`, `crypto/EcdhMask` and `math/UintN`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
+| `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, presets, and per-token helpers under `utils/`. Imports `utils`. `FungibleToken`, `NonFungibleToken`, `MultiToken` and `ConfidentialFungibleToken` import `account` and `crypto/authentication/interfaces/IAuthenticator`; `ConfidentialFungibleToken` also imports `crypto/ElGamal` and `crypto/EcdhMask`; `ConfidentialNoteFungibleToken` imports `crypto/randomness/RandPrfExpand`, and `utils/ConfidentialNoteFungibleTokenUtils` imports `crypto/commitment/HashCommitment` and `crypto/prf/PrfCore`; `extensions/ConfidentialNoteFungibleTokenDelivery` imports `crypto/Ecdh`, `crypto/EcdhMask`, `crypto/randomness/RandPrfExpand` and `math/UintN`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`; `presets/CustodialConfidentialNoteFungibleToken` imports `access/Ownable`, `account` and `crypto/authentication/AuthPrfAddr`. |
 | `contracts/src/utils` | Shared helpers and EVM ABI word encoding. Imports only the standard library. |
 | `contracts/src/archive` | Legacy code, excluded from the build and the tests. |
 | `contracts/test-utils` | Live harness, test fixtures and the concurrency replay harness. |
@@ -87,8 +87,8 @@ module that circuit drives. Transparent modules store its pseudonymous account i
 consumer treats as public, the `msg.sender` analogue; `ConfidentialFungibleToken` keeps that id too.
 `ShieldedAccessControl` commits to a salted, per-instance role holder instead, and `ZOwnablePK` to
 an owner it derives itself from `ownPublicKey()` and a secret nonce. `ConfidentialNoteFungibleToken`
-derives a salted, per-instance owner key from its own witness, and the native shielded tokens hold
-no identity at all, only coins.
+binds each note to an owner key its composer chooses, and the native shielded tokens hold no
+identity at all, only coins.
 
 **Witnesses are untrusted.** Each witness value is bound in-circuit to public state or used so a
 hostile value cannot break the module's claim; `ownPublicKey()` is a witness too. Keys and
@@ -103,8 +103,9 @@ publishes it. A stateless module is still observable: a coin commitment links a 
 ## State and storage model
 
 Ledger fields are public. `sealed` fields are written once, at construction: salts, domains,
-metadata. Wallet-held secrets, notes and plaintext balances enter through witnesses. Wrappers
-re-export inner ledger fields by name, so consumer ledger keys stay plain.
+metadata. Wallet-held secrets and plaintext balances enter through witnesses, and notes with their
+Merkle paths as circuit arguments. Wrappers re-export inner ledger fields by name, so consumer
+ledger keys stay plain.
 
 Generic widths (a threshold, a tree depth) are fixed at import and are part of the wire format.
 Commitment trees and nullifier sets are never pruned, so capacity is permanent.

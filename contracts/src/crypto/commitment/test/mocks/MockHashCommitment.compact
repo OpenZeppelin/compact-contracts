@@ -1,0 +1,106 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the HashCommitment module's circuit so it can be driven from
+// off-chain tests. DO NOT deploy or use this contract in any production
+// application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../HashCommitment" prefix HashCommitment_;
+
+// A ledger write keeps every wrapper impure, so each call is proven.
+ledger _invocations: Counter;
+
+// `refCommit*` commit to a flat `{ domain, message }` under other struct
+// names. `refHash*` hash `{ randomness, domain, message }`, the layout the
+// module documents. Neither calls `HashCommitment`.
+struct RefBytesMessage {
+  domain: Bytes<32>;
+  message: Bytes<32>;
+}
+
+struct RefFieldMessage {
+  domain: Bytes<32>;
+  message: Field;
+}
+
+struct RefBytesPreimage {
+  randomness: Bytes<32>;
+  domain: Bytes<32>;
+  message: Bytes<32>;
+}
+
+struct RefFieldPreimage {
+  randomness: Bytes<32>;
+  domain: Bytes<32>;
+  message: Field;
+}
+
+// One wrapper per message type.
+
+export circuit commitOfBytes(
+                 domain: Bytes<32>,
+                 message: Bytes<32>,
+                 randomness: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return HashCommitment_commit<Bytes<32>>(domain, message, randomness);
+}
+
+export circuit commitOfField(
+                 domain: Bytes<32>,
+                 message: Field,
+                 randomness: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return HashCommitment_commit<Field>(domain, message, randomness);
+}
+
+export circuit refCommitOfBytes(
+                 domain: Bytes<32>,
+                 message: Bytes<32>,
+                 randomness: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentCommit<RefBytesMessage>(
+    RefBytesMessage { domain: domain, message: message },
+    randomness
+  );
+}
+
+export circuit refCommitOfField(
+                 domain: Bytes<32>,
+                 message: Field,
+                 randomness: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentCommit<RefFieldMessage>(
+    RefFieldMessage { domain: domain, message: message },
+    randomness
+  );
+}
+
+export circuit refHashOfBytes(
+                 domain: Bytes<32>,
+                 message: Bytes<32>,
+                 randomness: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefBytesPreimage>(
+    RefBytesPreimage { randomness: randomness, domain: domain, message: message }
+  );
+}
+
+export circuit refHashOfField(
+                 domain: Bytes<32>,
+                 message: Field,
+                 randomness: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefFieldPreimage>(
+    RefFieldPreimage { randomness: randomness, domain: domain, message: message }
+  );
+}

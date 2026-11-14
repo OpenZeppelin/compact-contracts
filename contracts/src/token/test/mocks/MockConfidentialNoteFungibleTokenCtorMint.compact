@@ -1,28 +1,57 @@
 // TEST-ONLY. Mints a deployer-built note from the constructor through
 // `_mintNote`, the path a composer without on-chain delivery takes. `twice`
 // mints the same note again so the deployment fails. The self-gated spend
-// surface is exported so the owner can prove the note is live. DO NOT deploy
-// this mock.
+// surface is exported so the owner can prove the note is live. It reads its
+// inputs the way MockConfidentialNoteFungibleToken does. DO NOT deploy this
+// mock.
 pragma language_version >= 0.28.0;
+
 import CompactStandardLibrary;
-import "../../ConfidentialNoteFungibleToken"<32> prefix Core_;
+
+import "../../../crypto/prf/PrfAddr" prefix PrfAddr_;
+import "../../ConfidentialNoteFungibleToken"<32, Field> prefix Core_;
+import "../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
 
 export { Core_Note }
 
-export { Core__isInitialized, Core__instanceSalt, Core__commitments, Core__nullifiers, Core__issuedNonces };
+export { Core__commitments, Core__nullifiers, Core__issuedNonces };
+
+// The salt every caller key on this deployment is derived under.
+sealed ledger _instanceSalt: Bytes<32>;
+
+witness wit_ConfidentialNoteSK(): Bytes<32>;
+
+witness wit_ConfidentialNoteInputNote(): Core_Note;
+
+// Only the path's sibling entries reach the core, which rebuilds the leaf.
+witness wit_ConfidentialNotePath(cm: Bytes<32>): MerkleTreePath<32, Bytes<32>>;
 
 constructor(instanceSalt: Bytes<32>, note: Core_Note, ownerPk: Field, twice: Boolean) {
-  Core_initialize(instanceSalt);
+  _instanceSalt = disclose(instanceSalt);
   Core__mintNote(note, ownerPk);
   if (disclose(twice)) {
     Core__mintNote(note, ownerPk);
   }
 }
 
+circuit callerPk(): Field {
+  return degradeToTransient(
+    PrfAddr_derivePk<Bytes<32>>(pad(32, "CNFT:pk"), _instanceSalt, wit_ConfidentialNoteSK())
+  );
+}
+
+circuit siblingsOf(note: Core_Note, ownerPk: Field): Vector<32, MerkleTreePathEntry> {
+  return wit_ConfidentialNotePath(Utils_commitOf<Field>(note, ownerPk)).path;
+}
+
 export circuit burn(value: Uint<128>): Core_Note {
-  return Core_burn(value);
+  const pk = callerPk();
+  const note = wit_ConfidentialNoteInputNote();
+  return Core__burn(pk, value, note, siblingsOf(note, pk));
 }
 
 export circuit transfer(recipientPk: Field, value: Uint<128>): [Core_Note, Core_Note] {
-  return Core_transfer(recipientPk, value);
+  const pk = callerPk();
+  const note = wit_ConfidentialNoteInputNote();
+  return Core__transfer(pk, recipientPk, value, note, siblingsOf(note, pk));
 }

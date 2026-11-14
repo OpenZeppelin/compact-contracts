@@ -1,17 +1,9 @@
-import { dummyContractAddress } from '@midnight-ntwrk/compact-runtime';
-import {
-  CircuitContextManager,
-  isLiveBackend,
-} from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { pureCircuits as core } from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
-import { Contract as MockInit } from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleTokenInit/contract/index.js';
 import { ConfidentialNoteFungibleTokenCtorMintSimulator } from './simulators/ConfidentialNoteFungibleTokenCtorMintSimulator.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
 import {
-  ConfidentialNoteFungibleTokenWitnesses,
-  createNoteWallet,
   INSTANCE_SALT,
   type Note,
 } from './witnesses/ConfidentialNoteFungibleTokenWitnesses.js';
@@ -31,7 +23,7 @@ const ALICE_SK = secretKey('ALICE');
 const BOB_SK = secretKey('BOB');
 const CAROL_SK = secretKey('CAROL');
 
-// `pk = derivePk(sk, salt)`, computed off-circuit through the module's own pure
+// `pk = derivePk(sk, salt)`, computed off-circuit through the mock's own pure
 // circuit, the same derivation a wallet or auditor would run. Every deployment
 // below is constructed with `INSTANCE_SALT`.
 const ALICE = core.derivePk(ALICE_SK, INSTANCE_SALT);
@@ -106,71 +98,11 @@ describe('ConfidentialNoteFungibleToken: initial state', () => {
     expect(ledger.Core__nullifiers.size()).toBe(0n);
   });
 
-  it('should be initialized with the constructor salt', async () => {
-    const ledger = await publicState();
-    expect(ledger.Core__isInitialized).toBe(true);
-    expect(ledger.Core__instanceSalt).toStrictEqual(INSTANCE_SALT);
-  });
-
   // The core holds no roles: value creation is available on a fresh
   // deployment, and the composing contract is what gates it.
   it('should mint on a fresh deployment', async () => {
     const note = await token._mint(ALICE, 100n);
     expect(await isCommitted(note, ALICE)).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// initialize
-// ---------------------------------------------------------------------------
-
-describe('ConfidentialNoteFungibleToken: initialize', () => {
-  it('should not accept a zero salt', async () => {
-    await expectRejection(
-      ConfidentialNoteFungibleTokenSimulator.create({
-        instanceSalt: new Uint8Array(32),
-      }),
-      'ConfidentialNoteFungibleToken: instance salt must not be zero',
-    );
-  });
-
-  // The remaining guards are reachable only from a constructor, so a mock
-  // built to fail construction drives them. Dry only: nothing to deploy.
-  describe.skipIf(isLiveBackend())('constructor misuse', () => {
-    const TWICE = 0n;
-    const MINT_FIRST = 1n;
-    const SPEND_FIRST = 2n;
-
-    const construct = (misuse: bigint): Promise<void> =>
-      new CircuitContextManager(
-        new MockInit(
-          ConfidentialNoteFungibleTokenWitnesses(createNoteWallet()),
-        ),
-        {},
-        '0'.repeat(64),
-        dummyContractAddress(),
-        0,
-        INSTANCE_SALT,
-        misuse,
-      ).init();
-
-    it('should not initialize twice', async () => {
-      await expect(construct(TWICE)).rejects.toThrow(
-        'ConfidentialNoteFungibleToken: contract already initialized',
-      );
-    });
-
-    it('should not mint before initialize', async () => {
-      await expect(construct(MINT_FIRST)).rejects.toThrow(
-        'ConfidentialNoteFungibleToken: contract not initialized',
-      );
-    });
-
-    it('should not spend before initialize', async () => {
-      await expect(construct(SPEND_FIRST)).rejects.toThrow(
-        'ConfidentialNoteFungibleToken: contract not initialized',
-      );
-    });
   });
 });
 
@@ -257,10 +189,10 @@ describe('ConfidentialNoteFungibleToken: _mint', () => {
 });
 
 // ---------------------------------------------------------------------------
-// freshNonce (nonce hygiene)
+// Nonce hygiene
 // ---------------------------------------------------------------------------
 
-describe('ConfidentialNoteFungibleToken: freshNonce', () => {
+describe('ConfidentialNoteFungibleToken: nonce hygiene', () => {
   beforeEach(async () => {
     token = await ConfidentialNoteFungibleTokenSimulator.create();
   });
@@ -535,132 +467,9 @@ describe('ConfidentialNoteFungibleToken: burn', () => {
 
     await expectRejection(
       token.burn(30n),
-      'ConfidentialNoteFungibleToken: path does not match input commitment',
+      'ConfidentialNoteFungibleToken: input root not recognized',
     );
     expect(await isSpent(input)).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// _spenderPk
-// ---------------------------------------------------------------------------
-
-// Reads `_instanceSalt`, so unlike `_inputNote` it has a public transcript and
-// runs on live too.
-describe('ConfidentialNoteFungibleToken: _spenderPk', () => {
-  beforeEach(async () => {
-    token = await ConfidentialNoteFungibleTokenSimulator.create();
-    token.wallet.secretKey = ALICE_SK;
-  });
-
-  it('should derive the caller pk in-circuit exactly as derivePk does', async () => {
-    expect(await token._spenderPk()).toEqual(ALICE);
-  });
-
-  it('should derive a different pk for the same secret under another salt', async () => {
-    const other = await ConfidentialNoteFungibleTokenSimulator.create({
-      instanceSalt: secretKey('OTHER-SALT'),
-      wallet: token.wallet,
-    });
-
-    expect(await other._spenderPk()).toEqual(
-      core.derivePk(ALICE_SK, secretKey('OTHER-SALT')),
-    );
-    expect(await other._spenderPk()).not.toEqual(ALICE);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// derivePk
-// ---------------------------------------------------------------------------
-
-describe('ConfidentialNoteFungibleToken: derivePk', () => {
-  it('should derive the same pk for the same secret', () => {
-    expect(core.derivePk(ALICE_SK, INSTANCE_SALT)).toEqual(ALICE);
-  });
-
-  it('should derive distinct pks for distinct secrets', () => {
-    expect(new Set([ALICE, BOB, CAROL]).size).toBe(3);
-  });
-
-  it('should derive distinct pks for one secret under distinct salts', () => {
-    expect(core.derivePk(ALICE_SK, secretKey('OTHER-SALT'))).not.toEqual(ALICE);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// _inputNote
-// ---------------------------------------------------------------------------
-
-// Impure but NOT provable: it reads a witness yet touches no ledger state, so
-// its public transcript is empty, compactc registers no on-chain operation and
-// emits no verifier key (`ProvableCircuits` in the generated artifact lists 8 of
-// the 9 impure circuits). Callable in-circuit only, which is how `burn` and
-// `transfer` use it, so the live backend has no transaction to submit.
-describe.skipIf(isLiveBackend())(
-  'ConfidentialNoteFungibleToken: _inputNote',
-  () => {
-    let input: Note;
-
-    beforeEach(async () => {
-      token = await ConfidentialNoteFungibleTokenSimulator.create();
-      input = await token._mint(ALICE, 100n);
-      spendAs(ALICE_SK, input);
-    });
-
-    it('should read the input note the next spend will consume', async () => {
-      expect(await token._inputNote()).toStrictEqual(input);
-    });
-  },
-);
-
-// ---------------------------------------------------------------------------
-// _burn: the conserving building block
-// ---------------------------------------------------------------------------
-
-describe('ConfidentialNoteFungibleToken: _burn', () => {
-  let input: Note;
-
-  beforeEach(async () => {
-    token = await ConfidentialNoteFungibleTokenSimulator.create();
-    input = await token._mint(ALICE, 100n);
-    spendAs(ALICE_SK, input);
-  });
-
-  it('should accept a burn that conserves value', async () => {
-    const change = { value: 70n, nonce: 222n };
-    await token._burn(ALICE, 30n, change);
-
-    expect(await isCommitted(change, ALICE)).toBe(true);
-    expect(await isSpent(input)).toBe(true);
-    expect(await commitmentCount()).toBe(2n);
-  });
-
-  it('should not accept a burn whose change does not conserve value', async () => {
-    await expect(
-      token._burn(ALICE, 30n, { value: 71n, nonce: 222n }),
-    ).rejects.toThrow(
-      'ConfidentialNoteFungibleToken: burn does not conserve value',
-    );
-  });
-
-  // No dedicated assert: the input's nonce was reserved when it was minted, so
-  // the change note's own reservation is what rejects it.
-  it('should not accept change that reuses the spent input nonce', async () => {
-    await expect(
-      token._burn(ALICE, 30n, { value: 70n, nonce: input.nonce }),
-    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
-  });
-
-  // The mirror of the `_transfer` case: a nonce belonging to a different live
-  // note, which no input-note comparison would have caught.
-  it('should not accept change whose nonce is already issued', async () => {
-    const other = await token._mint(CAROL, 5n);
-    spendAs(ALICE_SK, input);
-
-    await expect(
-      token._burn(ALICE, 30n, { value: 70n, nonce: other.nonce }),
-    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
   });
 });
 
@@ -715,7 +524,7 @@ describe('ConfidentialNoteFungibleToken: _consumeNote', () => {
 
     await expectRejection(
       token._consumeNote(BOB),
-      'ConfidentialNoteFungibleToken: path does not match input commitment',
+      'ConfidentialNoteFungibleToken: input root not recognized',
     );
     expect(await isSpent(input)).toBe(false);
   });
@@ -763,7 +572,7 @@ describe('ConfidentialNoteFungibleToken: _consumeNote', () => {
     token.wallet.pathOverride = otherPath;
 
     await expect(token._consumeNote(ALICE)).rejects.toThrow(
-      'ConfidentialNoteFungibleToken: path does not match input commitment',
+      'ConfidentialNoteFungibleToken: input root not recognized',
     );
   });
 
@@ -847,8 +656,8 @@ describe('ConfidentialNoteFungibleToken: transfer', () => {
     expect(out.nonce).not.toBe(change.nonce);
   });
 
-  // Both nonces come from one witness call, so they must be separated by their
-  // slot tag rather than by the randomness itself.
+  // Both nonces are derived from one seed here, so they must be separated by
+  // their slot tag rather than by the randomness itself.
   it('should keep the output and change nonces distinct under a reused seed', async () => {
     token.wallet.nonceSeed = FIXED_SEED;
     const [out, change] = await token.transfer(BOB, 30n);
@@ -927,7 +736,7 @@ describe('ConfidentialNoteFungibleToken: transfer', () => {
 
     await expectRejection(
       token.transfer(CAROL, 30n),
-      'ConfidentialNoteFungibleToken: path does not match input commitment',
+      'ConfidentialNoteFungibleToken: input root not recognized',
     );
     expect(await isSpent(input)).toBe(false);
   });
@@ -943,136 +752,11 @@ describe('ConfidentialNoteFungibleToken: transfer', () => {
 });
 
 // ---------------------------------------------------------------------------
-// _transfer: the conserving building block
-// ---------------------------------------------------------------------------
-
-describe('ConfidentialNoteFungibleToken: _transfer', () => {
-  let input: Note;
-
-  beforeEach(async () => {
-    token = await ConfidentialNoteFungibleTokenSimulator.create();
-    input = await token._mint(ALICE, 100n);
-    spendAs(ALICE_SK, input);
-  });
-
-  // How a composing contract spends: it builds both output notes itself (its
-  // emission policy owns the nonces) and the core checks conservation.
-  it('should accept caller-built notes that conserve value', async () => {
-    const out = { value: 30n, nonce: 111n };
-    const change = { value: 70n, nonce: 222n };
-
-    await token._transfer(ALICE, BOB, out, change);
-
-    expect(await isCommitted(out, BOB)).toBe(true);
-    expect(await isCommitted(change, ALICE)).toBe(true);
-    expect(await isSpent(input)).toBe(true);
-  });
-
-  it('should not accept outputs that destroy value', async () => {
-    await expect(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: 30n, nonce: 111n },
-        { value: 69n, nonce: 222n },
-      ),
-    ).rejects.toThrow(
-      'ConfidentialNoteFungibleToken: transfer does not conserve value',
-    );
-  });
-
-  it('should not accept outputs that inflate value', async () => {
-    await expect(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: 30n, nonce: 111n },
-        { value: 71n, nonce: 222n },
-      ),
-    ).rejects.toThrow(
-      'ConfidentialNoteFungibleToken: transfer does not conserve value',
-    );
-  });
-
-  // One nonce is one nullifier, so two outputs sharing one would collapse into
-  // a single spendable note. The second output's reservation is what stops it.
-  it('should not accept outputs that share a nonce', async () => {
-    await expect(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: 30n, nonce: 111n },
-        { value: 70n, nonce: 111n },
-      ),
-    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
-  });
-
-  // No dedicated assert: the input's nonce was reserved when it was minted.
-  it('should not accept an output that reuses the spent input nonce', async () => {
-    await expect(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: 30n, nonce: input.nonce },
-        { value: 70n, nonce: 222n },
-      ),
-    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
-  });
-
-  it('should not accept change that reuses the spent input nonce', async () => {
-    await expect(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: 30n, nonce: 111n },
-        { value: 70n, nonce: input.nonce },
-      ),
-    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
-  });
-
-  // The output notes go through `_mintNote`, so the reservation applies to a
-  // composer's own emission policy too. The nonce here belongs to another live
-  // note, which the input-nonce assert does not cover.
-  it('should not accept an output whose nonce is already issued', async () => {
-    const other = await token._mint(CAROL, 5n);
-    spendAs(ALICE_SK, input);
-
-    await expect(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: 30n, nonce: other.nonce },
-        { value: 70n, nonce: 222n },
-      ),
-    ).rejects.toThrow('ConfidentialNoteFungibleToken: nonce already issued');
-  });
-
-  it('should leave the ledger untouched when conservation fails', async () => {
-    const before = await commitmentCount();
-
-    await expect(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: 30n, nonce: 111n },
-        { value: 71n, nonce: 222n },
-      ),
-    ).rejects.toThrow();
-
-    expect(await commitmentCount()).toBe(before);
-    expect(await nullifierCount()).toBe(0n);
-    expect(await isSpent(input)).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Value bounds
 // ---------------------------------------------------------------------------
 
 const UINT128_MAX = (1n << 128n) - 1n;
 
-// Conservation compares at full width, so outputs that wrap past 128 bits back
-// to the input value are still rejected.
 describe('ConfidentialNoteFungibleToken: value bounds', () => {
   let input: Note;
 
@@ -1105,36 +789,5 @@ describe('ConfidentialNoteFungibleToken: value bounds', () => {
     expect(change.value).toBe(0n);
     expect(await isCommitted(change, ALICE)).toBe(true);
     expect(await isSpent(input)).toBe(true);
-  });
-
-  it('should not accept transfer outputs that wrap past 128 bits', async () => {
-    const small = await token._mint(ALICE, 100n);
-    spendAs(ALICE_SK, small);
-    const before = await commitmentCount();
-
-    await expectRejection(
-      token._transfer(
-        ALICE,
-        BOB,
-        { value: UINT128_MAX, nonce: 111n },
-        { value: 101n, nonce: 222n },
-      ),
-      'ConfidentialNoteFungibleToken: transfer does not conserve value',
-    );
-    expect(await isSpent(small)).toBe(false);
-    expect(await commitmentCount()).toBe(before);
-  });
-
-  it('should not accept a burn whose value and change wrap past 128 bits', async () => {
-    const small = await token._mint(ALICE, 100n);
-    spendAs(ALICE_SK, small);
-    const before = await commitmentCount();
-
-    await expectRejection(
-      token._burn(ALICE, UINT128_MAX, { value: 101n, nonce: 222n }),
-      'ConfidentialNoteFungibleToken: burn does not conserve value',
-    );
-    expect(await isSpent(small)).toBe(false);
-    expect(await commitmentCount()).toBe(before);
   });
 });

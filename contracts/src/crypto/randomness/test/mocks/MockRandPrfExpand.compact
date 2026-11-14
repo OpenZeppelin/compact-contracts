@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the RandPrfExpand module's circuit so it can be driven from
+// off-chain tests. DO NOT deploy or use this contract in any production
+// application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../RandPrfExpand" prefix RandPrfExpand_;
+
+// A ledger write keeps every wrapper impure, so each call is proven.
+ledger _invocations: Counter;
+
+// Flat copies of the `PrfExpand` preimage `{ { domain, slot, context }, seed }`.
+// The `ref*` circuits take the seed as an argument and hash them without
+// calling `RandPrfExpand`, so a spec checks `derive` against an independent
+// encoding.
+struct RefBytesPreimage {
+  domain: Bytes<32>;
+  slot: Bytes<32>;
+  context: Bytes<32>;
+  seed: Bytes<32>;
+}
+
+struct RefFieldPreimage {
+  domain: Bytes<32>;
+  slot: Bytes<32>;
+  context: Field;
+  seed: Bytes<32>;
+}
+
+// One wrapper per context type.
+
+export circuit deriveOfBytes(
+                 domain: Bytes<32>,
+                 slot: Bytes<32>,
+                 context: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return disclose(RandPrfExpand_derive<Bytes<32>>(domain, slot, context));
+}
+
+export circuit deriveOfField(
+                 domain: Bytes<32>,
+                 slot: Bytes<32>,
+                 context: Field
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return disclose(RandPrfExpand_derive<Field>(domain, slot, context));
+}
+
+export circuit refDeriveOfBytes(
+                 domain: Bytes<32>,
+                 slot: Bytes<32>,
+                 context: Bytes<32>,
+                 seed: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefBytesPreimage>(
+    RefBytesPreimage { domain: domain, slot: slot, context: context, seed: seed }
+  );
+}
+
+export circuit refDeriveOfField(
+                 domain: Bytes<32>,
+                 slot: Bytes<32>,
+                 context: Field,
+                 seed: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefFieldPreimage>(
+    RefFieldPreimage { domain: domain, slot: slot, context: context, seed: seed }
+  );
+}

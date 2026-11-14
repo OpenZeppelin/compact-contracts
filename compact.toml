@@ -54,8 +54,14 @@ artifact = "crypto/test/mocks/{name}"
 [contracts."src/crypto/authentication/test/mocks/*"]
 artifact = "crypto/authentication/test/mocks/{name}"
 
+[contracts."src/crypto/commitment/test/mocks/*"]
+artifact = "crypto/commitment/test/mocks/{name}"
+
 [contracts."src/crypto/prf/test/mocks/*"]
 artifact = "crypto/prf/test/mocks/{name}"
+
+[contracts."src/crypto/randomness/test/mocks/*"]
+artifact = "crypto/randomness/test/mocks/{name}"
 
 [contracts."src/math/test/mocks/*"]
 artifact = "math/test/mocks/{name}"
@@ -76,6 +82,9 @@ artifact = "token/test/mocks/{name}"
 artifact = "token/presets/test/mocks/{name}"
 [contracts."src/token/extensions/test/mocks/*"]
 artifact = "token/extensions/test/mocks/{name}"
+
+[contracts."src/token/utils/test/mocks/*"]
+artifact = "token/utils/test/mocks/{name}"
 
 [contracts."src/utils/test/mocks/*"]
 artifact = "utils/test/mocks/{name}"

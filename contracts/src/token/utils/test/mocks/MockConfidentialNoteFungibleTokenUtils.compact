@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the ConfidentialNoteFungibleTokenUtils module's circuits so they can
+// be driven from off-chain tests. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Note } from "../../ConfidentialNoteFungibleTokenUtils";
+
+import "../../ConfidentialNoteFungibleTokenUtils" prefix ConfidentialNoteFungibleTokenUtils_;
+
+export { Note };
+
+// A ledger write keeps every wrapper impure, so each call is proven.
+ledger _invocations: Counter;
+
+// Flat copies of each preimage, with the tags written out. The `ref*`
+// circuits hash them without calling the module, `HashCommitment` or
+// `PrfCore`.
+struct RefFieldMessage {
+  domain: Bytes<32>;
+  value: Uint<128>;
+  pk: Field;
+}
+
+struct RefBytesMessage {
+  domain: Bytes<32>;
+  value: Uint<128>;
+  pk: Bytes<32>;
+}
+
+struct RefEitherMessage {
+  domain: Bytes<32>;
+  value: Uint<128>;
+  pk: Either<Bytes<32>, ContractAddress>;
+}
+
+struct RefNonceInput {
+  domain: Bytes<32>;
+  nonce: Field;
+}
+
+// One `commitOf` wrapper per owner-key type the library instantiates.
+
+export circuit commitOfField(note: Note, pk: Field): Bytes<32> {
+  _invocations.increment(1);
+  return ConfidentialNoteFungibleTokenUtils_commitOf<Field>(note, pk);
+}
+
+export circuit commitOfEither(
+                 note: Note,
+                 pk: Either<Bytes<32>, ContractAddress>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return ConfidentialNoteFungibleTokenUtils_commitOf<Either<Bytes<32>, ContractAddress>>(
+    note,
+    pk
+  );
+}
+
+export circuit nullifierOf(note: Note): Bytes<32> {
+  _invocations.increment(1);
+  return ConfidentialNoteFungibleTokenUtils_nullifierOf(note);
+}
+
+export circuit issuedTagOf(note: Note): Bytes<32> {
+  _invocations.increment(1);
+  return ConfidentialNoteFungibleTokenUtils_issuedTagOf(note);
+}
+
+export circuit refCommitOfField(note: Note, pk: Field): Bytes<32> {
+  _invocations.increment(1);
+  return persistentCommit<RefFieldMessage>(
+    RefFieldMessage {
+      domain: pad(32, "CNFT:commitment"),
+      value: note.value,
+      pk: pk
+    },
+    note.nonce as Bytes<32>
+  );
+}
+
+// Commits the key as its `Bytes<32>` cast. A spec compares it with
+// `commitOfField` to show the key's type is not hashed.
+export circuit refCommitOfFieldBytes(note: Note, pk: Field): Bytes<32> {
+  _invocations.increment(1);
+  return persistentCommit<RefBytesMessage>(
+    RefBytesMessage {
+      domain: pad(32, "CNFT:commitment"),
+      value: note.value,
+      pk: pk as Bytes<32>
+    },
+    note.nonce as Bytes<32>
+  );
+}
+
+export circuit refCommitOfEither(
+                 note: Note,
+                 pk: Either<Bytes<32>, ContractAddress>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentCommit<RefEitherMessage>(
+    RefEitherMessage {
+      domain: pad(32, "CNFT:commitment"),
+      value: note.value,
+      pk: pk
+    },
+    note.nonce as Bytes<32>
+  );
+}
+
+export circuit refNullifierOf(note: Note): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefNonceInput>(
+    RefNonceInput { domain: pad(32, "CNFT:nullifier"), nonce: note.nonce }
+  );
+}
+
+export circuit refIssuedTagOf(note: Note): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefNonceInput>(
+    RefNonceInput { domain: pad(32, "CNFT:issued"), nonce: note.nonce }
+  );
+}

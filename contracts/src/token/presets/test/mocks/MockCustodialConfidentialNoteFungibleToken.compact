@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../CustodialConfidentialNoteFungibleToken"<32> prefix Token_;
+
+export { ContractAddress, Either };
+
+export { Token_Core_Note };
+
+export {
+  Token__issuerSalt,
+  Token__noteSalt,
+  Token_Core__commitments,
+  Token_Core__nullifiers,
+  Token_Core__issuedNonces,
+  Token_Ownable__owner,
+  Token_Ownable__isInitialized,
+};
+
+/**
+ * @description `inits` is a param for testing: how many times the
+ * constructor calls `initialize`. 0 leaves the contract uninitialized, 2
+ * reaches the guard against a second call.
+ */
+constructor(
+  issuer: Either<Bytes<32>, ContractAddress>,
+  issuerSalt: Bytes<32>,
+  noteSalt: Bytes<32>,
+  inits: Uint<8>,
+) {
+  if (disclose(inits) >= 1) {
+    Token_initialize(issuer, issuerSalt, noteSalt);
+  }
+  if (disclose(inits) >= 2) {
+    Token_initialize(issuer, issuerSalt, noteSalt);
+  }
+}
+
+export circuit mint(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+): Token_Core_Note {
+  return Token_mint(recipientPk, value);
+}
+
+export circuit transfer(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  note: Token_Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): [Token_Core_Note, Token_Core_Note] {
+  return Token_transfer(recipientPk, value, note, path);
+}
+
+export circuit burn(
+  value: Uint<128>,
+  note: Token_Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): Token_Core_Note {
+  return Token_burn(value, note, path);
+}
+
+export circuit transferOwnership(
+  newOwner: Either<Bytes<32>, ContractAddress>,
+): [] {
+  Token_transferOwnership(newOwner);
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Token_owner();
+}
+
+export pure circuit deriveAccount(
+  secretKey: Bytes<32>,
+  salt: Bytes<32>,
+): Either<Bytes<32>, ContractAddress> {
+  return Token_deriveAccount(secretKey, salt);
+}
+
+export pure circuit commitOf(
+  note: Token_Core_Note,
+  pk: Either<Bytes<32>, ContractAddress>,
+): Bytes<32> {
+  return Token_commitOf(note, pk);
+}
+
+export pure circuit nullifierOf(note: Token_Core_Note): Bytes<32> {
+  return Token_nullifierOf(note);
+}

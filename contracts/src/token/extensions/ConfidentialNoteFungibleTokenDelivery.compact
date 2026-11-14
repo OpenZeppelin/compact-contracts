@@ -12,11 +12,12 @@ pragma language_version >= 0.28.0;
  * imports no token module: the composer calls `_deliver` beside the core's
  * note creation.
  *
- * @dev Notation. `Hf`, `pk`, `nonce` and `slot` are defined in the core
+ * @dev Notation. `pk` and `nonce` are defined in the core
  * - `encPk = g^ekScalar`: the owner's Jubjub encryption key, paired with the
  *   spend identity `pk` out of band.
- * - `e = Hf("CNFT:delivery:e", seed, slot, nonce, encPk)`: the ephemeral
- *   scalar.
+ * - `e`: the ephemeral scalar, `RandPrfExpand.derive` under the tag
+ *   `"CNFT:delivery:e"`, the caller's `slot` and the context
+ *   `(nonce, encPk, value)`, reduced to a scalar.
  * - `E = g^e` and `S = encPk^e = E^ekScalar`: the `crypto/Ecdh` exchange.
  * - `valueCt = (value + kdf(S, "CNFT:delivery:value")) mod 2^248` and
  *   `nonceCt = (nonce + kdf(S, "CNFT:delivery:nonce")) mod 2^248`: one-time
@@ -24,8 +25,8 @@ pragma language_version >= 0.28.0;
  *
  * @dev Compatibility:
  * The wire format a wallet depends on is the `Delivery` layout, the two pad
- * tags, and the modular pad. The `e` tag and the `EphemeralPreimage` layout
- * are sender-side: a recipient recovers `S` from `E` and never recomputes `e`.
+ * tags, and the modular pad. The `e` tag and its derivation are
+ * sender-side: a recipient recovers `S` from `E` and never recomputes `e`.
  * The compatibility suite pins all of them.
  *
  * @notice Privacy:
@@ -45,12 +46,12 @@ pragma language_version >= 0.28.0;
  *
  * @notice Security:
  * - The nonce is the spend capability and the pads are one-time, so a
- *   repeated `e` to one key opens both notes. `e` binds the nonce and the
- *   key: two committed notes never share a pad even under a reused seed,
- *   since `_issuedNonces` keeps nonces unique, and one note to two keys
- *   never shares `E`. The seed MUST still be fresh and secret per call. `e`
- *   is secret only while the seed or the nonce is, and a known `e` opens the
- *   entry to everyone.
+ *   repeated `e` to one key opens both notes. `e` binds the whole plaintext
+ *   and the key: under a reused seed, two entries share a pad only when
+ *   they carry the same value and nonce to the same key, and one note to
+ *   two keys never shares `E`. The seed MUST still be fresh and secret per
+ *   call. `e` is secret only while the seed or the nonce is, and a known `e`
+ *   opens the entry to everyone.
  * - No authentication: the pads are malleable and nothing binds an entry to a
  *   leaf. A wallet accepts a recovered note only once `commitOf(note, pk)` is
  *   in the tree (see Client-side duties).
@@ -82,6 +83,7 @@ pragma language_version >= 0.28.0;
  *   `_deliveries`.
  *
  * @notice Client-side duties:
+ * - Randomness: implement `RandPrfExpand`'s seed witness.
  * - Keys: `encPk = g^ekScalar`. Derive `ekScalar` from the wallet seed under a
  *   module-specific domain (`ElGamal.secretToScalar` is the library's
  *   derivation) and share `(pk, encPk)` together.
@@ -105,9 +107,11 @@ pragma language_version >= 0.28.0;
  */
 module ConfidentialNoteFungibleTokenDelivery {
   import CompactStandardLibrary;
+
   import "../../crypto/Ecdh" prefix Ecdh_;
   import "../../crypto/EcdhMask" prefix EcdhMask_;
-  import { wrappingAdd, wrappingSub } from "../../math/UintN"<248> prefix U248_;
+  import "../../crypto/randomness/RandPrfExpand" prefix RandPrfExpand_;
+  import "../../math/UintN"<248> prefix U248_;
 
   /**
    * @description One output note, encrypted to its owner. Public once written;
@@ -141,24 +145,6 @@ module ConfidentialNoteFungibleTokenDelivery {
   }
 
   /**
-   * @description Preimage of the ephemeral scalar: the core's `NoncePreimage`
-   * shape plus the recipient key. The domain tag and the extra field keep `e`
-   * apart from a core nonce drawn from the same seed.
-   * @type {Bytes<32>} domain - The ephemeral domain tag.
-   * @type {Bytes<32>} seed - The caller's per-invocation randomness.
-   * @type {Bytes<32>} slot - The per-output tag.
-   * @type {Field} nonce - The delivered note's nonce.
-   * @type {JubjubPoint} encPk - The key the entry is addressed to.
-   */
-  struct EphemeralPreimage {
-    domain: Bytes<32>;
-    seed: Bytes<32>;
-    slot: Bytes<32>;
-    nonce: Field;
-    encPk: JubjubPoint;
-  }
-
-  /**
    * @description Every delivery ever made, newest first. Append-only: no
    * circuit reads, removes or overwrites an entry. Unbounded.
    * @type {List<Delivery>} _deliveries - The feed wallets scan.
@@ -166,35 +152,21 @@ module ConfidentialNoteFungibleTokenDelivery {
   export ledger _deliveries: List<Delivery>;
 
   /**
-   * @witness wit_ConfidentialNoteDeliveryRandomness
-   * @description Returns the seed `_deliver` derives its ephemeral scalar
-   * from.
-   *
-   * @dev Freshness is mandatory:
-   * MUST be fresh and secret per call. The nonce binding turns a reused seed
-   * from a stolen note into nothing; `e` still stays secret only while the
-   * seed or the nonce does.
-   *
-   * @returns {Bytes<32>} seed - A 32-byte cryptographically secure random
-   * value.
-   */
-  witness wit_ConfidentialNoteDeliveryRandomness(): Bytes<32>;
-
-  /**
    * @description Publishes `(value, nonce)` encrypted to `encPk`: one ECDH
-   * under a key- and nonce-bound ephemeral, two modular `EcdhMask` pads, one
-   * `_deliveries` entry. Call it beside the core's note creation, once per
-   * output and intended key.
+   * under an ephemeral bound to the key and the plaintext, two modular
+   * `EcdhMask` pads, one `_deliveries` entry. Call it beside the core's note
+   * creation, once per output and intended key.
    *
-   * @constraints k=15, rows=21748
+   * @constraints k=15, rows=21765
    *
    * @warning No authorization:
    * The composer gates who may call this.
    *
-   * @dev Key- and nonce-bound ephemeral:
-   * `e = Hf(domain, seed, slot, nonce, encPk)`, so `e` repeats only when all
-   * of `(seed, slot, nonce, encPk)` repeat: a reused seed never pads two
-   * committed notes alike and never gives two keys one `E`.
+   * @dev Bound ephemeral:
+   * `e` is derived under `slot` and the context `(nonce, encPk, value)`, so
+   * it repeats only when all of `(seed, slot, nonce, encPk, value)` repeat:
+   * a reused seed never pads two different plaintexts alike and never gives
+   * two keys one `E`.
    *
    * @dev Constant shape:
    * No branch on the ledger and no ledger read: the transcript is independent
@@ -213,13 +185,12 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @return {[]} - Empty tuple.
    */
   export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
-    const e = degradeToTransient(persistentHash<EphemeralPreimage>(EphemeralPreimage {
-      seed: wit_ConfidentialNoteDeliveryRandomness(),
-      domain: pad(32, "CNFT:delivery:e"),
-      slot: slot,
-      nonce: nonce,
-      encPk: encPk
-    })) as JubjubScalar;
+    // The tag keeps `e` apart from a core nonce drawn from the same seed.
+    const e = degradeToTransient(RandPrfExpand_derive<[Field, JubjubPoint, Uint<128>]>(
+      pad(32, "CNFT:delivery:e"),
+      slot,
+      [nonce, encPk, value]
+    )) as JubjubScalar;
     // The identity-key and zero-ephemeral guards come from `deriveShared`.
     const shared = Ecdh_deriveShared(encPk, e);
     // One point digest feeds both pads.

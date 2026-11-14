@@ -78,38 +78,6 @@ describe('ConfidentialNoteFungibleToken property: nullifierOf', () => {
 });
 
 // ---------------------------------------------------------------------------
-// derivePk
-// ---------------------------------------------------------------------------
-
-describe('ConfidentialNoteFungibleToken property: derivePk', () => {
-  it('should be deterministic for any secret and salt', () => {
-    fc.assert(
-      fc.property(secret(), salt(), (sk, s) => {
-        expect(core.derivePk(sk, s)).toBe(core.derivePk(sk, s));
-      }),
-    );
-  });
-
-  it('should be injective across any two distinct secrets under one salt', () => {
-    fc.assert(
-      fc.property(secret(), secret(), salt(), (a, b, s) => {
-        fc.pre(hex(a) !== hex(b));
-        expect(core.derivePk(a, s)).not.toBe(core.derivePk(b, s));
-      }),
-    );
-  });
-
-  it('should be injective across any two distinct salts under one secret', () => {
-    fc.assert(
-      fc.property(secret(), salt(), salt(), (sk, a, b) => {
-        fc.pre(hex(a) !== hex(b));
-        expect(core.derivePk(sk, a)).not.toBe(core.derivePk(sk, b));
-      }),
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
 // commitOf
 // ---------------------------------------------------------------------------
 

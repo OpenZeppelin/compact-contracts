@@ -9,9 +9,8 @@
  * A FAILURE HERE IS NOT A TEST TO FIX. Revert, or accept deliberately and
  * regenerate in the same commit; post-release it is a migration.
  *
- * PROVENANCE. Every value below was recorded under compiler 0.34.0 (language
- * 0.26.0, runtime 0.19.0) and is byte-identical under 0.36.0 (language 0.28.0,
- * runtime 0.21.0), the CI compiler.
+ * PROVENANCE. Every value below was recorded under compiler 0.36.0 (language
+ * 0.28.0, runtime 0.21.0), the CI compiler.
  */
 
 import { readFileSync } from 'node:fs';
@@ -65,13 +64,13 @@ const NOTE = { value: 100n, nonce: 7n };
 /** `_deliver(ENC_PK, 100, 7, SLOT)` under `FIXED_SEED`. */
 const PINNED_ENTRY: Delivery = {
   ephemeralPk: {
-    x: 23011576836909901585252277904533391375740895133294359147150770435442959411330n,
-    y: 40987086408202835186675414616050877131454850652651500795387362289631234683482n,
+    x: 30162557315629923765645170134939831071584295410279276140748480563255907254279n,
+    y: 6161828147379476675472614837839290636066397919250544508318521809438877664078n,
   },
   valueCt:
-    159229020479116954059460330413161270991530737234925557461233511850755039150n,
+    448289106563087834667777150906808955344928846502476896769916112152794068496n,
   nonceCt:
-    232937730991473062379626547679857463062588887569387900044577285821175969085n,
+    199931934430997679690127240186628431807876866915689369260629403332600653103n,
 };
 
 const EXTENSION_SOURCE = readFileSync(
@@ -225,7 +224,7 @@ describe('ConfidentialNoteFungibleTokenDelivery compatibility: published surface
 // ---------------------------------------------------------------------------
 
 /**
- * The composition appends one slot after the core's five. A wallet reads the
+ * The composition appends one slot after the core's three. A wallet reads the
  * feed by that index, so the core's layout is re-pinned here in full.
  */
 describe('ConfidentialNoteFungibleTokenDelivery compatibility: composed surface', () => {
@@ -237,22 +236,8 @@ describe('ConfidentialNoteFungibleTokenDelivery compatibility: composed surface'
   it('should keep the pinned ledger layout', () => {
     expect(ledgerSlots(contractInfo())).toStrictEqual([
       {
-        name: '_isInitialized',
-        index: 0,
-        exported: true,
-        storage: 'Cell',
-        type: { 'type-name': 'Boolean' },
-      },
-      {
-        name: '_instanceSalt',
-        index: 1,
-        exported: true,
-        storage: 'Cell',
-        type: { 'type-name': 'Bytes', length: 32 },
-      },
-      {
         name: '_commitments',
-        index: 2,
+        index: 0,
         exported: true,
         storage: 'HistoricMerkleTree',
         depth: 32,
@@ -260,24 +245,31 @@ describe('ConfidentialNoteFungibleTokenDelivery compatibility: composed surface'
       },
       {
         name: '_nullifiers',
-        index: 3,
+        index: 1,
         exported: true,
         storage: 'Set',
         type: { 'type-name': 'Bytes', length: 32 },
       },
       {
         name: '_issuedNonces',
-        index: 4,
+        index: 2,
         exported: true,
         storage: 'Set',
         type: { 'type-name': 'Bytes', length: 32 },
       },
       {
         name: '_deliveries',
-        index: 5,
+        index: 3,
         exported: true,
         storage: 'List',
         type: DELIVERY_SLOT_TYPE,
+      },
+      {
+        name: '_instanceSalt',
+        index: 4,
+        exported: false,
+        storage: 'Cell',
+        type: { 'type-name': 'Bytes', length: 32 },
       },
     ]);
   });
@@ -326,8 +318,6 @@ describe('ConfidentialNoteFungibleTokenDelivery compatibility: composed surface'
 
     const declared: Exhaustive<NameOf<ComposedLedger>> = {
       Core__commitments: true,
-      Core__instanceSalt: true,
-      Core__isInitialized: true,
       Core__issuedNonces: true,
       Core__nullifiers: true,
       Delivery__deliveries: true,

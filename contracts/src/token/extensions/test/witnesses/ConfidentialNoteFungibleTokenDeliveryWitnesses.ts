@@ -30,9 +30,7 @@ export const ConfidentialNoteFungibleTokenDeliveryPrivateState = {
 };
 
 export interface IConfidentialNoteFungibleTokenDeliveryWitnesses<L, P> {
-  wit_ConfidentialNoteDeliveryRandomness(
-    context: WitnessContext<L, P>,
-  ): [P, Uint8Array];
+  wit_RandPrfExpandSeed(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
@@ -48,7 +46,7 @@ export const ConfidentialNoteFungibleTokenDeliveryWitnesses = <
 ): IConfidentialNoteFungibleTokenDeliveryWitnesses<L, P> => ({
   // Fresh and secret per call, as the module requires; a fixed seed is only
   // honored when a spec explicitly plants one.
-  wit_ConfidentialNoteDeliveryRandomness(context) {
+  wit_RandPrfExpandSeed(context) {
     return [
       context.privateState,
       wallet.deliverySeed ?? new Uint8Array(getRandomValues(Buffer.alloc(32))),

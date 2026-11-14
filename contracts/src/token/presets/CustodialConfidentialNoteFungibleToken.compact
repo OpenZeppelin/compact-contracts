@@ -1,0 +1,297 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/presets/CustodialConfidentialNoteFungibleToken.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module CustodialConfidentialNoteFungibleToken<#depth>
+ * @description A note-based confidential token managed by an issuer: only the
+ * issuer mints, and any holder transfers or burns its own notes. Wires
+ * `ConfidentialNoteFungibleToken`, `Ownable` and `AuthPrfAddr`.
+ *
+ * ```compact
+ * import "../presets/CustodialConfidentialNoteFungibleToken"<32> prefix Token_;
+ *
+ * constructor(
+ *   issuer: Either<Bytes<32>, ContractAddress>,
+ *   issuerSalt: Bytes<32>,
+ *   noteSalt: Bytes<32>
+ * ) {
+ *   Token_initialize(issuer, issuerSalt, noteSalt);
+ * }
+ *
+ * export circuit mint(
+ *   recipientPk: Either<Bytes<32>, ContractAddress>,
+ *   value: Uint<128>
+ * ): Token_Note {
+ *   return Token_mint(recipientPk, value);
+ * }
+ * ```
+ *
+ * @dev Roles:
+ * - Issuer: the `Ownable` owner. It mints, and hands the role over with
+ *   `transferOwnership`. There is no renounce.
+ * - Holder: whoever owns a note. It transfers and burns its own notes.
+ *
+ * @dev Identity:
+ * - Every circuit authenticates the caller once, with `AuthPrfAddr`. No
+ *   circuit takes a caller as an argument, so each is safe to re-export.
+ * - A note's owner key is the holder's account under `_noteSalt`.
+ * - The issuer authenticates under `_issuerSalt`. The salts differ, so the
+ *   public owner id is unrelated to the issuer's note-owner key.
+ * - `deriveAccount(secretKey, salt)` computes either off-chain. A holder
+ *   shares its account under `_noteSalt` to receive notes.
+ *
+ * @notice Privacy:
+ * - Public, as state: both salts, the owner id, and the core's commitment
+ *   tree, nullifier set and issued-nonce set.
+ * - Public, per tx: the entry point, so mint, transfer, burn or handover.
+ *   The core adds one nullifier per note spent, one tag and one leaf per note
+ *   created, and the root a spend proves against.
+ * - Private: amounts, senders, recipients, and which holder the issuer is.
+ *
+ * @notice Security:
+ * - Secret-key requirements are `AuthPrfAddr`'s. A lost issuer key, or a
+ *   handover to a wrong id, ends minting for good.
+ * - A note sent to a contract address cannot be spent: no circuit here
+ *   authenticates a contract. `mint` and `transfer` reject such a recipient.
+ * - `initialize` runs in the constructor, since both salts are `sealed`.
+ *
+ * @dev Performance:
+ * `CustodialConfidentialNoteFungibleTokenExample` fixes `depth` at 32. The
+ * `@constraints` tags are measured there.
+ *
+ * @notice Client-side duties:
+ * - Implement `wit_AuthPrfAddrSK` and `wit_RandPrfExpandSeed`.
+ * - Note handling, Merkle paths, backup and delivery are the core's: see
+ *   `ConfidentialNoteFungibleToken`.
+ */
+module CustodialConfidentialNoteFungibleToken<#depth> {
+  import CompactStandardLibrary;
+
+  import { Account } from "../../account/Account";
+
+  import "../ConfidentialNoteFungibleToken"<depth, Either<Bytes<32>, ContractAddress>> prefix Core_;
+  import "../../access/Ownable" prefix Ownable_;
+  import "../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+  import "../utils/ConfidentialNoteFungibleTokenUtils" prefix ConfidentialNoteFungibleTokenUtils_;
+
+  // The composed modules' state and the note type, re-exported so an
+  // implementing contract can surface every ledger field under its own key.
+  // The circuits stay behind the prefixes above.
+  export { Core_Note, Core__commitments, Core__nullifiers, Core__issuedNonces };
+  export { Ownable__owner, Ownable__isInitialized };
+
+  /**
+   * @description The domain the issuer authenticates under. Set once by
+   * `initialize`.
+   * @type {Bytes<32>} _issuerSalt - The issuer salt.
+   */
+  export sealed ledger _issuerSalt: Bytes<32>;
+
+  /**
+   * @description The domain holders authenticate under: a note's owner key is
+   * the holder's account under this salt. Set once by `initialize`.
+   * @type {Bytes<32>} _noteSalt - The note salt.
+   */
+  export sealed ledger _noteSalt: Bytes<32>;
+
+  /**
+   * @description Sets both salts and the first issuer. Call it from the
+   * constructor.
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   * - Neither salt is zero, and the two differ.
+   * - `issuer` is not a ContractAddress.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} issuer - The first issuer,
+   * `deriveAccount(secretKey, issuerSalt)` computed off-chain.
+   * @param {Bytes<32>} issuerSalt - A strong random value for the issuer role.
+   * @param {Bytes<32>} noteSalt - A strong random value for note ownership.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(
+                   issuer: Account,
+                   issuerSalt: Bytes<32>,
+                   noteSalt: Bytes<32>
+                   ): [] {
+    assert(issuerSalt != default<Bytes<32>>,
+           "CustodialConfidentialNoteFungibleToken: issuer salt must not be zero");
+    assert(noteSalt != default<Bytes<32>>,
+           "CustodialConfidentialNoteFungibleToken: note salt must not be zero");
+    assert(issuerSalt != noteSalt,
+           "CustodialConfidentialNoteFungibleToken: salts must differ");
+    _issuerSalt = disclose(issuerSalt);
+    _noteSalt = disclose(noteSalt);
+    Ownable_initialize(issuer);
+  }
+
+  /**
+   * @description Mints a note of `value` to `recipientPk` and returns it.
+   *
+   * @constraints k=15, rows=21565
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller is the issuer.
+   * - `recipientPk` is not a ContractAddress.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} recipientPk - The recipient's
+   * account under `_noteSalt`.
+   * @param {Uint<128>} value - The amount to create.
+   * @return {Core_Note} - The new note, returned as a local private result.
+   */
+  export circuit mint(
+                   recipientPk: Account,
+                   value: Uint<128>
+                   ): Core_Note {
+    Ownable_assertOnlyOwner(AuthPrfAddr_authenticate(_issuerSalt));
+    assert(recipientPk.is_left,
+           "CustodialConfidentialNoteFungibleToken: contract recipient");
+    return Core__mint(recipientPk, value);
+  }
+
+  /**
+   * @description Spends the caller's `note` and creates a recipient
+   * note of `value` plus a change note back to the caller.
+   *
+   * @constraints k=16, rows=54191
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller owns `note`.
+   * - `path` leads from its commitment to a root the tree recognizes.
+   * - `recipientPk` is not a ContractAddress.
+   * - `value <= note.value`.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} recipientPk - The recipient's
+   * account under `_noteSalt`.
+   * @param {Uint<128>} value - The amount to send.
+   * @param {Core_Note} note - The note to spend.
+   * @param {Vector<depth, MerkleTreePathEntry>} path - The Merkle path
+   * entries of the input note's commitment.
+   * @return {[Core_Note, Core_Note]} - The recipient's note and the caller's
+   * change note.
+   */
+  export circuit transfer(
+                   recipientPk: Account,
+                   value: Uint<128>,
+                   note: Core_Note,
+                   path: Vector<depth, MerkleTreePathEntry>
+                   ): [Core_Note, Core_Note] {
+    assert(recipientPk.is_left,
+           "CustodialConfidentialNoteFungibleToken: contract recipient");
+    assert(_noteSalt != default<Bytes<32>>,
+           "CustodialConfidentialNoteFungibleToken: contract not initialized");
+    const caller = AuthPrfAddr_authenticate(_noteSalt);
+    return Core__transfer(caller.account, recipientPk, value, note, path);
+  }
+
+  /**
+   * @description Burns `value` from the caller's `note` and returns the
+   * change.
+   *
+   * @constraints k=16, rows=34609
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller owns `note`.
+   * - `path` leads from its commitment to a root the tree recognizes.
+   * - `value <= note.value`.
+   *
+   * @param {Uint<128>} value - The amount to burn.
+   * @param {Core_Note} note - The note to spend.
+   * @param {Vector<depth, MerkleTreePathEntry>} path - The Merkle path
+   * entries of the input note's commitment.
+   * @return {Core_Note} - The caller's change note.
+   */
+  export circuit burn(
+                   value: Uint<128>,
+                   note: Core_Note,
+                   path: Vector<depth, MerkleTreePathEntry>
+                   ): Core_Note {
+    assert(_noteSalt != default<Bytes<32>>,
+           "CustodialConfidentialNoteFungibleToken: contract not initialized");
+    const caller = AuthPrfAddr_authenticate(_noteSalt);
+    return Core__burn(caller.account, value, note, path);
+  }
+
+  /**
+   * @description Hands the issuer role to `newOwner`.
+   *
+   * @constraints k=13, rows=4197
+   *
+   * @warning One step:
+   * A wrong `newOwner` ends minting for good.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - The caller is the issuer.
+   * - `newOwner` is not a ContractAddress and not zero.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new issuer,
+   * `deriveAccount(newSecretKey, _issuerSalt)`.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit transferOwnership(
+                   newOwner: Account
+                   ): [] {
+    Ownable_transferOwnership(AuthPrfAddr_authenticate(_issuerSalt), newOwner);
+  }
+
+  /**
+   * @description The current issuer.
+   *
+   * @constraints k=7, rows=99
+   *
+   * @return {Either<Bytes<32>, ContractAddress>} - The owner id.
+   */
+  export circuit owner(): Account {
+    return Ownable_owner();
+  }
+
+  /**
+   * @description The account behind `secretKey` under `salt`. Pass
+   * `_noteSalt` for a note-owner key and `_issuerSalt` for an issuer id.
+   *
+   * @param {Bytes<32>} secretKey - The secret: 32 bytes from a CSPRNG.
+   * @param {Bytes<32>} salt - `_noteSalt` or `_issuerSalt`.
+   * @return {Either<Bytes<32>, ContractAddress>} - The account.
+   */
+  export pure circuit deriveAccount(
+                        secretKey: Bytes<32>,
+                        salt: Bytes<32>
+                        ): Account {
+    return AuthPrfAddr_deriveAccount(secretKey, salt);
+  }
+
+  /**
+   * @description The note's `commitOf`, for viewers recomputing a commitment.
+   *
+   * @param {Core_Note} note - The note to commit to.
+   * @param {Either<Bytes<32>, ContractAddress>} pk - The owner key.
+   * @return {Bytes<32>} - The commitment stored in the tree.
+   */
+  export pure circuit commitOf(
+                        note: Core_Note,
+                        pk: Account
+                        ): Bytes<32> {
+    return ConfidentialNoteFungibleTokenUtils_commitOf<Account>(note, pk);
+  }
+
+  /**
+   * @description The note's `nullifierOf`, for viewers watching a spend.
+   *
+   * @param {Core_Note} note - The note to nullify.
+   * @return {Bytes<32>} - The nullifier published when the note is spent.
+   */
+  export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
+    return ConfidentialNoteFungibleTokenUtils_nullifierOf(note);
+  }
+}
