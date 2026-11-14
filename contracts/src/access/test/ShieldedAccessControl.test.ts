@@ -69,7 +69,7 @@ const buildRoleCommitmentHash = (
 
 const buildNullifierHash = (commitment: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
-  const bDomain = new TextEncoder().encode(NULLIFIER_DOMAIN);
+  const bDomain = encodePadded32(NULLIFIER_DOMAIN);
 
   const nullifier = persistentHash(rt_type, [commitment, bDomain]);
   return nullifier;
