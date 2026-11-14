@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { BlocklistSimulator } from './simulators/BlocklistSimulator.js';
 
-// Deterministic 32-byte account identifier seeded from a label.
-const account = (label: string): Uint8Array => {
+// Deterministic key account seeded from a label.
+const account = (label: string) => {
   const a = new Uint8Array(32);
   a.set(new TextEncoder().encode(label).slice(0, 32));
-  return a;
+  return { is_left: true, left: a, right: { bytes: new Uint8Array(32) } };
 };
 
+// Contract account over the same 32 bytes as `account(label)`.
+const contract = (label: string) => ({
+  is_left: false,
+  left: new Uint8Array(32),
+  right: { bytes: account(label).left },
+});
+
 const ALICE = account('ALICE');
+const ALICE_CONTRACT = contract('ALICE');
 const BOB = account('BOB');
 
 let blocklist: BlocklistSimulator;
@@ -104,6 +112,44 @@ describe('Blocklist', () => {
       await blocklist.unblock(ALICE);
       expect(await blocklist.isBlocked(ALICE)).toBe(false);
       expect(await blocklist.isBlocked(BOB)).toBe(true);
+    });
+  });
+
+  describe('contract accounts', () => {
+    it('adds and removes a contract account', async () => {
+      await blocklist.block(ALICE_CONTRACT);
+      expect(await blocklist.isBlocked(ALICE_CONTRACT)).toBe(true);
+
+      await blocklist.unblock(ALICE_CONTRACT);
+      expect(await blocklist.isBlocked(ALICE_CONTRACT)).toBe(false);
+    });
+
+    it('treats a key account and a contract account with the same bytes as two entries', async () => {
+      await blocklist.block(ALICE);
+      expect(await blocklist.isBlocked(ALICE_CONTRACT)).toBe(false);
+
+      await blocklist.block(ALICE_CONTRACT);
+      await blocklist.unblock(ALICE);
+      expect(await blocklist.isBlocked(ALICE)).toBe(false);
+      expect(await blocklist.isBlocked(ALICE_CONTRACT)).toBe(true);
+    });
+  });
+
+  describe('inactive arm', () => {
+    // The same key account with data left in its contract arm.
+    const ALICE_PADDED = { ...ALICE, right: { bytes: BOB.left } };
+
+    it('reads an account by its active arm only', async () => {
+      await blocklist.block(ALICE);
+      expect(await blocklist.isBlocked(ALICE_PADDED)).toBe(true);
+    });
+
+    it('writes an account by its active arm only', async () => {
+      await blocklist.block(ALICE_PADDED);
+      expect(await blocklist.isBlocked(ALICE)).toBe(true);
+
+      await blocklist.unblock(ALICE_PADDED);
+      expect(await blocklist.isBlocked(ALICE)).toBe(false);
     });
   });
 

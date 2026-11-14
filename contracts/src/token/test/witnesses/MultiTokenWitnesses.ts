@@ -16,7 +16,7 @@ export interface IMultiTokenWitnesses<L, P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_MultiTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
@@ -71,7 +71,7 @@ export const MultiTokenWitnesses = <L>(): IMultiTokenWitnesses<
   L,
   MultiTokenPrivateState
 > => ({
-  wit_MultiTokenSK(
+  wit_AuthPrfAddrSK(
     context: WitnessContext<L, MultiTokenPrivateState>,
   ): [MultiTokenPrivateState, Uint8Array] {
     return [

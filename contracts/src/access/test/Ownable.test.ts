@@ -9,8 +9,10 @@ import { OwnableSimulator } from './simulators/OwnableSimulator.js';
 
 // Helpers
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+  const domain = createTestSK('AuthPrfAddr:account');
+  const salt = createTestSK('MockOwnable');
+  return persistentHash(rt_type, [domain, salt, sk]);
 };
 
 const zeroBytes = utils.zeroUint8Array();

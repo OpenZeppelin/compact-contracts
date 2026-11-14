@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract takes the caller as a circuit argument, so anyone can act as
+// any account. DO NOT deploy or use this contract in any production
+// application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Caller } from "../../../crypto/authentication/interfaces/IAuthenticator";
+
+import "../../Ownable" prefix Ownable_;
+
+export { Caller, ContractAddress, Either };
+
+constructor(initialOwner: Either<Bytes<32>, ContractAddress>) {
+  Ownable_initialize(initialOwner);
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Ownable_owner();
+}
+
+export circuit transferOwnership(caller: Caller, newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  return Ownable_transferOwnership(caller, newOwner);
+}
+
+export circuit _unsafeTransferOwnership(caller: Caller, newOwner: Either<Bytes<32>, ContractAddress>): [] {
+  return Ownable__unsafeTransferOwnership(caller, newOwner);
+}
+
+export circuit renounceOwnership(caller: Caller): [] {
+  return Ownable_renounceOwnership(caller);
+}
+
+export circuit assertOnlyOwner(caller: Caller): [] {
+  return Ownable_assertOnlyOwner(caller);
+}

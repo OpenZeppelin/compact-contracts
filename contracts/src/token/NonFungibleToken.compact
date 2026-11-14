@@ -7,16 +7,10 @@ pragma language_version >= 0.28.0;
  * @module NonFungibleToken
  * @description An unshielded Non-Fungible Token library.
  *
- * Authorization is based on a witness-derived identity scheme. Each caller proves knowledge
- * of a secret key by injecting it via the `wit_NonFungibleTokenSK` witness. The module computes
- * an account identifier as `persistentHash(secretKey)` which is a commitment that hides the key
- * while providing a stable, pseudonymous on-chain identity.
- *
- * Because the account identifier is `H(secretKey)` with no per-deployment salt or domain
- * separator, the same secret key produces the same identity across all contracts. This is
- * intentional. It provides a linkable pseudonymous identity analogous to Solidity's
- * `msg.sender`. Users who desire cross-contract unlinkability can use different secret keys
- * per contract at the wallet layer.
+ * This module derives no caller. Each circuit that acts for the caller takes a
+ * `Caller`, which the composing contract gets from an authenticator and
+ * passes to every module it drives. How the caller is authenticated is the
+ * authenticator's concern, see `IAuthenticator`.
  *
  * @notice One notable difference regarding this implementation and the EIP721 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
@@ -63,16 +57,6 @@ pragma language_version >= 0.28.0;
  * `_setApprovalForAll` (for `_operatorApprovals`). Read paths are canonicalized in
  * `balanceOf`, `isApprovedForAll`, and `_isAuthorized`.
  *
- * @dev Security Considerations:
- * - The `secretKey` must be kept private. Loss of the key prevents token holders
- *   from proving ownership or authorization. Key exposure allows impersonation.
- * - It is strongly recommended to use cryptographically secure random values for the secret key
- *   (e.g., `crypto.getRandomValues()`). Weak or predictable keys can be brute-forced.
- * - The `secretKey` is provided via the `wit_NonFungibleTokenSK` witness. As with all witnesses,
- *   the contract must not assume that the witness implementation matches the developer's code.
- *   Any DApp may provide any implementation. The ZK proof system constrains what values
- *   can produce valid proofs.
- *
  * @notice Missing Features and Improvements:
  *
  * - Uint256 token IDs
@@ -84,6 +68,11 @@ pragma language_version >= 0.28.0;
 
 module NonFungibleToken {
   import CompactStandardLibrary;
+
+  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
+
+  import { Account } from "../account/Account";
+
   import "../utils/Utils" prefix Utils_;
 
   /**
@@ -109,7 +98,7 @@ module NonFungibleToken {
    * @type {Map<tokenId, owner>}
    * @type {Map<Uint<128>, Either<Bytes<32>, ContractAddress>>} _owners
    */
-  export ledger _owners: Map<Uint<128>, Either<Bytes<32>, ContractAddress>>;
+  export ledger _owners: Map<Uint<128>, Account>;
 
   /**
    * @description Mapping from account addresses to their token balances.
@@ -118,7 +107,7 @@ module NonFungibleToken {
    * @type {Map<owner, balance>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Uint<128>>} _balances
    */
-  export ledger _balances: Map<Either<Bytes<32>, ContractAddress>, Uint<128>>;
+  export ledger _balances: Map<Account, Uint<128>>;
 
   /**
    * @description Mapping from token IDs to approved addresses.
@@ -127,7 +116,7 @@ module NonFungibleToken {
    * @type {Map<tokenId, approved>}
    * @type {Map<Uint<128>, Either<Bytes<32>, ContractAddress>>} _tokenApprovals
    */
-  export ledger _tokenApprovals: Map<Uint<128>, Either<Bytes<32>, ContractAddress>>;
+  export ledger _tokenApprovals: Map<Uint<128>, Account>;
 
   /**
    * @description Mapping from owner addresses to operator approvals.
@@ -137,8 +126,8 @@ module NonFungibleToken {
    * @type {Map<owner, Map<operator, approved>>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>} _operatorApprovals
    */
-  export ledger _operatorApprovals: Map<Either<Bytes<32>, ContractAddress>,
-                                        Map<Either<Bytes<32>, ContractAddress>, Boolean>>;
+  export ledger _operatorApprovals: Map<Account,
+                                        Map<Account, Boolean>>;
 
   /**
    * @description Mapping from token IDs to their metadata URIs.
@@ -148,17 +137,6 @@ module NonFungibleToken {
    * @type {Map<Uint<128>, Opaque<"string">>} _tokenURIs
    */
   export ledger _tokenURIs: Map<Uint<128>, Opaque<"string">>;
-
-  /**
-   * @witness wit_NonFungibleTokenSK
-   * @description Returns the caller's secret key used in deriving the account identifier.
-   *
-   * The same key produces the same account identifier across all contracts. Users who
-   * desire cross-contract unlinkability should use different keys per contract.
-   *
-   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   */
-  witness wit_NonFungibleTokenSK(): Bytes<32>;
 
   /**
    * @description Initializes the contract by setting the name and symbol.
@@ -220,7 +198,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} owner - The account to query.
    * @return {Uint<128>} - The number of tokens in `owner`'s account.
    */
-  export circuit balanceOf(owner: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  export circuit balanceOf(owner: Account): Uint<128> {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
 
@@ -244,7 +222,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The identifier for a token.
    * @return {Either<Bytes<32>, ContractAddress>} - The account that owns the token.
    */
-  export circuit ownerOf(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
+  export circuit ownerOf(tokenId: Uint<128>): Account {
     assertInitialized();
     return _requireOwned(tokenId);
   }
@@ -340,10 +318,7 @@ module NonFungibleToken {
    *
    * Only a single account can be approved at a time, so approving the zero value clears previous approvals.
    *
-   * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
-   * witness as `persistentHash(secretKey)`.
-   *
-   * @constraints k=13, rows=2484
+   * @constraints k=10, rows=728
    *
    * Requirements:
    *
@@ -351,13 +326,18 @@ module NonFungibleToken {
    * - The caller must either own the token or be an approved operator.
    * - `tokenId` must exist.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} to - The account receiving the approval
    * @param {Uint<128>} tokenId - The token `to` may be permitted to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit approve(to: Either<Bytes<32>, ContractAddress>, tokenId: Uint<128>): [] {
+  export circuit approve(
+                   caller: Caller,
+                   to: Account,
+                   tokenId: Uint<128>
+                   ): [] {
     assertInitialized();
-    const auth = left<Bytes<32>, ContractAddress>(_computeAccountId());
+    const auth = caller.account;
     _approve(to, tokenId, auth);
   }
 
@@ -374,7 +354,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token an account may be approved to manage
    * @return {Either<Bytes<32>, ContractAddress>} - The account approved to manage the token
    */
-  export circuit getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
+  export circuit getApproved(tokenId: Uint<128>): Account {
     assertInitialized();
     _requireOwned(tokenId);
 
@@ -385,26 +365,25 @@ module NonFungibleToken {
    * @description Approve or remove `operator` as an operator for the caller.
    * Operators can call {transferFrom} for any token owned by the caller.
    *
-   * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
-   * witness as `persistentHash(secretKey)`.
-   *
-   * @constraints k=13, rows=2297
+   * @constraints k=10, rows=537
    *
    * Requirements:
    *
    * - The contract is initialized.
    * - The `operator` cannot be zero.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} operator - An operator to manage the caller's tokens
    * @param {Boolean} approved - A boolean determining if `operator` may manage all tokens of the caller
    * @return {[]} - Empty tuple.
    */
   export circuit setApprovalForAll(
-                   operator: Either<Bytes<32>, ContractAddress>,
+                   caller: Caller,
+                   operator: Account,
                    approved: Boolean
                    ): [] {
     assertInitialized();
-    const owner = left<Bytes<32>, ContractAddress>(_computeAccountId());
+    const owner = caller.account;
     _setApprovalForAll(owner, operator, approved);
   }
 
@@ -422,8 +401,8 @@ module NonFungibleToken {
    * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
    */
   export circuit isApprovedForAll(
-                   owner: Either<Bytes<32>, ContractAddress>,
-                   operator: Either<Bytes<32>, ContractAddress>
+                   owner: Account,
+                   operator: Account
                    ): Boolean {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
@@ -441,10 +420,7 @@ module NonFungibleToken {
    * contract-to-contract calls. This restriction prevents assets from being inadvertently
    * locked in contracts that cannot currently handle token receipt.
    *
-   * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
-   * witness as `persistentHash(secretKey)`.
-   *
-   * @constraints k=13, rows=3017
+   * @constraints k=11, rows=1279
    *
    * Requirements:
    *
@@ -455,35 +431,34 @@ module NonFungibleToken {
    * - `tokenId` token must be owned by `fromAddress`.
    * - If the caller is not `fromAddress`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The source account from which the token is being transferred
    * @param {Either<Bytes<32>, ContractAddress>} to - The target account to transfer token to
    * @param {Uint<128>} tokenId - The token being transferred
    * @return {[]} - Empty tuple.
    */
   export circuit transferFrom(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   caller: Caller,
+                   fromAddress: Account,
+                   to: Account,
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "NonFungibleToken: unsafe transfer");
 
-    _unsafeTransferFrom(fromAddress, to, tokenId);
+    _unsafeTransferFrom(caller, fromAddress, to, tokenId);
   }
 
   /**
    * @description Transfers `tokenId` token from `fromAddress` to `to`. It does NOT check if the recipient is a ContractAddress.
-   *
-   * In the case of an external (non-contract) caller, the caller's identity is derived from the `wit_NonFungibleTokenSK`
-   * witness as `persistentHash(secretKey)`.
    *
    * @warning Transfers to contract addresses are considered unsafe because this library has not yet
    * migrated to contract-to-contract calls.
    * Tokens sent to a contract address may become irretrievable.
    * Once this library migrates to contract-to-contract calls, this circuit may be deprecated.
    *
-   * @constraints k=13, rows=3005
+   * @constraints k=11, rows=1267
    *
    * Requirements:
    *
@@ -493,19 +468,21 @@ module NonFungibleToken {
    * - `tokenId` token must be owned by `fromAddress`.
    * - If the caller is not `fromAddress`, it must be approved to move this token by either {approve} or {setApprovalForAll}.
    *
+   * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The source account from which the token is being transferred
    * @param {Either<Bytes<32>, ContractAddress>} to - The target account to transfer token to
    * @param {Uint<128>} tokenId - The token being transferred
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransferFrom(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   caller: Caller,
+                   fromAddress: Account,
+                   to: Account,
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
-    const auth = left<Bytes<32>, ContractAddress>(_computeAccountId());
+    const auth = caller.account;
     const previousOwner = _update(to, tokenId, auth);
 
     // The `_isAuthorized` check inside `_update` already implies the token exists, but that
@@ -529,7 +506,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The target token of the owner query
    * @return {Either<Bytes<32>, ContractAddress>} - The owner of the token
    */
-  export circuit _ownerOf(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
+  export circuit _ownerOf(tokenId: Uint<128>): Account {
     assertInitialized();
     if (!_owners.member(disclose(tokenId))) {
       return Utils_zeroAccount();
@@ -550,7 +527,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to query
    * @return {Either<Bytes<32>, ContractAddress>} - An account approved to spend `tokenId`
    */
-  export circuit _getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
+  export circuit _getApproved(tokenId: Uint<128>): Account {
     assertInitialized();
     if (!_tokenApprovals.member(disclose(tokenId))) {
       return Utils_zeroAccount();
@@ -577,8 +554,8 @@ module NonFungibleToken {
    * @return {Boolean} - A boolean determining if `spender` may manage `tokenId`
    */
   export circuit _isAuthorized(
-                   owner: Either<Bytes<32>, ContractAddress>,
-                   spender: Either<Bytes<32>, ContractAddress>,
+                   owner: Account,
+                   spender: Account,
                    tokenId: Uint<128>
                    ): Boolean {
     assertInitialized();
@@ -610,8 +587,8 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _checkAuthorized(
-                   owner: Either<Bytes<32>, ContractAddress>,
-                   spender: Either<Bytes<32>, ContractAddress>,
+                   owner: Account,
+                   spender: Account,
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
@@ -636,10 +613,10 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} auth - An account authorized to transfer the token
    * @return {Either<Bytes<32>, ContractAddress>} - Owner of the token before it was transferred
    */
-  circuit _update(to: Either<Bytes<32>, ContractAddress>,
+  circuit _update(to: Account,
                   tokenId: Uint<128>,
-                  auth: Either<Bytes<32>, ContractAddress>
-                  ): Either<Bytes<32>, ContractAddress> {
+                  auth: Account
+                  ): Account {
     assertInitialized();
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
     const canonAuth = Utils_canonicalize<Bytes<32>, ContractAddress>(auth);
@@ -688,7 +665,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit _mint(to: Either<Bytes<32>, ContractAddress>, tokenId: Uint<128>): [] {
+  export circuit _mint(to: Account, tokenId: Uint<128>): [] {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "NonFungibleToken: unsafe transfer");
@@ -717,7 +694,7 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(
-                   to: Either<Bytes<32>, ContractAddress>,
+                   to: Account,
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
@@ -773,8 +750,8 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   fromAddress: Account,
+                   to: Account,
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
@@ -808,8 +785,8 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransfer(
-                   fromAddress: Either<Bytes<32>, ContractAddress>,
-                   to: Either<Bytes<32>, ContractAddress>,
+                   fromAddress: Account,
+                   to: Account,
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
@@ -841,9 +818,9 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _approve(
-                   to: Either<Bytes<32>, ContractAddress>,
+                   to: Account,
                    tokenId: Uint<128>,
-                   auth: Either<Bytes<32>, ContractAddress>
+                   auth: Account
                    ): [] {
     _unsafeApprove(to, tokenId, auth, true);
   }
@@ -877,9 +854,9 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeApprove(
-                   to: Either<Bytes<32>, ContractAddress>,
+                   to: Account,
                    tokenId: Uint<128>,
-                   auth: Either<Bytes<32>, ContractAddress>,
+                   auth: Account,
                    isExistenceRequired: Boolean
                    ): [] {
     assertInitialized();
@@ -922,8 +899,8 @@ module NonFungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _setApprovalForAll(
-                   owner: Either<Bytes<32>, ContractAddress>,
-                   operator: Either<Bytes<32>, ContractAddress>,
+                   owner: Account,
+                   operator: Account,
                    approved: Boolean
                    ): [] {
     assertInitialized();
@@ -936,7 +913,7 @@ module NonFungibleToken {
     if (!_operatorApprovals.member(disclose(canonOwner))) {
       _operatorApprovals.insert(
         disclose(canonOwner),
-        default<Map<Either<Bytes<32>, ContractAddress>, Boolean>>
+        default<Map<Account, Boolean>>
         );
     }
 
@@ -957,25 +934,11 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token that should be owned
    * @return {Either<Bytes<32>, ContractAddress>} - The owner of `tokenId`
    */
-  export circuit _requireOwned(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
+  export circuit _requireOwned(tokenId: Uint<128>): Account {
     assertInitialized();
     const owner = _ownerOf(tokenId);
 
     assert(!Utils_isTargetZero(owner), "NonFungibleToken: nonexistent token");
     return owner;
-  }
-
-  /**
-   * @description Computes the caller's account identifier from the `wit_NonFungibleTokenSK` witness.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * The result is a 32-byte commitment that uniquely identifies the caller.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  circuit _computeAccountId(): Bytes<32> {
-    return Utils_computeAccountId(wit_NonFungibleTokenSK());
   }
 }

@@ -23,10 +23,10 @@ const SECRET_TO_SCALAR_TAG = padTag('ElGamal:secretToScalar');
  *   pk = ecMulGenerator(degradeToTransient(persistentHash([TAG, ek])))
  * This is the value `ConfidentialFungibleToken.registerWithKey` expects.
  *
- * @note The tag keeps this scalar unrelated to the account identifier, which
- * is `persistentHash([sk])` (untagged, and public as a ledger map key).
- * Without it, a secret used in both roles would have its encryption key
- * recoverable from the published identifier.
+ * @note The tag keeps this scalar unrelated to an account identifier derived
+ * without a domain tag, `persistentHash([sk])`, which is public as a ledger
+ * map key. Without it, a secret used in both roles would have its encryption
+ * key recoverable from the published identifier.
  *
  * @note `degradeToTransient` truncates the hash to 31 bytes, so the effective
  * collision resistance is 248 bits.

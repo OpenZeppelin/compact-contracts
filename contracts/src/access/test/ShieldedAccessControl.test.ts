@@ -21,7 +21,7 @@ const itDryOnly = it.skipIf(isLiveBackend());
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);
 const COMMITMENT_DOMAIN = 'ShieldedAccessControl:commitment';
 const NULLIFIER_DOMAIN = 'ShieldedAccessControl:nullifier';
-const ACCOUNT_DOMAIN = 'ShieldedAccessControl:accountId';
+const ACCOUNT_DOMAIN = 'AuthPrfAddr:account';
 
 const DEFAULT_MT_PATH: MerkleTreePath<Uint8Array> = {
   leaf: new Uint8Array(32),
@@ -45,11 +45,14 @@ const encodePadded32 = (value: string): Uint8Array => {
   return out;
 };
 
-const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
+const buildAccountIdHash = (
+  sk: Uint8Array,
+  salt: Uint8Array = INSTANCE_SALT,
+): Uint8Array => {
   const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
 
   const bDomain = encodePadded32(ACCOUNT_DOMAIN);
-  return persistentHash(rt_type, [sk, INSTANCE_SALT, bDomain]);
+  return persistentHash(rt_type, [bDomain, salt, sk]);
 };
 
 const buildRoleCommitmentHash = (
@@ -159,7 +162,6 @@ describe('ShieldedAccessControl', () => {
       ['computeRoleCommitment', [ROLE_ADMIN, ADMIN_ACCOUNT_ID]],
       ['computeNullifier', [ADMIN_ROLE_COMMITMENT]],
       ['DEFAULT_ADMIN_ROLE', []],
-      ['computeAccountId', [ADMIN_SK, INSTANCE_SALT]],
     ];
 
     it.each(circuitsNotRequiringInit)(
@@ -196,34 +198,6 @@ describe('ShieldedAccessControl', () => {
       it('should return zero bytes', async () => {
         expect(await contract.DEFAULT_ADMIN_ROLE()).toStrictEqual(
           new Uint8Array(32),
-        );
-      });
-    });
-
-    describe('computeAccountId', () => {
-      it('should match pre-computed accountId', async () => {
-        expect(
-          await contract.computeAccountId(ADMIN_SK, INSTANCE_SALT),
-        ).toEqual(ADMIN_ACCOUNT_ID);
-      });
-
-      it('should produce different accountId with different key', async () => {
-        expect(
-          await contract.computeAccountId(BAD_SK, INSTANCE_SALT),
-        ).not.toEqual(ADMIN_ACCOUNT_ID);
-      });
-
-      it('should produce different accountId with different salt', async () => {
-        const differentSalt = new Uint8Array(32).fill(1);
-        expect(
-          await contract.computeAccountId(ADMIN_SK, differentSalt),
-        ).not.toEqual(ADMIN_ACCOUNT_ID);
-      });
-
-      it('should accept zero-byte secret key', async () => {
-        const zeroKey = new Uint8Array(32);
-        expect(await contract.computeAccountId(zeroKey, INSTANCE_SALT)).toEqual(
-          buildAccountIdHash(zeroKey),
         );
       });
     });
@@ -1259,10 +1233,7 @@ describe('ShieldedAccessControl', () => {
           ROLE_ADMIN,
           ADMIN_ACCOUNT_ID,
         );
-        const accountIdOnB = await contractB.computeAccountId(
-          ADMIN_SK,
-          differentSalt,
-        );
+        const accountIdOnB = buildAccountIdHash(ADMIN_SK, differentSalt);
         const commitmentB = await contractB.computeRoleCommitment(
           ROLE_ADMIN,
           accountIdOnB,

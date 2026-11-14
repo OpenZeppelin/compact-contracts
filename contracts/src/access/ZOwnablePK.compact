@@ -14,6 +14,12 @@ pragma language_version >= 0.28.0;
  * derived from the owner's public key and a secret nonce.
  * For the strongest security guarantees, use an Air-Gapped Public Key.
  *
+ * @notice Caller identity:
+ * This module takes no `Caller`. It identifies the
+ * owner by `ownPublicKey()` and `wit_secretNonce`. A contract composing it
+ * with a module that takes a caller parameter holds two unrelated
+ * identities, and must bind them itself if they are meant to be one party.
+ *
  * @notice This module explicitly supports commitments derived from public keys;
  * however, it may be possible to use contract addresses once this library migrates to
  * contract-to-contract calls. This will be revisited when it's known if/how witnesses

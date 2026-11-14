@@ -105,6 +105,7 @@ pragma language_version >= 0.28.0;
  */
 module ElGamal {
   import CompactStandardLibrary;
+
   import "./Ecdh" prefix Ecdh_;
 
   // ---------------------------------------------------------------------------
@@ -131,7 +132,7 @@ module ElGamal {
    *
    * @dev Domain separation here is load-bearing, not cosmetic. This output is
    * the private key protecting every ciphertext held under an account. Public
-   * account identifiers derived from `Utils.computeAccountId`, for example,
+   * account identifiers derived without a domain tag, for example,
    * are computed as `persistentHash([secretKey])`, and that identifier
    * is stored in the clear as a ledger map key. Untagged, this circuit
    * would compute that same hash, so a secret used in both roles would

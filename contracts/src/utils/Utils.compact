@@ -130,45 +130,6 @@ module Utils {
   }
 
   /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting an operation.
-   *
-   * @warning OpSec: The `secretKey` parameter is a sensitive secret. Mishandling it can
-   * permanently compromise the security of this system:
-   *
-   * - **Never log or persist** the `secretKey` in plaintext — avoid browser devtools,
-   *   application logs, analytics pipelines, or any observable side-channel.
-   * - **Store offline or in secure enclaves** — hardware security modules (HSMs),
-   *   air-gapped devices, or encrypted vaults are strongly preferred over hot storage.
-   * - **Use cryptographically secure randomness** — generate keys with `crypto.getRandomValues()`
-   *   or equivalent; weak or predictable keys can be brute-forced to reveal your identity.
-   * - **Treat key loss as identity loss** — a lost key cannot be recovered.
-   * - **Avoid calling this circuit in untrusted environments** — executing this in an
-   *   unverified browser extension, compromised runtime, or shared machine may expose
-   *   the key to a malicious observer.
-   *
-   * ## ID Derivation
-   * `accountId = persistentHash(secretKey)`
-   *
-   * @dev The absence of a domain-separation tag is DELIBERATE. This identifier
-   * is global by design: the same key material yields the same identity in
-   * every module deriving one, so a user who wishes to carry one identity
-   * across modules can. Modules wanting a per-deployment, unlinkable identity
-   * should not use this circuit.
-   *
-   * @dev NOT FOR PRIVATE DERIVATION. This returns an identifier, not a secret,
-   * and the construction is untagged. A circuit deriving a PRIVATE value from a
-   * secret MUST use its own domain-separation tag.
-   *
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   *
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-    return persistentHash<Vector<1, Bytes<32>>>([secretKey]);
-  }
-
-  /**
    * @description Returns the current contract's address as an
    * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
    * recipient in shielded send operations (deposits and receiving change).

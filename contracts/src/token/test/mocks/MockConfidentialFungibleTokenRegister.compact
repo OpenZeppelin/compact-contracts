@@ -4,6 +4,8 @@
 // no value movement. DO NOT deploy this mock.
 pragma language_version >= 0.28.0;
 import CompactStandardLibrary;
+
+import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
 import "../../ConfidentialFungibleToken" prefix CFT_;
 import "../../../crypto/ElGamal" prefix ElGamal_;
 
@@ -19,7 +21,10 @@ constructor(
 }
 
 export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
-  return CFT_registerWithKey(pk);
+  return CFT_registerWithKey(
+    AuthPrfAddr_authenticate(pad(32, "MockCFTRegister")),
+    pk
+  );
 }
 
 export circuit isRegistered(account: Bytes<32>): Boolean {

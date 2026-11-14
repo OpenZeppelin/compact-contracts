@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the PrfAddr module's circuit so it can be driven from off-chain
+// tests. DO NOT deploy or use this contract in any production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../PrfAddr" prefix PrfAddr_;
+
+// Keeps the circuits impure. Without a ledger write the compiler promotes
+// them to pure, and the artifact ships without ZKIR or proving keys, leaving
+// the code evaluated but never proven.
+ledger _invocations: Counter;
+
+// Flat copies of the hashed `{ { domain, salt }, sk }`, for a `Bytes<32>` and
+// a tuple salt. The `ref*` circuits hash them without calling `PrfAddr` or
+// `PrfCore`, so a spec checks `PrfAddr` against an independent encoding.
+struct RefPreimage {
+  domain: Bytes<32>;
+  salt: Bytes<32>;
+  sk: Bytes<32>;
+}
+
+struct RefTuplePreimage {
+  domain: Bytes<32>;
+  salt0: Bytes<32>;
+  salt1: Bytes<32>;
+  sk: Bytes<32>;
+}
+
+// Exported circuits cannot be generic: one wrapper per salt type.
+
+export circuit derivePk(domain: Bytes<32>, salt: Bytes<32>, sk: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return PrfAddr_derivePk<Bytes<32>>(domain, salt, sk);
+}
+
+export circuit derivePkOfTuple(
+                 domain: Bytes<32>,
+                 salt: [Bytes<32>, Bytes<32>],
+                 sk: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return PrfAddr_derivePk<[Bytes<32>, Bytes<32>]>(domain, salt, sk);
+}
+
+export circuit refDerivePk(domain: Bytes<32>, salt: Bytes<32>, sk: Bytes<32>): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefPreimage>(RefPreimage { domain: domain, salt: salt, sk: sk });
+}
+
+export circuit refDerivePkOfTuple(
+                 domain: Bytes<32>,
+                 salt: [Bytes<32>, Bytes<32>],
+                 sk: Bytes<32>
+                 ): Bytes<32> {
+  _invocations.increment(1);
+  return persistentHash<RefTuplePreimage>(
+    RefTuplePreimage { domain: domain, salt0: salt[0], salt1: salt[1], sk: sk }
+  );
+}

@@ -73,12 +73,12 @@ describe('FungibleTokenWitnesses', () => {
     >;
   }
 
-  describe('wit_FungibleTokenSK', () => {
+  describe('wit_AuthPrfAddrSK', () => {
     it('should return a tuple of [privateState, secretKey]', () => {
       const state = FungibleTokenPrivateState.withSecretKey(SECRET_KEY);
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_FungibleTokenSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(SECRET_KEY);
@@ -88,7 +88,7 @@ describe('FungibleTokenWitnesses', () => {
       const state = FungibleTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState] = witnesses.wit_FungibleTokenSK(ctx);
+      const [returnedState] = witnesses.wit_AuthPrfAddrSK(ctx);
       expect(returnedState).toBe(state);
     });
 
@@ -96,7 +96,7 @@ describe('FungibleTokenWitnesses', () => {
       const state = FungibleTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [, returnedSK] = witnesses.wit_FungibleTokenSK(ctx);
+      const [, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
       expect(returnedSK).toBeInstanceOf(Uint8Array);
       expect(returnedSK.length).toBe(32);
     });
@@ -105,7 +105,7 @@ describe('FungibleTokenWitnesses', () => {
       const state = FungibleTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_FungibleTokenSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(state.secretKey);
@@ -129,8 +129,8 @@ describe('FungibleTokenWitnesses factory', () => {
       FungibleTokenPrivateState
     >;
 
-    const [stateA, skA] = a.wit_FungibleTokenSK(ctx);
-    const [stateB, skB] = b.wit_FungibleTokenSK(ctx);
+    const [stateA, skA] = a.wit_AuthPrfAddrSK(ctx);
+    const [stateB, skB] = b.wit_AuthPrfAddrSK(ctx);
 
     expect(stateA).toBe(stateB);
     expect(skA).toEqual(skB);
