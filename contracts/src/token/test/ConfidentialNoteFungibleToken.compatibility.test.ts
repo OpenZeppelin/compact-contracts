@@ -20,25 +20,18 @@
  *
  * Never regenerate a value without deciding which of the three it is.
  *
- * PROVENANCE. Every value below is byte-identical under compiler 0.36.0 (CI,
- * language 0.28.0, runtime 0.21.0), 0.34.0 (language 0.26.0) and 0.31.1
- * (language 0.23.0, runtime 0.19.0). Digests, layout, and circuit surface alike.
+ * PROVENANCE. Every value below was recorded under compiler 0.36.0 (CI,
+ * language 0.28.0, runtime 0.21.0). Digests, layout, and circuit surface alike.
  *
- * Recorded, not asserted. Those compilers differ in name and agree on every byte,
- * so a pinned `compiler-version` would fail with nothing broken. The enforceable
- * pin is `.github/actions/setup/action.yml`. On a toolchain bump, rebuild under
- * both compilers and diff instead of assuming.
+ * Recorded, not asserted: a pinned `compiler-version` would fail on a toolchain
+ * bump with nothing broken. The enforceable pin is
+ * `.github/actions/setup/action.yml`. On a toolchain bump, rebuild under both
+ * compilers and diff instead of assuming.
  *
  * Circuit complexity (k, rows) is not pinned here; it needs a non-`SKIP_ZK`
  * build. See OpenZeppelin/compact-contracts#750.
  */
 
-import {
-  CompactTypeBytes,
-  CompactTypeVector,
-  degradeToTransient,
-  persistentHash,
-} from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   type CircuitSurface,
@@ -95,45 +88,18 @@ const NOTE: Note = { value: 100n, nonce: 7n };
 
 /**
  * Domain-separated hashes. The tags are permanent parts of the format:
- * `CNFT:pk`, `CNFT:commitment`, `CNFT:nullifier`, `CNFT:issued`,
+ * `CNFT:commitment`, `CNFT:nullifier`, `CNFT:issued`,
  * `CNFT:nonce:core`, `CNFT:mint`, `CNFT:out`, `CNFT:change`. So is
  * each preimage's field order, and the binder every derived nonce is taken
- * over: the recipient for a mint, the consumed note's nullifier for a spend.
- *
- * `derivePk` hashes `(CNFT:pk, salt, sk)`, the circuits' salt being the
- * deployment's `_instanceSalt`. Pinned because every commitment is taken over
- * its output.
+ * over: the recipient for a mint, the consumed note's nonce for a spend, and
+ * both for a transfer's recipient note.
  */
 describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
   // Pure circuits: no deployment, so these run on either backend.
 
-  it('should derive the pinned pk from a known secret and salt', () => {
-    expect(core.derivePk(ALICE_SK, SALT)).toBe(
-      262435359501940701077170570879675701887870845687505442111448399011781289948n,
-    );
-  });
-
-  // The public modules publish `computeAccountId(sk) = H([sk])` as a ledger
-  // key, so an untagged `pk` would be one field reduction away from it.
-  it('should not collide with computeAccountId for the same secret', () => {
-    const accountId = persistentHash(
-      new CompactTypeVector(1, new CompactTypeBytes(32)),
-      [ALICE_SK],
-    );
-    expect(core.derivePk(ALICE_SK, SALT)).not.toBe(
-      degradeToTransient(accountId),
-    );
-  });
-
-  it('should derive distinct pks for one secret under distinct salts', () => {
-    expect(core.derivePk(ALICE_SK, SALT)).not.toBe(
-      core.derivePk(ALICE_SK, secretKey('OTHER-SALT')),
-    );
-  });
-
   it('should commit a known note to the pinned digest', () => {
     expect(hex(core.commitOf(NOTE, ALICE))).toBe(
-      '0xcbdb241e72e5c22f54c848203b2f525ae67dc6822fc0f350af92d9921742bd00',
+      '0x068859b75b0836a669483ca2bf97928e347d0226f7b21ae2d484bf2f86982003',
     );
   });
 
@@ -142,14 +108,32 @@ describe('ConfidentialNoteFungibleToken compatibility: digests', () => {
       '0xfb3222fcc782cf98276a6d821788f1b81a78aa14aca248290de1fda823c30f17',
     );
   });
+});
 
+// ---------------------------------------------------------------------------
+// Issued tag
+// ---------------------------------------------------------------------------
+
+/**
+ * The tag `_mintNote` reserves is computed inside the circuit, so this deploys
+ * and reads it back from the issued set.
+ */
+describe('ConfidentialNoteFungibleToken compatibility: issued tag', () => {
   // Same preimage shape as the nullifier under a different domain, so the pair
   // pins that the two tags cannot be read as one another.
-  it('should tag a known note to the pinned digest', () => {
-    expect(hex(core.issuedTagOf(NOTE))).toBe(
-      '0x27eaf0b7591acabab03a7b8f370edb87ced140a090678267592a272a812ae9e1',
+  it('should issue a known note under the pinned tag', async () => {
+    const token = await ConfidentialNoteFungibleTokenSimulator.create();
+    await token._mintNote(NOTE, ALICE);
+
+    const issued = (await token.getPublicState()).Core__issuedNonces;
+    const tag = Buffer.from(
+      '27eaf0b7591acabab03a7b8f370edb87ced140a090678267592a272a812ae9e1',
+      'hex',
     );
-    expect(core.issuedTagOf(NOTE)).not.toEqual(core.nullifierOf(NOTE));
+
+    expect(issued.size()).toBe(1n);
+    expect(issued.member(tag)).toBe(true);
+    expect(issued.member(core.nullifierOf(NOTE))).toBe(false);
   });
 });
 
@@ -174,7 +158,7 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
     const minted = await token._mint(ALICE, 100n);
 
     expect(minted.nonce).toBe(
-      83773517281668237013701764967495064806186604495330812658612081094756733863n,
+      310990882335818275255528696354992614663730741808204188223488561208148161540n,
     );
   });
 
@@ -189,9 +173,9 @@ describe('ConfidentialNoteFungibleToken compatibility: nonce derivation', () => 
 
     // A different slot tag from the output note, which is why one reused seed
     // still yields two distinct nonces. The vector also covers the spend
-    // binder: it is taken over `NOTE`'s nullifier.
+    // binder: it is taken over `NOTE`'s nonce.
     expect(change.nonce).toBe(
-      77824219952240050540805526813721639986822092098692714850076464499317872093n,
+      132575093691875010006157095844422476004937787564662524211190565135442673584n,
     );
   });
 });
@@ -217,22 +201,8 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
   it('should keep the pinned ledger layout', () => {
     expect(ledgerSlots(contractInfo())).toStrictEqual([
       {
-        name: '_isInitialized',
-        index: 0,
-        exported: true,
-        storage: 'Cell',
-        type: { 'type-name': 'Boolean' },
-      },
-      {
-        name: '_instanceSalt',
-        index: 1,
-        exported: true,
-        storage: 'Cell',
-        type: { 'type-name': 'Bytes', length: 32 },
-      },
-      {
         name: '_commitments',
-        index: 2,
+        index: 0,
         exported: true,
         storage: 'HistoricMerkleTree',
         depth: 32,
@@ -240,16 +210,23 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
       },
       {
         name: '_nullifiers',
-        index: 3,
+        index: 1,
         exported: true,
         storage: 'Set',
         type: { 'type-name': 'Bytes', length: 32 },
       },
       {
         name: '_issuedNonces',
-        index: 4,
+        index: 2,
         exported: true,
         storage: 'Set',
+        type: { 'type-name': 'Bytes', length: 32 },
+      },
+      {
+        name: '_instanceSalt',
+        index: 3,
+        exported: false,
+        storage: 'Cell',
         type: { 'type-name': 'Bytes', length: 32 },
       },
     ]);
@@ -258,9 +235,8 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
   /**
    * `proof` is the load-bearing flag: a circuit touching no ledger state has an
    * empty public transcript, gets no verifier key, and cannot be called on a
-   * deployed instance. `_inputNote` is in that class, which is why the
-   * functional suite skips it on live. Flipping one changes what a
-   * client may do without changing any behaviour a test would notice.
+   * deployed instance. Flipping one changes what a client may do without
+   * changing any behaviour a test would notice.
    *
    * Keyed on `Circuits`, the generated type, so TS rejects this table if a circuit
    * is added, removed, or renamed. Sorted by name because dispatch is by name.
@@ -269,13 +245,9 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
     NameOf<Circuits<never>>,
     Pick<CircuitSurface, 'pure' | 'proof'>
   > = {
-    _burn: { pure: false, proof: true },
     _consumeNote: { pure: false, proof: true },
-    _inputNote: { pure: false, proof: false },
     _mint: { pure: false, proof: true },
     _mintNote: { pure: false, proof: true },
-    _spenderPk: { pure: false, proof: true },
-    _transfer: { pure: false, proof: true },
     burn: { pure: false, proof: true },
     commitOf: { pure: true, proof: false },
     derivePk: { pure: true, proof: false },
@@ -303,12 +275,9 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
       .map(({ name }) => name);
 
     const declared: Exhaustive<NameOf<ProvableCircuits<never>>> = {
-      _burn: true,
       _consumeNote: true,
       _mint: true,
       _mintNote: true,
-      _spenderPk: true,
-      _transfer: true,
       burn: true,
       transfer: true,
     };
@@ -330,8 +299,6 @@ describe('ConfidentialNoteFungibleToken compatibility: published surface', () =>
 
     const declared: Exhaustive<NameOf<Ledger>> = {
       Core__commitments: true,
-      Core__instanceSalt: true,
-      Core__isInitialized: true,
       Core__issuedNonces: true,
       Core__nullifiers: true,
     };

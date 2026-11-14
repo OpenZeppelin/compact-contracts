@@ -608,9 +608,10 @@ describe.skipIf(isLiveBackend())(
       );
     }, 60_000);
 
-    // Only the recipient's own digest moves. The change note's digest does not,
-    // so a watcher cannot even tell that the recipient changed.
-    it('should move only one digest when the recipient differs', async () => {
+    // Three, not one: the recipient note's nonce binds the recipient, so its
+    // issued tag moves with its leaf, and the tag is published twice. The
+    // change note's digests do not move.
+    it("should move only the recipient note's digests when the recipient differs", async () => {
       await fc.assert(
         fc.asyncProperty(
           payableAmount(),
@@ -630,7 +631,7 @@ describe.skipIf(isLiveBackend())(
             const [, traceB] = await probeB.transfer(second, value);
 
             const moved = drift(traceA, traceB);
-            expect(moved).toHaveLength(1);
+            expect(moved).toHaveLength(3);
             expectOpaque(moved, [value, ALICE, first, second]);
           },
         ),
@@ -674,11 +675,10 @@ describe.skipIf(isLiveBackend())(
     // catch it. Update this list only with a reviewed justification.
     const EXPECTED_DISCLOSURES = [
       // to public state
-      '_instanceSalt = disclose(instanceSalt);',
-      '_commitments.insert(disclose(commitOf(note, ownerPk)));',
+      '_commitments.insert(disclose(commitOf<T>(note, ownerPk)));',
       'assert(!_issuedNonces.member(disclose(tag)),',
       '_issuedNonces.insert(disclose(tag));',
-      'const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));',
+      'assert(_commitments.checkRoot(disclose(root)),',
       'assert(!_nullifiers.member(disclose(nf)),',
       '_nullifiers.insert(disclose(nf));',
       // to the local caller only, across the exported-circuit boundary
@@ -701,14 +701,12 @@ describe.skipIf(isLiveBackend())(
       expect(CORE_SOURCE).not.toMatch(/disclose\(\s*wit_/);
     });
 
-    it('should write no public state outside the init flag, the salt, the tree and the two sets', async () => {
+    it('should write no public state outside the tree and the two sets', async () => {
       const ledgerFields = CORE_SOURCE.split('\n')
         .map((line) => line.trim())
         .filter((line) => /^export (sealed )?ledger /.test(line));
 
       expect(ledgerFields).toStrictEqual([
-        'export sealed ledger _isInitialized: Boolean;',
-        'export sealed ledger _instanceSalt: Bytes<32>;',
         'export ledger _commitments: HistoricMerkleTree<depth, Bytes<32>>;',
         'export ledger _nullifiers: Set<Bytes<32>>;',
         'export ledger _issuedNonces: Set<Bytes<32>>;',
@@ -926,8 +924,6 @@ describe.runIf(isLiveBackend())(
       const state = await token.getPublicState();
       expect(Object.keys(state).sort()).toStrictEqual([
         'Core__commitments',
-        'Core__instanceSalt',
-        'Core__isInitialized',
         'Core__issuedNonces',
         'Core__nullifiers',
       ]);

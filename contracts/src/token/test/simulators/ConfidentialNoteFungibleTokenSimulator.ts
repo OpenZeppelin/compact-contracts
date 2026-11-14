@@ -92,25 +92,6 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
     return this.circuits.impure.burn(value);
   }
 
-  /** The caller's spend identity under this deployment's salt. */
-  public _spenderPk(): Promise<bigint> {
-    return this.circuits.impure._spenderPk();
-  }
-
-  /** The input note the next spend will consume. */
-  public _inputNote(): Promise<Note> {
-    return this.circuits.impure._inputNote();
-  }
-
-  /** Consumes the input note, re-issuing only `changeNote`. Ungated. */
-  public _burn(
-    spenderPk: bigint,
-    value: bigint,
-    changeNote: Note,
-  ): Promise<[]> {
-    return this.circuits.impure._burn(spenderPk, value, changeNote);
-  }
-
   /** Nullifies the input note owned by `ownerPk`. Ungated. */
   public _consumeNote(ownerPk: bigint): Promise<Note> {
     return this.circuits.impure._consumeNote(ownerPk);
@@ -119,20 +100,5 @@ export class ConfidentialNoteFungibleTokenSimulator extends ConfidentialNoteFung
   /** Spends the caller's input note into a recipient note plus change. */
   public transfer(recipientPk: bigint, value: bigint): Promise<[Note, Note]> {
     return this.circuits.impure.transfer(recipientPk, value);
-  }
-
-  /** Consumes the input note and commits `outNote` + `changeNote`. Ungated. */
-  public _transfer(
-    spenderPk: bigint,
-    recipientPk: bigint,
-    outNote: Note,
-    changeNote: Note,
-  ): Promise<[]> {
-    return this.circuits.impure._transfer(
-      spenderPk,
-      recipientPk,
-      outNote,
-      changeNote,
-    );
   }
 }

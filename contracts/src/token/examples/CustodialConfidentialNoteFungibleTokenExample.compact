@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/examples/CustodialConfidentialNoteFungibleTokenExample.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @description A deployable `CustodialConfidentialNoteFungibleToken` with a
+ * commitment tree of depth 32. Every circuit is the preset's, re-exported.
+ */
+
+import CompactStandardLibrary;
+
+import "../presets/CustodialConfidentialNoteFungibleToken"<32> prefix Token_;
+
+export { ContractAddress, Either };
+
+export { Token_Core_Note };
+
+export {
+  Token__issuerSalt,
+  Token__noteSalt,
+  Token_Core__commitments,
+  Token_Core__nullifiers,
+  Token_Core__issuedNonces,
+  Token_Ownable__owner,
+  Token_Ownable__isInitialized,
+};
+
+/**
+ * @param {Either<Bytes<32>, ContractAddress>} issuer - The first issuer,
+ * `deriveAccount(secretKey, issuerSalt)` computed off-chain.
+ * @param {Bytes<32>} issuerSalt - Random per-deployment salt for the issuer
+ * role.
+ * @param {Bytes<32>} noteSalt - Random per-deployment salt for note ownership.
+ */
+constructor(
+  issuer: Either<Bytes<32>, ContractAddress>,
+  issuerSalt: Bytes<32>,
+  noteSalt: Bytes<32>,
+) {
+  Token_initialize(issuer, issuerSalt, noteSalt);
+}
+
+export circuit mint(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+): Token_Core_Note {
+  return Token_mint(recipientPk, value);
+}
+
+export circuit transfer(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  note: Token_Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): [Token_Core_Note, Token_Core_Note] {
+  return Token_transfer(recipientPk, value, note, path);
+}
+
+export circuit burn(
+  value: Uint<128>,
+  note: Token_Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): Token_Core_Note {
+  return Token_burn(value, note, path);
+}
+
+export circuit transferOwnership(
+  newOwner: Either<Bytes<32>, ContractAddress>,
+): [] {
+  Token_transferOwnership(newOwner);
+}
+
+export circuit owner(): Either<Bytes<32>, ContractAddress> {
+  return Token_owner();
+}
+
+export pure circuit deriveAccount(
+  secretKey: Bytes<32>,
+  salt: Bytes<32>,
+): Either<Bytes<32>, ContractAddress> {
+  return Token_deriveAccount(secretKey, salt);
+}
+
+export pure circuit commitOf(
+  note: Token_Core_Note,
+  pk: Either<Bytes<32>, ContractAddress>,
+): Bytes<32> {
+  return Token_commitOf(note, pk);
+}
+
+export pure circuit nullifierOf(note: Token_Core_Note): Bytes<32> {
+  return Token_nullifierOf(note);
+}
