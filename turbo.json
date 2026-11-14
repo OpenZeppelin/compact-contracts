@@ -8,17 +8,28 @@
     "MIDNIGHT_LIVE_TEST_PATTERN"
   ],
   "tasks": {
+    "compile:account": {
+      "dependsOn": ["^build"],
+      "env": ["COMPACT_HOME", "SKIP_ZK"],
+      "inputs": ["src/account/**/*.compact"],
+      "outputLogs": "new-only",
+      "outputs": ["artifacts/account/**"]
+    },
     "compile:crypto": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/crypto/**/*.compact"],
+      "inputs": ["src/crypto/**/*.compact", "src/account/**/*.compact"],
       "outputLogs": "new-only",
       "outputs": ["artifacts/crypto/**"]
     },
     "compile:security": {
       "dependsOn": ["^build"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/security/**/*.compact"],
+      "inputs": [
+        "src/security/**/*.compact",
+        "src/account/**/*.compact",
+        "src/utils/**/*.compact"
+      ],
       "outputLogs": "new-only",
       "outputs": ["artifacts/security/**"]
     },
@@ -39,7 +50,12 @@
     "compile:access": {
       "dependsOn": ["^build", "compile:utils"],
       "env": ["COMPACT_HOME", "SKIP_ZK"],
-      "inputs": ["src/access/**/*.compact", "src/utils/**/*.compact"],
+      "inputs": [
+        "src/access/**/*.compact",
+        "src/account/**/*.compact",
+        "src/crypto/**/*.compact",
+        "src/utils/**/*.compact"
+      ],
       "outputLogs": "new-only",
       "outputs": ["artifacts/access/**"]
     },
@@ -56,6 +72,7 @@
       "inputs": [
         "src/multisig/**/*.compact",
         "src/access/**/*.compact",
+        "src/account/**/*.compact",
         "src/crypto/**/*.compact",
         "src/math/**/*.compact",
         "src/token/**/*.compact",
@@ -75,6 +92,7 @@
       "inputs": [
         "src/token/**/*.compact",
         "src/access/**/*.compact",
+        "src/account/**/*.compact",
         "src/crypto/**/*.compact",
         "src/math/**/*.compact",
         "src/utils/**/*.compact"
@@ -100,6 +118,7 @@
         "compile:utils",
         "compile:math",
         "compile:access",
+        "compile:account",
         "compile:multisig",
         "compile:token"
       ],

@@ -21,7 +21,7 @@ export interface IShieldedAccessControlWitnesses<L, P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_secretKey(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
 
   /**
    * Returns a Merkle tree path for a given role commitment.
@@ -109,7 +109,7 @@ export const ShieldedAccessControlPrivateState = {
 export const ShieldedAccessControlWitnesses = <
   L,
 >(): IShieldedAccessControlWitnesses<L, ShieldedAccessControlPrivateState> => ({
-  wit_secretKey(
+  wit_AuthPrfAddrSK(
     context: WitnessContext<L, ShieldedAccessControlPrivateState>,
   ): [ShieldedAccessControlPrivateState, Uint8Array] {
     return [context.privateState, context.privateState.secretKey];

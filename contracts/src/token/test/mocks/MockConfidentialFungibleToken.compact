@@ -12,6 +12,8 @@
 // this mock.
 pragma language_version >= 0.28.0;
 import CompactStandardLibrary;
+
+import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
 import "../../ConfidentialFungibleToken" prefix CFT_;
 import "../../../crypto/ElGamal" prefix ElGamal_;
 
@@ -46,7 +48,9 @@ export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
 }
 
 export circuit sweep(): Bytes<32> {
-  return CFT_sweep();
+  return CFT_sweep(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken"))
+  );
 }
 
 export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
@@ -58,19 +62,34 @@ export circuit isRegistered(account: Bytes<32>): Boolean {
 }
 
 export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
-  return CFT_registerWithKey(pk);
+  return CFT_registerWithKey(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    pk
+  );
 }
 
 export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT_transfer(to, value);
+  return CFT_transfer(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    to,
+    value
+  );
 }
 
 export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT__move(to, value);
+  return CFT__move(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    to,
+    value
+  );
 }
 
 export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT_approve(spender, value);
+  return CFT_approve(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    spender,
+    value
+  );
 }
 
 export circuit transferFrom(
@@ -78,7 +97,12 @@ export circuit transferFrom(
     to: Bytes<32>,
     value: Uint<128>
 ): Bytes<32> {
-  return CFT_transferFrom(fromAddress, to, value);
+  return CFT_transferFrom(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    fromAddress,
+    to,
+    value
+  );
 }
 
 // Test-only funding / draining. `_mint` seeds a balance (a raw credit, no supply
@@ -89,23 +113,29 @@ export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
 }
 
 export circuit _burn(value: Uint<128>): Bytes<32> {
-  return CFT__burn(value);
+  return CFT__burn(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    value
+  );
 }
 
 // Escrow-burn building block: consumes an allowance the owner granted the caller
 // with no recipient credit (the base's `_spendEscrow` under its burn-intent name).
 export circuit _burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return CFT__burnFrom(fromAddress, value);
+  return CFT__burnFrom(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    fromAddress,
+    value
+  );
 }
 
 export pure circuit MAX_TRANSFER_VALUE(): Uint<128> {
   return CFT_MAX_TRANSFER_VALUE();
 }
 
-export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-  return CFT_computeAccountId(sk);
-}
-
 export circuit clearMemos(expectedEpoch: Uint<64>): [] {
-  return CFT_clearMemos(expectedEpoch);
+  return CFT_clearMemos(
+    AuthPrfAddr_authenticate(pad(32, "MockConfidentialFungibleToken")),
+    expectedEpoch
+  );
 }

@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/authentication/interfaces/IAuthenticator.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module IAuthenticator
+ * @description The interface of an authenticator, and the `Caller` every
+ * authenticating circuit in this library takes. An authenticator module
+ * produces a `Caller`. No witness, no ledger state and no derivation: a
+ * module imports this to name the caller without learning how the caller
+ * was authenticated.
+ *
+ * A contract that wraps an authenticator imports this module and asserts the
+ * interface.
+ *
+ * ```compact
+ * import "../../interfaces/IAuthenticator";
+ *
+ * contract implements IAuthenticator;
+ * ```
+ *
+ * @dev Notation:
+ * - `account`: the `Account` of a `Caller`, who the caller is. The type is
+ *   `Either<Bytes<32>, ContractAddress>`, see `Account`.
+ *
+ * @dev Authenticators:
+ * An authenticator is a module that produces a `Caller`. By convention it
+ * exports:
+ * - `authenticate(salt): Caller`, which derives the caller's account under
+ *   `salt`. The salt is per deployment, never per module, so one deployment
+ *   gives one account to every module the contract drives. The
+ *   `IAuthenticator` contract type declares this circuit.
+ * - A pure `deriveAccount`, so a client computes the same account off-chain.
+ *
+ * The account it returns is canonical: the inactive arm is zero. Modules
+ * compare the account as a whole.
+ *
+ * It never returns the zero account. Modules reserve it as a marker, such as
+ * a renounced owner.
+ *
+ * Available: `AuthPrfAddr`, knowledge of a secret key, yielding a `left`
+ * account.
+ *
+ * @dev Why a struct:
+ * An authenticated account and one passed in as an argument have the same
+ * type. `Caller` types them apart, so a plain account in the caller's place
+ * does not compile.
+ *
+ * @warning Produce the caller, never accept one:
+ * An exported circuit of a deployed contract MUST NOT take a `Caller`
+ * parameter. The transaction sender chooses it, so they choose the account
+ * every gate sees. Only the deployed contract calls an authenticator, and it
+ * passes the result down.
+ *
+ * ```compact
+ * // Module circuit: the composing contract supplies the caller.
+ * export circuit assertOnlyOwner(caller: Caller): [] { ... }
+ *
+ * // Deployed contract: authenticate inside the circuit.
+ * export circuit withdraw(value: Uint<128>): [] {
+ *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   Ownable_assertOnlyOwner(caller);
+ *   ...
+ * }
+ * ```
+ *
+ * @warning Not unforgeable:
+ * Compact structs are not opaque, so a composing contract can build
+ * `Caller { account: anyAccount }` and every module accepts it. The type
+ * makes one derivation the default and a second one visible. It does not
+ * make identity confusion impossible.
+ */
+module IAuthenticator {
+  import CompactStandardLibrary;
+
+  import { Account } from "../../../account/Account";
+
+  /**
+   * @description A caller an authenticator produced, as opposed to an
+   * account passed in as an argument.
+   * @type {Either<Bytes<32>, ContractAddress>} account - The caller's
+   * account.
+   */
+  export struct Caller {
+    account: Account;
+  }
+
+  /**
+   * @description The circuit every authenticator exports.
+   */
+  export contract IAuthenticator {
+    circuit authenticate(salt: Bytes<32>): Caller;
+  }
+}

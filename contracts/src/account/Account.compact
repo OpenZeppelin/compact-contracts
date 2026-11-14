@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (account/Account.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module Account
+ * @description The account every module in this library stores and takes:
+ * the `PublicKey` and `Account` types and two accessors. No witness, no
+ * ledger state and no derivation.
+ *
+ * A module imports the types by name with no prefix. For the accessors it
+ * imports the module under the `Account_` prefix.
+ *
+ * ```compact
+ * import { Account, PublicKey } from "../account/Account";
+ *
+ * import "../account/Account" prefix Account_;
+ *
+ * export pure circuit keyOf(account: Account): PublicKey {
+ *   return Account_publicKeyOf(account);
+ * }
+ * ```
+ *
+ * @dev Notation:
+ * - `Account`: `Either<PublicKey, ContractAddress>`, the type of an account
+ *   wherever a module stores or takes one. `left` is a public key, `right`
+ *   is a contract address. Either can stand for a user: the arms differ in
+ *   what controls the account, a key or a contract.
+ * - `PublicKey`: `Bytes<32>`, the type of a `left` arm. A public value bound
+ *   one-way to a secret. Its holder proves knowledge of the secret. It
+ *   verifies no signature.
+ */
+module Account {
+  import CompactStandardLibrary;
+
+  /**
+   * @description A public key: 32 bytes bound one-way to a secret. A
+   * structural alias: any `Bytes<32>` is a `PublicKey`.
+   */
+  export type PublicKey = Bytes<32>;
+
+  /**
+   * @description An account, in the shape the library stores and passes it:
+   * `left` for a public key, `right` for a contract address. A structural
+   * alias: any `Either<Bytes<32>, ContractAddress>` is an `Account`.
+   */
+  export type Account = Either<PublicKey, ContractAddress>;
+
+  /**
+   * @description The public key behind `account`. A module whose accounts
+   * are controlled by a key calls this. A contract account has none.
+   *
+   * Requirements:
+   *
+   * - `account` is not a contract.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account.
+   * @return {Bytes<32>} - The `left` of `account`.
+   */
+  export pure circuit publicKeyOf(account: Account): PublicKey {
+    assert(account.is_left, "Account: contract account");
+    return account.left;
+  }
+
+  /**
+   * @description The contract address behind `account`. A module whose
+   * accounts are contracts calls this. A key account has none.
+   *
+   * Requirements:
+   *
+   * - `account` is a contract.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account.
+   * @return {ContractAddress} - The `right` of `account`.
+   */
+  export pure circuit contractAddressOf(account: Account): ContractAddress {
+    assert(!account.is_left, "Account: not a contract account");
+    return account.right;
+  }
+}

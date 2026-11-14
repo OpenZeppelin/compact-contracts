@@ -5,6 +5,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { padTag } from '#test-utils/fixtures/elgamal.js';
 import { ConfidentialFungibleTokenPublicSupplySimulator } from '../fixtures/confidentialFungibleTokenPublicSupply.js';
 
 /**
@@ -38,8 +39,12 @@ const createTestKey = (label: string): Uint8Array => {
 };
 
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt, [sk]);
+  const rt = new CompactTypeVector(3, new CompactTypeBytes(32));
+  return persistentHash(rt, [
+    padTag('AuthPrfAddr:account'),
+    padTag('ComposedCFTPublicSupply'),
+    sk,
+  ]);
 };
 
 const makeUser = (label: string) => {

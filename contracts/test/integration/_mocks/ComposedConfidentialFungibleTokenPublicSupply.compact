@@ -25,6 +25,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
+import "../../../src/crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
 import "../../../src/token/ConfidentialFungibleToken" prefix Token_;
 import "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
 import "../../../src/crypto/ElGamal" prefix ElGamal_;
@@ -84,36 +85,52 @@ export circuit isRegistered(account: Bytes<32>): Boolean {
   return Token_isRegistered(account);
 }
 
-export pure circuit computeAccountId(sk: Bytes<32>): Bytes<32> {
-  return Token_computeAccountId(sk);
-}
-
 // ─── Registration and wallet maintenance ─────────────────────────────────
 
 export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
-  return Token_registerWithKey(pk);
+  return Token_registerWithKey(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    pk
+  );
 }
 
 export circuit sweep(): Bytes<32> {
-  return Token_sweep();
+  return Token_sweep(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply"))
+  );
 }
 
 export circuit clearMemos(expectedEpoch: Uint<64>): [] {
-  return Token_clearMemos(expectedEpoch);
+  return Token_clearMemos(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    expectedEpoch
+  );
 }
 
 // ─── Conserving value operations ─────────────────────────────────────────
 
 export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token_transfer(to, value);
+  return Token_transfer(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    to,
+    value
+  );
 }
 
 export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token__move(to, value);
+  return Token__move(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    to,
+    value
+  );
 }
 
 export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
-  return Token_approve(spender, value);
+  return Token_approve(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    spender,
+    value
+  );
 }
 
 export circuit transferFrom(
@@ -121,7 +138,12 @@ export circuit transferFrom(
     to: Bytes<32>,
     value: Uint<128>
 ): Bytes<32> {
-  return Token_transferFrom(fromAddress, to, value);
+  return Token_transferFrom(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    fromAddress,
+    to,
+    value
+  );
 }
 
 // ─── Supply operations (token op paired with its accounting block) ───────
@@ -132,13 +154,20 @@ export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
 }
 
 export circuit burn(value: Uint<128>): Bytes<32> {
-  const accountId = Token__burn(value);
+  const accountId = Token__burn(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    value
+  );
   Supply__subSupply(value);
   return accountId;
 }
 
 export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
-  const spenderId = Token__burnFrom(fromAddress, value);
+  const spenderId = Token__burnFrom(
+    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    fromAddress,
+    value
+  );
   Supply__subSupply(value);
   return spenderId;
 }

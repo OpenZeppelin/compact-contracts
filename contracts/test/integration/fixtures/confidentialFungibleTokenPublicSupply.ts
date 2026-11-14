@@ -8,7 +8,7 @@ import {
   createSimulator,
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
-import { deriveEncryptionPk } from '#test-utils/fixtures/elgamal.js';
+import { deriveEncryptionPk, padTag } from '#test-utils/fixtures/elgamal.js';
 import {
   type ElGamal_Ciphertext,
   ledger,
@@ -28,7 +28,7 @@ import {
  *
  * It reuses the base token's confidential-token witnesses and private state (SK,
  * EK, plaintext cache, randomness seed) verbatim — the assembled contract's
- * witness surface is exactly the base's — and adds the composed `mint`/`burn`/
+ * witness surface matches the unit mock's — and adds the composed `mint`/`burn`/
  * `burnFrom` and the public `totalSupply` getter. The spec drives it to assert
  * that each supply-changing op moves `totalSupply` in lockstep with the value op.
  *
@@ -90,11 +90,6 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
 
   public isRegistered(account: Uint8Array): Promise<boolean> {
     return this.circuits.impure.isRegistered(account);
-  }
-
-  /** @description Derives an accountId off-chain, without touching state. */
-  public computeAccountId(secretKey: Uint8Array): Promise<Uint8Array> {
-    return this.circuits.pure.computeAccountId(secretKey);
   }
 
   public sweep(): Promise<Uint8Array> {
@@ -213,8 +208,12 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
 // ---------------------------------------------------------------------------
 
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+  return persistentHash(rt_type, [
+    padTag('AuthPrfAddr:account'),
+    padTag('ComposedCFTPublicSupply'),
+    sk,
+  ]);
 };
 
 /**

@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/authentication/AuthPrfAddr.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module AuthPrfAddr
+ * @description Authenticates a caller by knowledge of a secret key. The
+ * account is the `crypto/prf/PrfAddr` address key of that secret. The
+ * modules that take a `Caller` read no secret key: an
+ * authenticator does.
+ *
+ * The composing contract calls `authenticate(salt)` and passes the returned
+ * caller to every module it drives.
+ *
+ * ```compact
+ * export circuit transfer(
+ *   to: Either<Bytes<32>, ContractAddress>,
+ *   value: Uint<128>
+ * ): Boolean {
+ *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   Ownable_assertOnlyOwner(caller);
+ *   return FungibleToken_transfer(caller, to, value);
+ * }
+ * ```
+ *
+ * @dev Notation:
+ * - `account = left(PrfAddr.derivePk(tag, salt, secretKey))`, where `tag`
+ *   is `"AuthPrfAddr:account"` padded to 32 bytes.
+ * - The tag and the `PrfAddr` layout are wire format: changing either
+ *   orphans every stored account.
+ *
+ * @warning Produce the caller here:
+ * A deployed contract never takes the caller as a parameter of an exported
+ * circuit. See the warning on `IAuthenticator`.
+ *
+ * @notice Scope:
+ * - `authenticate` replaces the witness that identified the caller. A module
+ *   may keep witnesses for its own data. They carry no identity.
+ * - A module that takes no caller identifies its user by itself. A contract
+ *   driving one next to a caller-taking module holds two unrelated identities
+ *   and binds them itself.
+ *
+ * @notice Not enforced:
+ * Compact cannot force a witness to be read once per transaction. A contract
+ * that calls `authenticate` twice can pass one account to a gate and
+ * another to an effect. Authenticate once per circuit and reuse the value.
+ *
+ * @dev Performance:
+ * The derivation is one `persistentHash` over three 32-byte words, paid by
+ * the circuit that calls `authenticate`. A circuit driving several modules
+ * pays it once.
+ *
+ * @dev Contract callers:
+ * A calling contract holds no secret key and cannot supply this witness, so
+ * this module yields `left` accounts only.
+ */
+module AuthPrfAddr {
+  import CompactStandardLibrary;
+
+  import { Caller } from "./interfaces/IAuthenticator";
+
+  import { Account, PublicKey } from "../../account/Account";
+
+  import "../prf/PrfAddr" prefix PrfAddr_;
+
+  /**
+   * @witness wit_AuthPrfAddrSK
+   * @description Returns the caller's secret key. No circuit checks it: the
+   * account it derives is the identity, so there is no earlier on-chain
+   * value to compare against.
+   *
+   * @returns {Bytes<32>} secretKey - A 32-byte cryptographically secure random
+   * value. Losing it loses the identity. Leaking it lets anyone impersonate
+   * the caller.
+   */
+  witness wit_AuthPrfAddrSK(): Bytes<32>;
+
+  /**
+   * @description `left(PrfAddr.derivePk(tag, salt, secretKey))`: the
+   * account behind a secret key. Pure, so a wallet or a deploy script
+   * computes it off-chain with no proof.
+   *
+   * @param {Bytes<32>} secretKey - The caller's secret: 32 bytes from a
+   * CSPRNG. A guessable key is found offline.
+   * @param {Bytes<32>} salt - The per-deployment salt.
+   * @return {Either<Bytes<32>, ContractAddress>} - The account, a `left`.
+   */
+  export pure circuit deriveAccount(
+                        secretKey: Bytes<32>,
+                        salt: Bytes<32>
+                        ): Account {
+    return left<PublicKey, ContractAddress>(
+             PrfAddr_derivePk<Bytes<32>>(pad(32, "AuthPrfAddr:account"), salt, secretKey)
+           );
+  }
+
+  /**
+   * @description Authenticates the caller under `salt`. The default entry
+   * point: store a salt at deploy time and pass it in.
+   *
+   * @constraints k=13, rows=3994
+   *
+   * @warning Shared salt:
+   * Two contracts with the same salt give one secret the same account on
+   * both, which links the user across them. Use a per-deployment value unless
+   * the contracts are meant to share identities.
+   *
+   * @param {Bytes<32>} salt - The per-deployment salt.
+   * @return {Caller} - The authenticated caller.
+   */
+  export circuit authenticate(salt: Bytes<32>): Caller {
+    return Caller {
+      account: deriveAccount(wit_AuthPrfAddrSK(), salt)
+    };
+  }
+
+  /**
+   * @description Authenticates the caller under this contract's address,
+   * `kernel.self()`. Needs no ledger state and no initialization argument.
+   *
+   * @constraints k=13, rows=3911
+   *
+   * @warning Not for constructor-named accounts:
+   * The address does not exist while the deploy transaction is built, so no
+   * constructor argument (an initial owner) can be derived under this salt.
+   * Such a contract calls `authenticate` with a stored salt.
+   *
+   * @return {Caller} - The authenticated caller.
+   */
+  export circuit authenticateForThisContract(): Caller {
+    return authenticate(kernel.self().bytes);
+  }
+}

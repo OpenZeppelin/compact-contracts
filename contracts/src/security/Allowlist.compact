@@ -5,8 +5,9 @@ pragma language_version >= 0.28.0;
 
 /**
  * @module Allowlist
- * @description A minimal, reusable permit-list keyed by an abstract `Bytes<32>`
- * account identifier. It answers a single question: is this account a member?
+ * @description A minimal, reusable permit-list keyed by an account: a key
+ * account or a contract account. It answers a single question: is this account
+ * a member?
  *
  * This module is a pure membership MECHANISM, not a policy. It holds no notion
  * of "when" the list is enforced and no access control. The mutators (`_allow`,
@@ -18,6 +19,12 @@ pragma language_version >= 0.28.0;
  * enough to back KYC allowlists, permissioned mints, membership gates, and the
  * like.
  *
+ * @dev Canonicalization
+ * Every account is canonicalized before it is read from or written to
+ * `_allowed`. Canonicalization zeroes out the inactive branch of the Either,
+ * so two values with the same active branch always resolve to the same entry
+ * regardless of what data the inactive branch carries.
+ *
  * @notice This is the PUBLIC (transparent) allowlist: membership status is
  * publicly readable and the approved set is publicly enumerable. That is the
  * right posture for transparent or public-graph assets. A graph-private asset
@@ -27,12 +34,19 @@ pragma language_version >= 0.28.0;
 module Allowlist {
   import CompactStandardLibrary;
 
+  import { Account } from "../account/Account";
+
+  import "../utils/Utils" prefix Utils_;
+
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
 
-  /** @description Approved accounts. Absent means not allowed. */
-  export ledger _allowed: Set<Bytes<32>>;
+  /**
+   * @description Approved accounts. Absent means not allowed.
+   * @type {Set<Either<Bytes<32>, ContractAddress>>} _allowed
+   */
+  export ledger _allowed: Set<Account>;
 
   // ---------------------------------------------------------------------------
   // Views
@@ -41,13 +55,14 @@ module Allowlist {
   /**
    * @description Returns whether `account` is currently allowed.
    *
-   * @constraints k=8, rows=129
+   * @constraints k=8, rows=249
    *
-   * @param {Bytes<32>} account - The account to query.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
    * @return {Boolean} - True if `account` is a member of the allowlist.
    */
-  export circuit isAllowed(account: Bytes<32>): Boolean {
-    return _allowed.member(disclose(account));
+  export circuit isAllowed(account: Account): Boolean {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    return _allowed.member(disclose(canonAcct));
   }
 
   // ---------------------------------------------------------------------------
@@ -58,16 +73,16 @@ module Allowlist {
    * @description Asserts that `account` is allowed. The composing contract
    * decides when this gate applies.
    *
-   * @constraints k=8, rows=129
+   * @constraints k=8, rows=229
    *
    * Requirements:
    *
    * - `account` is a member of the allowlist.
    *
-   * @param {Bytes<32>} account - The account that must be allowed.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account that must be allowed.
    * @return {[]} - Empty tuple.
    */
-  export circuit assertAllowed(account: Bytes<32>): [] {
+  export circuit assertAllowed(account: Account): [] {
     assert(isAllowed(account), "Allowlist: account not allowed");
   }
 
@@ -78,24 +93,26 @@ module Allowlist {
   /**
    * @description Adds `account` to the allowlist.
    *
-   * @constraints k=8, rows=125
+   * @constraints k=8, rows=225
    *
-   * @param {Bytes<32>} account - The account to allow.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to allow.
    * @return {[]} - Empty tuple.
    */
-  export circuit _allow(account: Bytes<32>): [] {
-    _allowed.insert(disclose(account));
+  export circuit _allow(account: Account): [] {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    _allowed.insert(disclose(canonAcct));
   }
 
   /**
    * @description Removes `account` from the allowlist.
    *
-   * @constraints k=8, rows=123
+   * @constraints k=8, rows=223
    *
-   * @param {Bytes<32>} account - The account to disallow.
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to disallow.
    * @return {[]} - Empty tuple.
    */
-  export circuit _disallow(account: Bytes<32>): [] {
-    _allowed.remove(disclose(account));
+  export circuit _disallow(account: Account): [] {
+    const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    _allowed.remove(disclose(canonAcct));
   }
 }

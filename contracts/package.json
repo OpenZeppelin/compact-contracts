@@ -25,6 +25,7 @@
   },
   "scripts": {
     "compile:access": "rm -rf artifacts/access && compact-compiler +0.36.0 --hierarchical --dir access",
+    "compile:account": "rm -rf artifacts/account && compact-compiler +0.36.0 --hierarchical --dir account",
     "compile:archive": "rm -rf artifacts/archive && compact-compiler +0.36.0 --hierarchical --dir archive",
     "compile:crypto": "rm -rf artifacts/crypto && compact-compiler +0.36.0 --hierarchical --dir crypto",
     "compile:math": "rm -rf artifacts/math && compact-compiler +0.36.0 --hierarchical --dir math",

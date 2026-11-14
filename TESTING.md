@@ -51,9 +51,9 @@ either way.
 ### Targets and filters
 
 Every `contracts/src/<category>` with tests is a live category; today that is `access`,
-`crypto`, `math`, `multisig`, `security`, `token` and `utils`. A category that must not run live is
-an explicit opt-out in `EXCLUDED_CATEGORIES` in [`scripts/live/targets.ts`](scripts/live/targets.ts)
-(only the legacy `archive` today).
+`account`, `crypto`, `math`, `multisig`, `security`, `token` and `utils`. A category that must
+not run live is an explicit opt-out in `EXCLUDED_CATEGORIES` in
+[`scripts/live/targets.ts`](scripts/live/targets.ts) (only the legacy `archive` today).
 
 `integration` is a target of its own, not a category: an unscoped run skips it, so ask for it
 by name. Only one target runs per invocation, since both live projects draw wallets from the

@@ -16,7 +16,7 @@ export interface IOwnableWitnesses<L, P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_OwnableSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
@@ -71,7 +71,7 @@ export const OwnableWitnesses = <L>(): IOwnableWitnesses<
   L,
   OwnablePrivateState
 > => ({
-  wit_OwnableSK(
+  wit_AuthPrfAddrSK(
     context: WitnessContext<L, OwnablePrivateState>,
   ): [OwnablePrivateState, Uint8Array] {
     return [

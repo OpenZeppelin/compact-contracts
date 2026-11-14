@@ -9,6 +9,7 @@
   "scripts": {
     "compile": "turbo run compile --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:access": "turbo run compile:access --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:account": "turbo run compile:account --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:archive": "turbo run compile:archive --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:crypto": "turbo run compile:crypto --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:math": "turbo run compile:math --filter=@openzeppelin/compact-contracts --log-prefix=none",

@@ -70,12 +70,12 @@ describe('MultiTokenWitnesses', () => {
     return { privateState } as WitnessContext<Ledger, MultiTokenPrivateState>;
   }
 
-  describe('wit_MultiTokenSK', () => {
+  describe('wit_AuthPrfAddrSK', () => {
     it('should return a tuple of [privateState, secretKey]', () => {
       const state = MultiTokenPrivateState.withSecretKey(SECRET_KEY);
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_MultiTokenSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(SECRET_KEY);
@@ -85,7 +85,7 @@ describe('MultiTokenWitnesses', () => {
       const state = MultiTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState] = witnesses.wit_MultiTokenSK(ctx);
+      const [returnedState] = witnesses.wit_AuthPrfAddrSK(ctx);
       expect(returnedState).toBe(state);
     });
 
@@ -93,7 +93,7 @@ describe('MultiTokenWitnesses', () => {
       const state = MultiTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [, returnedSK] = witnesses.wit_MultiTokenSK(ctx);
+      const [, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
       expect(returnedSK).toBeInstanceOf(Uint8Array);
       expect(returnedSK.length).toBe(32);
     });
@@ -102,7 +102,7 @@ describe('MultiTokenWitnesses', () => {
       const state = MultiTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_MultiTokenSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(state.secretKey);
@@ -126,8 +126,8 @@ describe('MultiTokenWitnesses factory', () => {
       MultiTokenPrivateState
     >;
 
-    const [stateA, skA] = a.wit_MultiTokenSK(ctx);
-    const [stateB, skB] = b.wit_MultiTokenSK(ctx);
+    const [stateA, skA] = a.wit_AuthPrfAddrSK(ctx);
+    const [stateB, skB] = b.wit_AuthPrfAddrSK(ctx);
 
     expect(stateA).toBe(stateB);
     expect(skA).toEqual(skB);

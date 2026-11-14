@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/prf/PrfAddr.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module PrfAddr
+ * @description Address key derivation. `derivePk` maps a secret to a public
+ * 32-byte key under a purpose tag and a salt. The salt has any type, so a
+ * caller that binds several values passes them as one tuple.
+ *
+ * ```compact
+ * import "../crypto/prf/PrfAddr" prefix PrfAddr_;
+ *
+ * export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Bytes<32> {
+ *   return PrfAddr_derivePk<Bytes<32>>(pad(32, "MyModule:pk"), salt, sk);
+ * }
+ * ```
+ *
+ * @see https://eprint.iacr.org/2014/349 Ben-Sasson et al., Zerocash: Decentralized Anonymous Payments from Bitcoin (IEEE S&P 2014)
+ *
+ * @dev Structure:
+ * Zerocash derives `PRF^addr_x(z) = PRF_x(00 || z)` and sets the address key
+ * `a_pk = PRF^addr_{a_sk}(0)`. Here `domain` is the tag, `salt` is `z` and
+ * `sk` is the seed `x`. The tag is an argument, so each caller keeps its own
+ * key space. Zerocash hashes the seed first. This layout hashes it last.
+ *
+ * @dev Layout:
+ * `PrfCore.evaluate` over `{domain, salt}` with `sk` as key. The hash covers
+ * `domain`, `salt`, `sk` in that order, and it is wire format: changing it
+ * orphans every derived key. A tuple or struct `salt` is hashed field by
+ * field, in order. Its type name and nesting are not hashed.
+ *
+ * @dev Output:
+ * The key is the 32-byte digest. A caller that needs a `Field` reduces it
+ * itself with `degradeToTransient`, which loses information: 32 bytes do not
+ * fit the field.
+ *
+ * @notice Caller duties:
+ * - One tag per purpose. Two callers sharing a tag derive the same key from
+ *   one secret and salt.
+ * - `sk` MUST be 32 bytes from a CSPRNG. With the tag and salt public, a
+ *   guessable secret is found offline.
+ *
+ * @dev No ledger state, no witnesses, no asserts.
+ */
+module PrfAddr {
+  import CompactStandardLibrary;
+
+  import "./PrfCore" prefix PrfCore_;
+
+  /**
+   * @description The `PrfCore.evaluate` input, in wire-format order.
+   * @type {Bytes<32>} domain - The purpose tag.
+   * @type {S} salt - The salt the key is derived under.
+   */
+  struct Input<S> {
+    domain: Bytes<32>;
+    salt: S;
+  }
+
+  /**
+   * @description `pk = PrfCore.evaluate({domain, salt}, sk)`.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {S} salt - The salt the key is derived under.
+   * @param {Bytes<32>} sk - The secret.
+   * @return {Bytes<32>} - The public key.
+   */
+  export pure circuit derivePk<S>(domain: Bytes<32>, salt: S, sk: Bytes<32>): Bytes<32> {
+    return PrfCore_evaluate<Input<S>, Bytes<32>>(
+      Input<S> { domain: domain, salt: salt },
+      sk
+    );
+  }
+}
