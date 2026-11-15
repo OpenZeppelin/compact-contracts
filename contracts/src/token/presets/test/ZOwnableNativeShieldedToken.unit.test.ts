@@ -482,11 +482,30 @@ describe('ZOwnableNativeShieldedToken', () => {
       expect(result.is_some).toStrictEqual(false);
     });
 
-    it('rejects a burn amount above Uint<64>', async () => {
+    it('checks a burn amount above Uint<64> against the coin value', async () => {
       const coin = literalCoin(await token.tokenColor(), MAX_U64);
       await expect(
         token.as(OWNER).burn(coin, U64_BOUND, refundTo()),
-      ).rejects.toThrow('Uint<0..18446744073709551616>');
+      ).rejects.toThrow('NativeShieldedToken: insufficient coin value');
+    });
+
+    // TODO: unskip once compact-runtime commits coin values above Uint<64>
+    // (LFDT-Minokawa/compact#811).
+    describe.skip('above Uint<64>', () => {
+      const COIN_VALUE = 1n << 80n;
+
+      it('burns one above Uint<64> and refunds the remainder', async () => {
+        const coin = literalCoin(await token.tokenColor(), COIN_VALUE);
+        const result = await token.as(OWNER).burn(coin, U64_BOUND, refundTo());
+        expect(result.is_some).toStrictEqual(true);
+        expect(result.value.value).toStrictEqual(COIN_VALUE - U64_BOUND);
+      });
+
+      it('burns the whole coin with no refund', async () => {
+        const coin = literalCoin(await token.tokenColor(), COIN_VALUE);
+        const result = await token.as(OWNER).burn(coin, COIN_VALUE, refundTo());
+        expect(result.is_some).toStrictEqual(false);
+      });
     });
   });
 

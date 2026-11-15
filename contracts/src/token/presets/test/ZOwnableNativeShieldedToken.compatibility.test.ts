@@ -341,7 +341,7 @@ describe('ZOwnableNativeShieldedToken compatibility: published surface', () => {
       proof: true,
       arguments: [
         { name: 'coin', type: COIN_INFO },
-        { name: 'amount', type: UINT_64 },
+        { name: 'amount', type: UINT_128 },
         { name: 'refundTo', type: COIN_PUBLIC_KEY },
       ],
       'result-type': MAYBE_COIN_INFO,
