@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CFT: replace `register()` with `registerWithKey(pk: JubjubPoint)`, which takes the caller's encryption public key and checks it against the key derived from `wit_ConfidentialTokenEK` with `ElGamal.assertKeyPair` (`ElGamal: ek/pk mismatch`). Callers derive `pk` off-chain, either through a re-exported pure `ElGamal_derivePk` via the generated `pureCircuits` or by mirroring `ElGamal.derivePk` in the client (#1228)
 - `Ecdsa.secp256k1EcdsaVerifyLowS` fails with `Secp256k1Point identity is not a permitted secp256k1EcdsaVerify verification key` when the key is the identity point, where it used to return `false`. The standard library asserts this since toolchain 0.35.0. (#1229)
 
+### Fixed
+
+- `ZOwnableNativeShieldedToken.burn` takes a `Uint<128>` amount, the shielded coin value range, instead of narrowing it to `Uint<64>`. `burn` grows from 48,448 to 48,464 rows and stays at k=16. (#1247)
+
 ### Known issues
 
 - Under toolchain 0.36.0, circuits that verify secp256k1 ECDSA cost about 49% more rows: `Ecdsa.secp256k1EcdsaVerifyLowS` goes from 34,056 to 50,859, and `Secp256k1EcdsaMultisig.assertApprovals` at `t = 3`, `NativeShieldedTokenIssuer.burn` / `burnFromSelf` and `NativeShieldedStatelessTreasury.execute` cross from k=17 to k=18, roughly doubling their proving time. Most of it is the standard library's identity-key check in `secp256k1EcdsaVerify`
