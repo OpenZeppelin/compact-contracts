@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CFT: replace `register()` with `registerWithKey(pk: JubjubPoint)`, which takes the caller's encryption public key and checks it against the key derived from `wit_ConfidentialTokenEK` with `ElGamal.assertKeyPair` (`ElGamal: ek/pk mismatch`). Callers derive `pk` off-chain, either through a re-exported pure `ElGamal_derivePk` via the generated `pureCircuits` or by mirroring `ElGamal.derivePk` in the client (#1228)
 - `Ecdsa.secp256k1EcdsaVerifyLowS` fails with `Secp256k1Point identity is not a permitted secp256k1EcdsaVerify verification key` when the key is the identity point, where it used to return `false`. The standard library asserts this since toolchain 0.35.0. (#1229)
 
+### Changed
+
+- Move the Midnight JS stack to its stable releases:
+  - `midnight-js` `5.0.0-beta.7` → `5.0.0`
+  - `@midnight-ntwrk/compact-js` `2.5.5-rc.8` → `3.0.0`
+  - `@midnightntwrk/ledger-v9` `1.0.0-rc.5` → `1.0.0`
+  - `@openzeppelin/compact-simulator` `^0.5.0` → `^0.6.0`
+  - `@openzeppelin/compact-cli` `^0.2.0` → `^0.3.0`
+  - `@openzeppelin/compact-deployer` `^0.4.0` → `^0.5.0`
+  The local stack runs proof server `9.0.1`, node `2.1.101` and indexer `4.4.101` (#???)
+
 ### Known issues
 
 - Under toolchain 0.36.0, circuits that verify secp256k1 ECDSA cost about 49% more rows: `Ecdsa.secp256k1EcdsaVerifyLowS` goes from 34,056 to 50,859, and `Secp256k1EcdsaMultisig.assertApprovals` at `t = 3`, `NativeShieldedTokenIssuer.burn` / `burnFromSelf` and `NativeShieldedStatelessTreasury.execute` cross from k=17 to k=18, roughly doubling their proving time. Most of it is the standard library's identity-key check in `secp256k1EcdsaVerify`
