@@ -23,12 +23,16 @@ pragma language_version >= 0.28.0;
  * encryption key. The domain separation is what makes that safe. Do not remove
  * it. See `ElGamal.secretToScalar`.
  *
- * Sharing is safe for confidentiality only. It voids the two-secret authority
- * split that `sweep` and `clearMemos` rely on: both require
- * `wit_ConfidentialTokenEK` so that the account secret alone cannot prune the
- * memos and then sweep to freeze an account. If both witnesses return the same
- * secret, whoever holds it holds both, and that guard no longer applies. A
+ * Sharing is safe against observers of the published account identifier only:
+ * whoever holds a shared secret can also decrypt the account's memos. It also
+ * voids the two-secret authority split that `sweep` and `clearMemos` rely on.
+ * Both require `wit_ConfidentialTokenEK` so that the account secret alone
+ * cannot prune the memos and then sweep to freeze an account. That holds only
+ * while the two secrets are independent: if both witnesses return the same
+ * value, whoever holds one holds both and the guard no longer applies. A
  * wallet that wants this protection MUST keep the two secrets independent.
+ * Values derived from one master secret through one-way, domain-separated
+ * derivations stay independent while the master secret stays private.
  *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
