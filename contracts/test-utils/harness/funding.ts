@@ -1,9 +1,9 @@
-import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type LocalTestConfiguration,
   type MidnightWalletProvider,
   waitForFunds,
 } from '@midnight-ntwrk/testkit-js';
+import { unshieldedToken } from '@midnightntwrk/ledger-v9';
 import { UnshieldedAddress } from '@midnightntwrk/wallet-sdk-address-format';
 import { syncLiveWallet } from './FundedWallet.js';
 
@@ -60,10 +60,6 @@ async function transferNight(
         ],
       },
     ],
-    {
-      shieldedSecretKeys: from.zswapSecretKeys,
-      dustSecretKey: from.dustSecretKey,
-    },
     { ttl, payFees: true },
   );
   // Spending unshielded UTXOs needs the owner's signature before finalizing.

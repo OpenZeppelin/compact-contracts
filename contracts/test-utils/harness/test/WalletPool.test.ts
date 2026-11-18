@@ -275,14 +275,12 @@ describe.runIf(isLiveBackend())('WalletPool (live smoke)', () => {
 
   beforeAll(async () => {
     // Load the live-only deps here so the dry run never imports testkit.
-    const [{ setNetworkId }, { createLogger }, { FundedWallet }, { localEnv }] =
+    const [{ createLogger }, { FundedWallet }, { localEnv }] =
       await Promise.all([
-        import('@midnight-ntwrk/midnight-js-network-id'),
         import('@midnight-ntwrk/testkit-js'),
         import('../FundedWallet.js'),
         import('../network.js'),
       ]);
-    setNetworkId('undeployed');
     const env = localEnv();
     // Mirror the live setup: build this worker's own disjoint partition.
     const worker = Number(process.env.VITEST_POOL_ID ?? '1');

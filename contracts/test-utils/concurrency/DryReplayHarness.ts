@@ -42,12 +42,17 @@ import type {
  * measurement. Passing the cost the build actually reported fails with
  * `OutOfGas`, because verifying mode re-charges the whole program against it.
  * Nothing here is testing fees, so the budget is simply large.
+ *
+ * `bytesDeleted` is the exception: it is a floor, not a ceiling. Declared
+ * deletions offset declared writes when the fee is priced, so the replay must
+ * delete at least as much as declared or it fails with `OutOfGas` too. Zero
+ * claims nothing and holds for every program.
  */
 const BUDGET: RunningCost = {
   readTime: 2n ** 60n,
   computeTime: 2n ** 60n,
   bytesWritten: 2n ** 60n,
-  bytesDeleted: 2n ** 60n,
+  bytesDeleted: 0n,
 };
 
 const DEFAULT_COIN_PUBLIC_KEY = '0'.repeat(64);
