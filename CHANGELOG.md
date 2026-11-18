@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `@openzeppelin/compact-simulator` `^0.5.0` → `^0.6.0`
   - `@openzeppelin/compact-cli` `^0.2.0` → `^0.3.0`
   - `@openzeppelin/compact-deployer` `^0.4.0` → `^0.5.0`
-  The local stack runs proof server `9.0.1`, node `2.1.101` and indexer `4.4.101` (#???)
+  The local stack runs proof server `9.0.1`, node `2.1.101` and indexer `4.4.101` (#1254)
 
 ### Known issues
 
