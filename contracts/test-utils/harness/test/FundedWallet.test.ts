@@ -61,13 +61,8 @@ vi.mock('@midnight-ntwrk/testkit-js', () => ({
   syncWallet: m.syncWallet,
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', () => ({
-  unshieldedToken: () => ({ raw: NIGHT_RAW }),
-}));
-
 vi.mock('@midnightntwrk/ledger-v9', () => ({
-  ZswapSecretKeys: { fromSeed: vi.fn(() => ({ kind: 'zswap' })) },
-  DustSecretKey: { fromSeed: vi.fn(() => ({ kind: 'dust' })) },
+  unshieldedToken: () => ({ raw: NIGHT_RAW }),
 }));
 
 import { FundedWallet, WALLET_SYNC_TIMEOUT_MS } from '../FundedWallet.js';
