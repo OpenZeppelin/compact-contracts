@@ -101,6 +101,35 @@ describe('Secp256k1EcdsaMultisig', () => {
       ).rejects.toThrow('Secp256k1EcdsaMultisig: signers already registered');
     });
 
+    it('should fail when the instance salt is zero', async () => {
+      await expect(
+        Secp256k1EcdsaMultisig2To3Simulator.create(
+          new Uint8Array(32),
+          SIGNER_COMMITMENTS,
+          true,
+        ),
+      ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid salt');
+    });
+
+    it.each([
+      ['first', 0],
+      ['last', 31],
+    ])(
+      'should initialize with only the %s salt byte set',
+      async (_label, index) => {
+        const salt = new Uint8Array(32);
+        salt[index] = 1;
+        const commitments = [S1, S2, S3].map((s) => commitmentOf(s, salt));
+        const m = await Secp256k1EcdsaMultisig2To3Simulator.create(
+          salt,
+          commitments,
+          true,
+        );
+        expect(await m.getSignerCount()).toEqual(3n);
+        await approve(m, DIGEST, [S1, S2]);
+      },
+    );
+
     it('rejects a width above the signer count', async () => {
       await expect(
         Secp256k1EcdsaMultisig2To1Simulator.create(INSTANCE_SALT, COMMITMENT1),
