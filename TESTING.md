@@ -57,9 +57,10 @@ not run live is an explicit opt-out in `EXCLUDED_CATEGORIES` in
 
 `integration` is a target of its own, not a category: an unscoped run skips it, so ask for it
 by name. Only one target runs per invocation, since both live projects draw wallets from the
-same genesis-funded pool. The integration live block deploys the composed contract and reads
-its supply back; the functional integration specs stay dry-only because they mutate private
-state mid-test, which the live backend rejects.
+same genesis-funded pool. The confidential token's live block deploys the composed contract
+and reads its supply back; its functional specs stay dry-only because they mutate private
+state mid-test, which the live backend rejects. The shielded role holder privacy spec runs on
+both backends.
 
 The first argument names the target. Any further argument is a filename filter, matched the
 way vitest matches it (a case-insensitive substring of the path) against that target's own

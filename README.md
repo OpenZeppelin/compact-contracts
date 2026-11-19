@@ -208,8 +208,9 @@ Every `@constraints` annotation in the library is a ZKIR v3 measurement.
 Key generation for a circuit that produces Jubjub points without taking a Jubjub
 scalar or point as an input still fails upstream; see [Known issues](CHANGELOG.md#known-issues).
 
-`@constraints` on a circuit that takes a `Caller` excludes authentication. A
-deployed circuit pays the authenticator's `authenticate` line once, on top.
+`@constraints` on a circuit that takes a `Caller` excludes authentication, and
+on one that takes a `Blinding` the blinding read. A deployed circuit pays the
+authenticator's `authenticate` line and `RandBlinding.read` once each, on top.
 
 ## Development
 

@@ -45,6 +45,9 @@ artifact = "access/test/mocks/{name}"
 [contracts."src/account/test/mocks/*"]
 artifact = "account/test/mocks/{name}"
 
+[contracts."src/account/extensions/test/mocks/*"]
+artifact = "account/extensions/test/mocks/{name}"
+
 [contracts."src/archive/test/mocks/*"]
 artifact = "archive/test/mocks/{name}"
 
@@ -56,6 +59,9 @@ artifact = "crypto/authentication/test/mocks/{name}"
 
 [contracts."src/crypto/prf/test/mocks/*"]
 artifact = "crypto/prf/test/mocks/{name}"
+
+[contracts."src/crypto/randomness/test/mocks/*"]
+artifact = "crypto/randomness/test/mocks/{name}"
 
 [contracts."src/math/test/mocks/*"]
 artifact = "math/test/mocks/{name}"
