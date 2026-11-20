@@ -9,6 +9,10 @@ import {
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Ledger } from '../../../artifacts/access/test/mocks/MockShieldedAccessControl/contract/index.js';
+import {
+  type Caller,
+  ShieldedAccessControlCallerSimulator,
+} from './simulators/ShieldedAccessControlCallerSimulator.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import {
   ShieldedAccessControlPrivateState,
@@ -1498,6 +1502,331 @@ describe('ShieldedAccessControl', () => {
 
         expect(witnessPath.leaf).toEqual(findPath?.leaf);
       });
+    });
+  });
+});
+
+// The base mock authenticates through `AuthPrfAddr` and reads the blinding
+// through `RandBlinding`, which yield only a canonical, non-zero key account
+// and a non-zero blinding. This mock takes both as arguments, so a spec can
+// act as any account under any blinding.
+describe('ShieldedAccessControl: abnormal callers', () => {
+  const zeroBytes = new Uint8Array(32);
+  const DIRT = new Uint8Array(32).fill(0xff);
+
+  const keyAccount = (key: Uint8Array, right: Uint8Array = zeroBytes) => ({
+    is_left: true,
+    left: key,
+    right: { bytes: right },
+  });
+
+  const contractAccount = (
+    address: Uint8Array,
+    left: Uint8Array = zeroBytes,
+  ) => ({
+    is_left: false,
+    left,
+    right: { bytes: address },
+  });
+
+  const callerOf = (account: Caller['account']): Caller => ({ account });
+
+  const BLINDING = Uint8Array.from(Buffer.alloc(32, 'BLINDING'));
+  const FRESH_BLINDING = Uint8Array.from(Buffer.alloc(32, 'FRESH_BLINDING'));
+
+  const ADMIN_KEY = new Uint8Array(32).fill(1);
+  const OPERATOR_KEY = new Uint8Array(32).fill(2);
+  const OTHER_KEY = new Uint8Array(32).fill(3);
+
+  const ADMIN_CALLER = callerOf(keyAccount(ADMIN_KEY));
+  const OPERATOR_CALLER = callerOf(keyAccount(OPERATOR_KEY));
+
+  const OPERATOR_COMMITMENT = buildAccountCommitment(OPERATOR_KEY, BLINDING);
+  const OTHER_COMMITMENT = buildAccountCommitment(OTHER_KEY, BLINDING);
+
+  const ROLE = new Uint8Array(32).fill(0xaa);
+
+  const ZERO_ACCOUNT_ERROR = 'ShieldedAccessControl: zero account';
+  const ZERO_BLINDING_ERROR = 'ShieldedAccessControl: zero blinding';
+
+  let shieldedAccessControlCaller: ShieldedAccessControlCallerSimulator;
+
+  beforeEach(async () => {
+    shieldedAccessControlCaller =
+      await ShieldedAccessControlCallerSimulator.create(INSTANCE_SALT);
+    await shieldedAccessControlCaller._grantRole(
+      ROLE_ADMIN,
+      buildAccountCommitment(ADMIN_KEY, BLINDING),
+    );
+    await shieldedAccessControlCaller._grantRole(ROLE, OPERATOR_COMMITMENT);
+  });
+
+  describe('when the blinding is zero', () => {
+    it('should reject the holder in assertOnlyRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.assertOnlyRole(
+          OPERATOR_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+    });
+
+    it('should reject the holder in canProveRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+    });
+
+    it('should reject the admin in grantRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.grantRole(
+          ADMIN_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+          OTHER_COMMITMENT,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          callerOf(keyAccount(OTHER_KEY)),
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(false);
+    });
+
+    it('should reject the admin in revokeRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.revokeRole(
+          ADMIN_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+          OPERATOR_COMMITMENT,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should reject the holder in renounceRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.renounceRole(
+          OPERATOR_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+          OPERATOR_COMMITMENT,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should reject the holder even when its zero-blinding commitment was granted', async () => {
+      const holder = callerOf(keyAccount(OTHER_KEY));
+      await shieldedAccessControlCaller._grantRole(
+        ROLE,
+        buildAccountCommitment(OTHER_KEY, ZERO_BLINDING),
+      );
+
+      await expect(
+        shieldedAccessControlCaller.assertOnlyRole(holder, ZERO_BLINDING, ROLE),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+    });
+  });
+
+  describe.each([
+    ['zero account', keyAccount(zeroBytes)],
+    ['non-canonical zero account', keyAccount(zeroBytes, DIRT)],
+  ])('when the caller is the %s', (_, account) => {
+    const caller = callerOf(account);
+
+    describe.each([
+      ['a fresh blinding', FRESH_BLINDING],
+      ["a holder's blinding", BLINDING],
+      ['a zero blinding', ZERO_BLINDING],
+    ])('with %s', (_, blinding) => {
+      it.each([
+        [
+          'assertOnlyRole',
+          () =>
+            shieldedAccessControlCaller.assertOnlyRole(caller, blinding, ROLE),
+        ],
+        [
+          'canProveRole',
+          () =>
+            shieldedAccessControlCaller.canProveRole(caller, blinding, ROLE),
+        ],
+        [
+          'grantRole',
+          () =>
+            shieldedAccessControlCaller.grantRole(
+              caller,
+              blinding,
+              ROLE,
+              OTHER_COMMITMENT,
+            ),
+        ],
+        [
+          'renounceRole',
+          () =>
+            shieldedAccessControlCaller.renounceRole(
+              caller,
+              blinding,
+              ROLE,
+              buildAccountCommitment(zeroBytes, blinding),
+            ),
+        ],
+        [
+          'revokeRole',
+          () =>
+            shieldedAccessControlCaller.revokeRole(
+              caller,
+              blinding,
+              ROLE,
+              OPERATOR_COMMITMENT,
+            ),
+        ],
+      ])('should reject it in %s', async (_, call) => {
+        await expect(call()).rejects.toThrow(ZERO_ACCOUNT_ERROR);
+      });
+    });
+
+    it('should reject it even when a commitment over the zero key was granted', async () => {
+      await shieldedAccessControlCaller._grantRole(
+        ROLE,
+        buildAccountCommitment(zeroBytes, BLINDING),
+      );
+
+      await expect(
+        shieldedAccessControlCaller.assertOnlyRole(caller, BLINDING, ROLE),
+      ).rejects.toThrow(ZERO_ACCOUNT_ERROR);
+      await expect(
+        shieldedAccessControlCaller.canProveRole(caller, BLINDING, ROLE),
+      ).rejects.toThrow(ZERO_ACCOUNT_ERROR);
+    });
+  });
+
+  describe.each([
+    ['contract', contractAccount(new Uint8Array(32).fill(4))],
+    ['contract-arm zero account', contractAccount(zeroBytes)],
+    [
+      "contract carrying a holder's key in its inactive arm",
+      contractAccount(new Uint8Array(32).fill(4), OPERATOR_KEY),
+    ],
+  ])('when the caller is a %s', (_, account) => {
+    const caller = callerOf(account);
+
+    it.each([
+      [
+        'assertOnlyRole',
+        () =>
+          shieldedAccessControlCaller.assertOnlyRole(caller, BLINDING, ROLE),
+      ],
+      [
+        'canProveRole',
+        () => shieldedAccessControlCaller.canProveRole(caller, BLINDING, ROLE),
+      ],
+      [
+        'grantRole',
+        () =>
+          shieldedAccessControlCaller.grantRole(
+            caller,
+            BLINDING,
+            ROLE,
+            OTHER_COMMITMENT,
+          ),
+      ],
+      [
+        'renounceRole',
+        () =>
+          shieldedAccessControlCaller.renounceRole(
+            caller,
+            BLINDING,
+            ROLE,
+            OPERATOR_COMMITMENT,
+          ),
+      ],
+      [
+        'revokeRole',
+        () =>
+          shieldedAccessControlCaller.revokeRole(
+            caller,
+            BLINDING,
+            ROLE,
+            OPERATOR_COMMITMENT,
+          ),
+      ],
+    ])('should reject it in %s', async (_, call) => {
+      await expect(call()).rejects.toThrow('Account: contract account');
+    });
+  });
+
+  describe('when the caller account is not canonical', () => {
+    const operator = callerOf(keyAccount(OPERATOR_KEY, DIRT));
+
+    it('should pass assertOnlyRole as its key', async () => {
+      await shieldedAccessControlCaller.assertOnlyRole(
+        operator,
+        BLINDING,
+        ROLE,
+      );
+    });
+
+    it('should return true from canProveRole as its key', async () => {
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          operator,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should pass grantRole as its key', async () => {
+      await shieldedAccessControlCaller.grantRole(
+        callerOf(keyAccount(ADMIN_KEY, DIRT)),
+        BLINDING,
+        ROLE,
+        OTHER_COMMITMENT,
+      );
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          callerOf(keyAccount(OTHER_KEY)),
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should renounce the role of its key', async () => {
+      await shieldedAccessControlCaller.renounceRole(
+        operator,
+        BLINDING,
+        ROLE,
+        OPERATOR_COMMITMENT,
+      );
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(false);
     });
   });
 });

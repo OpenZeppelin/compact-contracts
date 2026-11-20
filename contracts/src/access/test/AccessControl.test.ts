@@ -6,6 +6,10 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import {
+  AccessControlCallerSimulator,
+  type Caller,
+} from './simulators/AccessControlCallerSimulator.js';
 import { AccessControlSimulator } from './simulators/AccessControlSimulator.js';
 
 // Helpers
@@ -924,6 +928,172 @@ describe('AccessControl', () => {
 
     it('should expose an empty public ledger via getPublicState', async () => {
       expect(await accessControl.getPublicState()).toStrictEqual({});
+    });
+  });
+});
+
+// The base mock authenticates through `AuthPrfAddr`, which yields only
+// canonical, non-zero key accounts. This mock takes the caller as an argument,
+// so a spec can act as any account.
+describe('AccessControl: abnormal callers', () => {
+  const DIRT = new Uint8Array(32).fill(0xff);
+
+  const keyAccount = (key: Uint8Array, right: Uint8Array = zeroBytes) => ({
+    is_left: true,
+    left: key,
+    right: { bytes: right },
+  });
+
+  const contractAccount = (address: Uint8Array) => ({
+    is_left: false,
+    left: zeroBytes,
+    right: { bytes: address },
+  });
+
+  const callerOf = (account: Caller['account']): Caller => ({ account });
+
+  const ADMIN_KEY = new Uint8Array(32).fill(1);
+  const OPERATOR_KEY = new Uint8Array(32).fill(2);
+
+  const ADMIN_ACCOUNT = keyAccount(ADMIN_KEY);
+  const OPERATOR_ACCOUNT = keyAccount(OPERATOR_KEY);
+  const OTHER_ACCOUNT = keyAccount(new Uint8Array(32).fill(3));
+  const CONTRACT_ACCOUNT = contractAccount(new Uint8Array(32).fill(4));
+
+  const ROLE = new Uint8Array(32).fill(0xaa);
+
+  // Each role with the account `grantRoles` grants it to.
+  const roles = [
+    ['DEFAULT_ADMIN_ROLE', DEFAULT_ADMIN_ROLE, ADMIN_ACCOUNT],
+    ['a role', ROLE, OPERATOR_ACCOUNT],
+  ] as const;
+
+  const UNAUTHORIZED_ERROR = 'AccessControl: unauthorized account';
+
+  let accessControlCaller: AccessControlCallerSimulator;
+
+  const grantRoles = async () => {
+    await accessControlCaller._grantRole(DEFAULT_ADMIN_ROLE, ADMIN_ACCOUNT);
+    await accessControlCaller._grantRole(ROLE, OPERATOR_ACCOUNT);
+  };
+
+  const setups = [
+    ['no role is granted', async () => {}],
+    ['other accounts hold roles', grantRoles],
+  ] as const;
+
+  beforeEach(async () => {
+    accessControlCaller = await AccessControlCallerSimulator.create();
+  });
+
+  describe.each(zeroAccounts)('when the caller is the %s', (_, account) => {
+    const caller = callerOf(account);
+
+    describe.each(setups)('and %s', (_, setup) => {
+      beforeEach(setup);
+
+      it.each(roles)(
+        'should reject it in assertOnlyRole for %s',
+        async (_, roleId) => {
+          await expect(
+            accessControlCaller.assertOnlyRole(caller, roleId),
+          ).rejects.toThrow(UNAUTHORIZED_ERROR);
+        },
+      );
+
+      it.each(roles)(
+        'should reject it in grantRole for %s',
+        async (_, roleId) => {
+          await expect(
+            accessControlCaller.grantRole(caller, roleId, OTHER_ACCOUNT),
+          ).rejects.toThrow(UNAUTHORIZED_ERROR);
+          expect(await accessControlCaller.hasRole(roleId, OTHER_ACCOUNT)).toBe(
+            false,
+          );
+        },
+      );
+
+      it.each(roles)(
+        'should reject it in revokeRole for %s',
+        async (_, roleId, holder) => {
+          const held = await accessControlCaller.hasRole(roleId, holder);
+          await expect(
+            accessControlCaller.revokeRole(caller, roleId, holder),
+          ).rejects.toThrow(UNAUTHORIZED_ERROR);
+          expect(await accessControlCaller.hasRole(roleId, holder)).toBe(held);
+        },
+      );
+
+      it.each(roles)(
+        'should change nothing in renounceRole for %s',
+        async (_, roleId, holder) => {
+          const held = await accessControlCaller.hasRole(roleId, holder);
+          await accessControlCaller.renounceRole(caller, roleId, account);
+          expect(await accessControlCaller.hasRole(roleId, holder)).toBe(held);
+          expect(await accessControlCaller.hasRole(roleId, account)).toBe(
+            false,
+          );
+        },
+      );
+    });
+  });
+
+  describe('when the caller account is not canonical', () => {
+    const operator = callerOf(keyAccount(OPERATOR_KEY, DIRT));
+
+    beforeEach(grantRoles);
+
+    it('should pass assertOnlyRole as its active arm', async () => {
+      await accessControlCaller.assertOnlyRole(operator, ROLE);
+    });
+
+    it('should pass grantRole as its active arm', async () => {
+      await accessControlCaller.grantRole(
+        callerOf(keyAccount(ADMIN_KEY, DIRT)),
+        ROLE,
+        OTHER_ACCOUNT,
+      );
+      expect(await accessControlCaller.hasRole(ROLE, OTHER_ACCOUNT)).toBe(true);
+    });
+
+    it('should reject renounceRole with the canonical account as confirmation', async () => {
+      await expect(
+        accessControlCaller.renounceRole(operator, ROLE, OPERATOR_ACCOUNT),
+      ).rejects.toThrow('AccessControl: bad confirmation');
+      expect(await accessControlCaller.hasRole(ROLE, OPERATOR_ACCOUNT)).toBe(
+        true,
+      );
+    });
+
+    it('should revoke the canonical account in renounceRole with its own account as confirmation', async () => {
+      await accessControlCaller.renounceRole(operator, ROLE, operator.account);
+      expect(await accessControlCaller.hasRole(ROLE, OPERATOR_ACCOUNT)).toBe(
+        false,
+      );
+    });
+  });
+
+  describe('when the caller is a contract', () => {
+    const contract = callerOf(CONTRACT_ACCOUNT);
+
+    beforeEach(grantRoles);
+
+    it('should reject it in assertOnlyRole before a grant', async () => {
+      await expect(
+        accessControlCaller.assertOnlyRole(contract, ROLE),
+      ).rejects.toThrow(UNAUTHORIZED_ERROR);
+    });
+
+    it('should pass assertOnlyRole for a role granted through _unsafeGrantRole', async () => {
+      await accessControlCaller._unsafeGrantRole(ROLE, CONTRACT_ACCOUNT);
+      await accessControlCaller.assertOnlyRole(contract, ROLE);
+    });
+
+    it('should reject it in assertOnlyRole for a role it was not granted', async () => {
+      await accessControlCaller._unsafeGrantRole(ROLE, CONTRACT_ACCOUNT);
+      await expect(
+        accessControlCaller.assertOnlyRole(contract, DEFAULT_ADMIN_ROLE),
+      ).rejects.toThrow(UNAUTHORIZED_ERROR);
     });
   });
 });
