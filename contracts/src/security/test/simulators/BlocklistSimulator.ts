@@ -3,6 +3,8 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
+  type ContractAddress,
+  type Either,
   ledger,
   Contract as MockBlocklist,
 } from '../../../../artifacts/security/test/mocks/MockBlocklist/contract/index.js';
@@ -50,28 +52,32 @@ export class BlocklistSimulator extends BlocklistSimulatorBase {
    * @description Returns whether `account` is currently blocked.
    * @returns True if `account` is a member of the blocklist.
    */
-  public isBlocked(account: Uint8Array): Promise<boolean> {
+  public isBlocked(
+    account: Either<Uint8Array, ContractAddress>,
+  ): Promise<boolean> {
     return this.circuits.impure.isBlocked(account);
   }
 
   /**
    * @description Asserts that `account` is not blocked.
    */
-  public assertNotBlocked(account: Uint8Array): Promise<[]> {
+  public assertNotBlocked(
+    account: Either<Uint8Array, ContractAddress>,
+  ): Promise<[]> {
     return this.circuits.impure.assertNotBlocked(account);
   }
 
   /**
    * @description Adds `account` to the blocklist.
    */
-  public block(account: Uint8Array): Promise<[]> {
+  public block(account: Either<Uint8Array, ContractAddress>): Promise<[]> {
     return this.circuits.impure.block(account);
   }
 
   /**
    * @description Removes `account` from the blocklist.
    */
-  public unblock(account: Uint8Array): Promise<[]> {
+  public unblock(account: Either<Uint8Array, ContractAddress>): Promise<[]> {
     return this.circuits.impure.unblock(account);
   }
 }

@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract takes the caller as a circuit argument, so anyone can act as
+// any account, and it exposes internal circuits. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Caller } from "../../../crypto/authentication/interfaces/IAuthenticator";
+
+import "../../MultiToken" prefix MultiToken_;
+
+export { Caller, ContractAddress, Either };
+
+constructor(uri_: Opaque<"string">) {
+  MultiToken_initialize(uri_);
+}
+
+export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>, id: Uint<128>): Uint<128> {
+  return MultiToken_balanceOf(account, id);
+}
+
+export circuit setApprovalForAll(
+  caller: Caller,
+  operator: Either<Bytes<32>, ContractAddress>,
+  approved: Boolean
+): [] {
+  return MultiToken_setApprovalForAll(caller, operator, approved);
+}
+
+export circuit isApprovedForAll(
+  account: Either<Bytes<32>, ContractAddress>,
+  operator: Either<Bytes<32>, ContractAddress>
+): Boolean {
+  return MultiToken_isApprovedForAll(account, operator);
+}
+
+export circuit transferFrom(
+  caller: Caller,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
+  id: Uint<128>,
+  value: Uint<128>
+): [] {
+  return MultiToken_transferFrom(caller, fromAddress, to, id, value);
+}
+
+export circuit _unsafeTransferFrom(
+  caller: Caller,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
+  id: Uint<128>,
+  value: Uint<128>
+): [] {
+  return MultiToken__unsafeTransferFrom(caller, fromAddress, to, id, value);
+}
+
+export circuit _mint(to: Either<Bytes<32>, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+  return MultiToken__mint(to, id, value);
+}
+
+export circuit _unsafeMint(to: Either<Bytes<32>, ContractAddress>, id: Uint<128>, value: Uint<128>): [] {
+  return MultiToken__unsafeMint(to, id, value);
+}

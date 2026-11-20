@@ -9,6 +9,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
+import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
 import "../../NonFungibleToken" prefix NonFungibleToken_;
 
 export { ContractAddress, Either, Maybe };
@@ -53,7 +54,11 @@ export circuit approve(
   to: Either<Bytes<32>, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken_approve(to, tokenId);
+  return NonFungibleToken_approve(
+    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    to,
+    tokenId
+  );
 }
 
 export circuit getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
@@ -64,7 +69,11 @@ export circuit setApprovalForAll(
   operator: Either<Bytes<32>, ContractAddress>,
   approved: Boolean
 ): [] {
-  return NonFungibleToken_setApprovalForAll(operator, approved);
+  return NonFungibleToken_setApprovalForAll(
+    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    operator,
+    approved
+  );
 }
 
 export circuit isApprovedForAll(
@@ -79,7 +88,12 @@ export circuit transferFrom(
   to: Either<Bytes<32>, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken_transferFrom(fromAddress, to, tokenId);
+  return NonFungibleToken_transferFrom(
+    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    fromAddress,
+    to,
+    tokenId
+  );
 }
 
 export circuit _requireOwned(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
@@ -163,7 +177,12 @@ export circuit _unsafeTransferFrom(
   to: Either<Bytes<32>, ContractAddress>,
   tokenId: Uint<128>
 ): [] {
-  return NonFungibleToken__unsafeTransferFrom(fromAddress, to, tokenId);
+  return NonFungibleToken__unsafeTransferFrom(
+    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    fromAddress,
+    to,
+    tokenId
+  );
 }
 
 export circuit _unsafeTransfer(

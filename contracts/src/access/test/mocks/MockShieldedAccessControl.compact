@@ -9,6 +9,10 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
+import { AccountCommitment } from "../../../account/extensions/AccountCommitment";
+
+import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../../crypto/randomness/RandBlinding" prefix RandBlinding_;
 import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
 
 export { MerkleTreePath,
@@ -34,46 +38,69 @@ export pure circuit DEFAULT_ADMIN_ROLE(): ShieldedAccessControl_RoleIdentifier {
 }
 
 export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
-  ShieldedAccessControl_assertOnlyRole(role);
+  ShieldedAccessControl_assertOnlyRole(
+    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    RandBlinding_read(),
+    role
+  );
 }
 
 export circuit canProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean {
-  return ShieldedAccessControl_canProveRole(role);
+  return ShieldedAccessControl_canProveRole(
+    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    RandBlinding_read(),
+    role
+  );
 }
 
 export circuit grantRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
+                 accountCommitment: AccountCommitment
                  ): [] {
-  ShieldedAccessControl_grantRole(role, accountId);
+  ShieldedAccessControl_grantRole(
+    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    RandBlinding_read(),
+    role,
+    accountCommitment
+  );
 }
 
 export circuit _grantRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
+                 accountCommitment: AccountCommitment
                  ): [] {
-  return ShieldedAccessControl__grantRole(role, accountId);
+  return ShieldedAccessControl__grantRole(role, accountCommitment);
 }
 
 export circuit renounceRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountIdConfirmation: ShieldedAccessControl_AccountIdentifier
+                 accountCommitmentConfirmation: AccountCommitment
                  ): [] {
-  ShieldedAccessControl_renounceRole(role, accountIdConfirmation);
+  ShieldedAccessControl_renounceRole(
+    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    RandBlinding_read(),
+    role,
+    accountCommitmentConfirmation
+  );
 }
 
 export circuit revokeRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
+                 accountCommitment: AccountCommitment
                  ): [] {
-  ShieldedAccessControl_revokeRole(role, accountId);
+  ShieldedAccessControl_revokeRole(
+    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    RandBlinding_read(),
+    role,
+    accountCommitment
+  );
 }
 
 export circuit _revokeRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
+                 accountCommitment: AccountCommitment
                  ): [] {
-  return ShieldedAccessControl__revokeRole(role, accountId);
+  return ShieldedAccessControl__revokeRole(role, accountCommitment);
 }
 
 export circuit getRoleAdmin(
@@ -91,10 +118,10 @@ export circuit _setRoleAdmin(
 
 export circuit computeRoleCommitment(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountId: ShieldedAccessControl_AccountIdentifier
+                 accountCommitment: AccountCommitment
                  ): ShieldedAccessControl_RoleCommitment {
 
-  return ShieldedAccessControl_computeRoleCommitment(role, accountId);
+  return ShieldedAccessControl_computeRoleCommitment(role, accountCommitment);
 }
 
 export pure circuit computeNullifier(
@@ -103,10 +130,9 @@ export pure circuit computeNullifier(
   return ShieldedAccessControl_computeNullifier(roleCommitment);
 }
 
-export pure circuit computeAccountId(
-                      secretKey: Bytes<32>,
-                      instanceSalt: Bytes<32>
-                      ): ShieldedAccessControl_AccountIdentifier {
-
-  return ShieldedAccessControl_computeAccountId(secretKey, instanceSalt);
+export pure circuit computeAccountCommitment(
+                      account: Bytes<32>,
+                      blinding: RandBlinding_Blinding
+                      ): AccountCommitment {
+  return ShieldedAccessControl_computeAccountCommitment(account, blinding);
 }

@@ -8,22 +8,24 @@
 pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
+
 import "../../Blocklist" prefix Blocklist_;
 
+export { ContractAddress, Either };
 export { Blocklist__blocked };
 
-export circuit isBlocked(account: Bytes<32>): Boolean {
+export circuit isBlocked(account: Either<Bytes<32>, ContractAddress>): Boolean {
   return Blocklist_isBlocked(account);
 }
 
-export circuit assertNotBlocked(account: Bytes<32>): [] {
+export circuit assertNotBlocked(account: Either<Bytes<32>, ContractAddress>): [] {
   return Blocklist_assertNotBlocked(account);
 }
 
-export circuit block(account: Bytes<32>): [] {
+export circuit block(account: Either<Bytes<32>, ContractAddress>): [] {
   return Blocklist__block(account);
 }
 
-export circuit unblock(account: Bytes<32>): [] {
+export circuit unblock(account: Either<Bytes<32>, ContractAddress>): [] {
   return Blocklist__unblock(account);
 }

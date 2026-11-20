@@ -6,12 +6,20 @@ import {
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
 import type { Maybe } from '../../../artifacts/token/test/mocks/MockMultiToken/contract/index.js';
+import {
+  type Caller,
+  type ContractAddress,
+  type Either,
+  MultiTokenCallerSimulator,
+} from './simulators/MultiTokenCallerSimulator.js';
 import { MultiTokenSimulator } from './simulators/MultiTokenSimulator.js';
 
 // Helpers
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+  const domain = createTestSK('AuthPrfAddr:account');
+  const salt = createTestSK('MockMultiToken');
+  return persistentHash(rt_type, [domain, salt, sk]);
 };
 
 const zeroBytes = utils.zeroUint8Array();
@@ -1586,6 +1594,165 @@ describe('MultiToken', () => {
           'Missing secret key',
         );
       });
+    });
+  });
+});
+
+// The base mock authenticates through `AuthPrfAddr`, which cannot produce the
+// zero account. This mock takes the caller as an argument, so a spec can act
+// as any account shape.
+describe('MultiToken: abnormal callers', () => {
+  type Account = Either<Uint8Array, ContractAddress>;
+
+  const bytesOf = (byte: number) => new Uint8Array(32).fill(byte);
+
+  const userAccount = (key: Uint8Array, inactive = zeroBytes): Account => ({
+    is_left: true,
+    left: key,
+    right: { bytes: inactive },
+  });
+
+  const contractAccount = (
+    address: Uint8Array,
+    inactive = zeroBytes,
+  ): Account => ({
+    is_left: false,
+    left: inactive,
+    right: { bytes: address },
+  });
+
+  const callerOf = (account: Account): Caller => ({ account });
+
+  const ALICE = userAccount(bytesOf(1));
+  const BOB = userAccount(bytesOf(2));
+  const MALLORY = userAccount(bytesOf(3));
+  const CONTRACT = contractAccount(bytesOf(7));
+
+  const NON_CANONICAL_ZERO = userAccount(zeroBytes, bytesOf(9));
+  const NON_CANONICAL_ALICE = userAccount(bytesOf(1), bytesOf(9));
+
+  const ALICE_BALANCE = 100n;
+
+  const INVALID_SENDER = 'MultiToken: invalid sender';
+  const INVALID_OWNER = 'MultiToken: invalid owner';
+  const UNAUTHORIZED_OPERATOR = 'MultiToken: unauthorized operator';
+
+  // `_unsafeTransferFrom` compares the caller's account as a whole with the
+  // canonical `fromAddress`, so a non-zero inactive arm never matches it.
+  const ZERO_CALLERS: [string, Account, string][] = [
+    ['the zero account', ZERO_ACCOUNT, INVALID_SENDER],
+    ['the contract-arm zero account', ZERO_CONTRACT, INVALID_SENDER],
+    ['a non-canonical zero account', NON_CANONICAL_ZERO, UNAUTHORIZED_OPERATOR],
+  ];
+
+  let callerToken: MultiTokenCallerSimulator;
+
+  beforeEach(async () => {
+    callerToken = await MultiTokenCallerSimulator.create(URI);
+    await callerToken._mint(ALICE, TOKEN_ID, ALICE_BALANCE);
+  });
+
+  const expectUnchanged = async () => {
+    expect(await callerToken.balanceOf(ALICE, TOKEN_ID)).toEqual(ALICE_BALANCE);
+    expect(await callerToken.balanceOf(BOB, TOKEN_ID)).toEqual(0n);
+    expect(await callerToken.balanceOf(MALLORY, TOKEN_ID)).toEqual(0n);
+  };
+
+  describe.each(ZERO_CALLERS)(
+    'when the caller is %s',
+    (_, account, fromZeroError) => {
+      const caller = callerOf(account);
+
+      it('should fail transferFrom from a holder', async () => {
+        await expect(
+          callerToken.transferFrom(caller, ALICE, MALLORY, TOKEN_ID, 10n),
+        ).rejects.toThrow(UNAUTHORIZED_OPERATOR);
+        await expectUnchanged();
+      });
+
+      it('should fail _unsafeTransferFrom from a holder', async () => {
+        await expect(
+          callerToken._unsafeTransferFrom(
+            caller,
+            ALICE,
+            MALLORY,
+            TOKEN_ID,
+            10n,
+          ),
+        ).rejects.toThrow(UNAUTHORIZED_OPERATOR);
+        await expectUnchanged();
+      });
+
+      it('should fail setApprovalForAll', async () => {
+        await expect(
+          callerToken.setApprovalForAll(caller, MALLORY, true),
+        ).rejects.toThrow(INVALID_OWNER);
+        expect(await callerToken.isApprovedForAll(account, MALLORY)).toBe(
+          false,
+        );
+        await expectUnchanged();
+      });
+
+      it('should fail transferFrom from the same zero account', async () => {
+        await expect(
+          callerToken.transferFrom(caller, account, MALLORY, TOKEN_ID, 10n),
+        ).rejects.toThrow(fromZeroError);
+        await expectUnchanged();
+      });
+
+      it('should fail _unsafeTransferFrom from the same zero account', async () => {
+        await expect(
+          callerToken._unsafeTransferFrom(
+            caller,
+            account,
+            MALLORY,
+            TOKEN_ID,
+            10n,
+          ),
+        ).rejects.toThrow(fromZeroError);
+        await expectUnchanged();
+      });
+    },
+  );
+
+  describe('when a holder calls with a non-zero inactive arm', () => {
+    const caller = callerOf(NON_CANONICAL_ALICE);
+
+    it('should set an operator for the holder', async () => {
+      await callerToken.setApprovalForAll(caller, MALLORY, true);
+      expect(await callerToken.isApprovedForAll(ALICE, MALLORY)).toBe(true);
+    });
+
+    it('should fail transferFrom of its own tokens', async () => {
+      await expect(
+        callerToken.transferFrom(caller, ALICE, BOB, TOKEN_ID, 10n),
+      ).rejects.toThrow(UNAUTHORIZED_OPERATOR);
+      await expectUnchanged();
+    });
+
+    it('should fail _unsafeTransferFrom of its own tokens', async () => {
+      await expect(
+        callerToken._unsafeTransferFrom(caller, ALICE, BOB, TOKEN_ID, 10n),
+      ).rejects.toThrow(UNAUTHORIZED_OPERATOR);
+      await expectUnchanged();
+    });
+  });
+
+  describe('when the caller is a contract account', () => {
+    beforeEach(async () => {
+      await callerToken._unsafeMint(CONTRACT, TOKEN_ID, 50n);
+    });
+
+    it('should transfer tokens it holds', async () => {
+      await callerToken.transferFrom(
+        callerOf(CONTRACT),
+        CONTRACT,
+        BOB,
+        TOKEN_ID,
+        20n,
+      );
+      expect(await callerToken.balanceOf(CONTRACT, TOKEN_ID)).toEqual(30n);
+      expect(await callerToken.balanceOf(BOB, TOKEN_ID)).toEqual(20n);
     });
   });
 });

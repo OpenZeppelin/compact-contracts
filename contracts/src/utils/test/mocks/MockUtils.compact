@@ -57,7 +57,3 @@ export pure circuit zeroAccount(): Either<Bytes<32>, ContractAddress> {
 export pure circuit isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
   return Utils_isTargetZero(target);
 }
-
-export pure circuit computeAccountId(secretKey: Bytes<32>): Bytes<32> {
-  return Utils_computeAccountId(secretKey);
-}

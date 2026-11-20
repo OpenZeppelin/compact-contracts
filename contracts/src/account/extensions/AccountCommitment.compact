@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (account/extensions/AccountCommitment.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module AccountCommitment
+ * @description A hiding commitment to an account's key. A module that must
+ * not reveal who holds a right stores this value in place of the account.
+ * The holder later recomputes it from their account and blinding.
+ *
+ * ```compact
+ * import { AccountCommitment } from "../account/extensions/AccountCommitment";
+ *
+ * import "../account/Account" prefix Account_;
+ * import "../account/extensions/AccountCommitment" prefix AccountCommitment_;
+ *
+ * circuit _holder(caller: Caller, blinding: Bytes<32>): AccountCommitment {
+ *   return AccountCommitment_commit(
+ *     pad(32, "MyModule:account"),
+ *     Account_publicKeyOf(caller.account),
+ *     blinding
+ *   );
+ * }
+ * ```
+ *
+ * @dev Layout:
+ * `persistentCommit` over `{domain, publicKey}` with `blinding`. The hash
+ * covers `blinding`, `domain`, then `publicKey`, and it is wire format.
+ *
+ * @notice Assumption:
+ * `persistentCommit` is binding, and hides its input while `blinding` is
+ * unknown.
+ *
+ * @notice Caller duties:
+ * - One tag per module, so two modules never share a commitment.
+ * - Hiding needs a `blinding` with the entropy of 32 bytes from a CSPRNG,
+ *   kept secret. A guessable one lets an observer test candidate accounts.
+ * - The value does not bind a contract instance. A module that needs
+ *   per-instance separation hashes its own salt with the commitment.
+ *
+ * @dev No ledger state, no witnesses, no asserts.
+ */
+module AccountCommitment {
+  import CompactStandardLibrary;
+
+  /**
+   * @description A commitment to an account's key, typed apart from the key
+   * and from other 32-byte values.
+   */
+  export new type AccountCommitment = Bytes<32>;
+
+  /**
+   * @description The committed value, in wire-format order.
+   * @type {Bytes<32>} domain - The calling module's tag.
+   * @type {Bytes<32>} publicKey - The account's key.
+   */
+  struct Preimage {
+    domain: Bytes<32>;
+    publicKey: Bytes<32>;
+  }
+
+  /**
+   * @description `persistentCommit` over `{domain, publicKey}` with
+   * `blinding`.
+   *
+   * @param {Bytes<32>} domain - The calling module's tag.
+   * @param {Bytes<32>} publicKey - The account's key, the `left` of an
+   * `Account`.
+   * @param {Bytes<32>} blinding - The blinding factor.
+   * @return {Bytes<32>} - The account commitment.
+   */
+  export pure circuit commit(
+                        domain: Bytes<32>,
+                        publicKey: Bytes<32>,
+                        blinding: Bytes<32>
+                        ): AccountCommitment {
+    return persistentCommit<Preimage>(
+             Preimage { domain: domain, publicKey: publicKey },
+             blinding
+           ) as AccountCommitment;
+  }
+}
