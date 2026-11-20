@@ -34,8 +34,9 @@ pragma language_version >= 0.28.0;
  *     in two instances give both admins the same value. This module derives no caller. Every
  *     authenticating circuit takes a `Caller`, which the composing
  *     contract gets from an authenticator and passes to every module it drives.
- *     The caller must be a key caller: a contract caller is rejected. One `accountCommitment` can hold
- *     several roles within the same contract instance.
+ *     The caller must be a key caller: a contract caller is rejected. A zero account and a zero
+ *     blinding are rejected. One `accountCommitment` can hold several roles within the same contract
+ *     instance.
  *  - `roleNullifier` is a one-time burn token inserted into `_roleCommitmentNullifiers` on
  *     revocation. Its presence permanently invalidates the corresponding role commitment,
  *     making re-grant under the same `accountCommitment` impossible.
@@ -328,12 +329,14 @@ module ShieldedAccessControl {
   /**
    * @description Reverts if `caller` cannot provide a valid proof of ownership for `role`.
    *
-   * @constraints k=14, rows=16054
+   * @constraints k=14, rows=16070
    *
    * Requirements:
    *
    * - `caller` must prove ownership of `role` under `blinding`.
    * - caller must not provide valid Merkle tree path for a different `(role, accountCommitment)` pairing.
+   * - `caller` is not the zero account.
+   * - `blinding` is not zero.
    * - Contract is initialized.
    *
    * Disclosures:
@@ -362,11 +365,13 @@ module ShieldedAccessControl {
    * caller if the proving environment supplies an invalid Merkle path. This circuit will never return true for an
    * unauthorized caller.
    *
-   * @constraints k=14, rows=16074
+   * @constraints k=14, rows=16090
    *
    * Requirements:
    *
    * - caller must not provide valid Merkle tree path for a different `(role, accountCommitment)` pairing.
+   * - `caller` is not the zero account.
+   * - `blinding` is not zero.
    * - Contract is initialized.
    *
    * Disclosures:
@@ -402,6 +407,8 @@ module ShieldedAccessControl {
    * Requirements:
    *
    * - caller must not provide valid Merkle tree path for a different `(role, accountCommitment)` pairing.
+   * - `caller` is not the zero account.
+   * - `blinding` is not zero.
    *
    * Disclosures:
    *
@@ -429,13 +436,15 @@ module ShieldedAccessControl {
    * pairing is a no-op. Once revoked, a role cannot be re-granted to the same `accountCommitment`. A new
    * `accountCommitment` must be generated to be re-authorized for a revoked `role`.
    *
-   * @constraints k=15, rows=27542
+   * @constraints k=15, rows=27558
    *
    * Requirements:
    *
    * - caller must prove they're an admin for `role` under `blinding`.
    * - caller must not provide valid Merkle tree path for a different `(role, accountCommitment)` pairing.
    * - The `(role, accountCommitment)` pairing must not be already revoked.
+   * - `caller` is not the zero account.
+   * - `blinding` is not zero.
    * - Contract is initialized.
    *
    * Disclosures:
@@ -512,13 +521,15 @@ module ShieldedAccessControl {
    * @warning Outside observers may be able to use timing and pattern analysis to weaken pseudonymity
    * guarantees if renounceRole is used in tandem with other on-chain actions.
    *
-   * @constraints k=14, rows=13679
+   * @constraints k=14, rows=13695
    *
    * Requirements:
    *
    * - `caller` must not be a contract.
    * - `accountCommitmentConfirmation` must match the account commitment computed from `caller` and `blinding`.
    * - The `(role, accountCommitment)` pairing must not be already revoked.
+   * - `caller` is not the zero account.
+   * - `blinding` is not zero.
    * - Contract is initialized.
    *
    * Disclosures:
@@ -553,13 +564,15 @@ module ShieldedAccessControl {
    * `role`. At this time, proofs of non-membership on values in the Merkle tree LDT are not possible
    * so a `(role, accountCommitment)` pairing that does not exist can still be revoked.
    *
-   * @constraints k=15, rows=25607
+   * @constraints k=15, rows=25623
    *
    * Requirements:
    *
    * - caller must prove they're an admin for `role` under `blinding`.
    * - caller must not provide valid Merkle tree path for a different `(role, accountCommitment)` pairing.
    * - The `(role, accountCommitment)` pairing must not be already revoked.
+   * - `caller` is not the zero account.
+   * - `blinding` is not zero.
    * - Contract is initialized.
    *
    * Disclosures:
@@ -832,6 +845,11 @@ module ShieldedAccessControl {
    * - `account`: The `left` of the caller's account, a `Bytes<32>`. A contract caller is rejected.
    * - `blinding`: The caller's secret blinding factor, a `Bytes<32>`.
    *
+   * Requirements:
+   *
+   * - `caller` is not the zero account.
+   * - `blinding` is not zero.
+   *
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    *
@@ -852,6 +870,11 @@ module ShieldedAccessControl {
    * ## Derivation
    * See {_computeAccountCommitment}.
    *
+   * Requirements:
+   *
+   * - `account` is not zero.
+   * - `blinding` is not zero.
+   *
    * @param {Bytes<32>} account - The `left` of the holder's account.
    * @param {Bytes<32>} blinding - The holder's blinding factor.
    *
@@ -861,6 +884,8 @@ module ShieldedAccessControl {
                         account: Bytes<32>,
                         blinding: Blinding
                         ): AccountCommitment {
+    assert(account != default<Bytes<32>>, "ShieldedAccessControl: zero account");
+    assert(blinding as Bytes<32> != default<Bytes<32>>, "ShieldedAccessControl: zero blinding");
     return AccountCommitment_commit(
              pad(32, "ShieldedAccessControl:account"),
              account,

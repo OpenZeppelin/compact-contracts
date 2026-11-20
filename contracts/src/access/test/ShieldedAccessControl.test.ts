@@ -296,6 +296,18 @@ describe('ShieldedAccessControl', () => {
           await contract.computeAccountCommitment(OP1_ACCOUNT, TEST_BLINDING),
         ).not.toEqual(ADMIN_ACCOUNT_ID);
       });
+
+      it('should fail with a zero blinding', async () => {
+        await expect(
+          contract.computeAccountCommitment(ADMIN_ACCOUNT, ZERO_BLINDING),
+        ).rejects.toThrow('ShieldedAccessControl: zero blinding');
+      });
+
+      it('should fail with a zero account', async () => {
+        await expect(
+          contract.computeAccountCommitment(new Uint8Array(32), TEST_BLINDING),
+        ).rejects.toThrow('ShieldedAccessControl: zero account');
+      });
     });
 
     describe('assertOnlyRole', () => {

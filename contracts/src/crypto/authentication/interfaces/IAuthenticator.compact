@@ -33,11 +33,13 @@ pragma language_version >= 0.28.0;
  *   `IAuthenticator` contract type declares this circuit.
  * - A pure `deriveAccount`, so a client computes the same account off-chain.
  *
- * The account it returns is canonical: the inactive arm is zero. Modules
- * compare the account as a whole.
+ * The account it returns is canonical: the inactive arm is zero. A module
+ * may compare the account as a whole.
  *
  * It never returns the zero account. Modules reserve it as a marker, such as
- * a renounced owner.
+ * a renounced owner. A module does not rely on the authenticator for this:
+ * it rejects the zero account itself wherever that account would pass a
+ * check or be granted authority.
  *
  * Available: `AuthPrfAddr`, knowledge of a secret key, yielding a `left`
  * account.
@@ -67,9 +69,9 @@ pragma language_version >= 0.28.0;
  *
  * @warning Not unforgeable:
  * Compact structs are not opaque, so a composing contract can build
- * `Caller { account: anyAccount }` and every module accepts it. The type
- * makes one derivation the default and a second one visible. It does not
- * make identity confusion impossible.
+ * `Caller { account: anyAccount }` and no module can tell it from an
+ * authenticated one. The type makes one derivation the default and a second
+ * one visible. It does not make identity confusion impossible.
  */
 module IAuthenticator {
   import CompactStandardLibrary;

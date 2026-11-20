@@ -250,11 +250,12 @@ module AccessControl {
   /**
    * @description Grants `roleId` to `account`.
    *
-   * @constraints k=10, rows=741
+   * @constraints k=10, rows=755
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
+   * - `account` is not the zero account.
    * - `caller` must have `roleId`'s admin role.
    *
    * @param {Caller} caller - The authenticated caller.
@@ -344,11 +345,12 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction.
    *
-   * @constraints k=9, rows=450
+   * @constraints k=9, rows=464
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
+   * - `account` is not the zero account.
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
@@ -367,10 +369,14 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
    *
-   * @constraints k=9, rows=449
+   * @constraints k=9, rows=463
    *
    * @notice External smart contracts cannot call the access control contract at this time, so granting a role to a ContractAddress may
    * render a circuit permanently inaccessible.
+   *
+   * Requirements:
+   *
+   * - `account` is not the zero account.
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
@@ -381,6 +387,7 @@ module AccessControl {
                    account: Account
                    ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!Utils_isTargetZero(canonAcct), "AccessControl: invalid account");
     if (_hasRole(roleId, canonAcct)) {
       return false;
     }

@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract takes the caller as a circuit argument, so anyone can act as
+// any account, and it exposes internal circuits. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Caller } from "../../../crypto/authentication/interfaces/IAuthenticator";
+
+import "../../NonFungibleToken" prefix NonFungibleToken_;
+
+export { Caller, ContractAddress, Either };
+
+constructor(name_: Opaque<"string">, symbol_: Opaque<"string">) {
+  NonFungibleToken_initialize(name_, symbol_);
+}
+
+export circuit balanceOf(owner: Either<Bytes<32>, ContractAddress>): Uint<128> {
+  return NonFungibleToken_balanceOf(owner);
+}
+
+export circuit ownerOf(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
+  return NonFungibleToken_ownerOf(tokenId);
+}
+
+export circuit approve(
+  caller: Caller,
+  to: Either<Bytes<32>, ContractAddress>,
+  tokenId: Uint<128>
+): [] {
+  return NonFungibleToken_approve(caller, to, tokenId);
+}
+
+export circuit getApproved(tokenId: Uint<128>): Either<Bytes<32>, ContractAddress> {
+  return NonFungibleToken_getApproved(tokenId);
+}
+
+export circuit setApprovalForAll(
+  caller: Caller,
+  operator: Either<Bytes<32>, ContractAddress>,
+  approved: Boolean
+): [] {
+  return NonFungibleToken_setApprovalForAll(caller, operator, approved);
+}
+
+export circuit isApprovedForAll(
+  owner: Either<Bytes<32>, ContractAddress>,
+  operator: Either<Bytes<32>, ContractAddress>
+): Boolean {
+  return NonFungibleToken_isApprovedForAll(owner, operator);
+}
+
+export circuit transferFrom(
+  caller: Caller,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
+  tokenId: Uint<128>
+): [] {
+  return NonFungibleToken_transferFrom(caller, fromAddress, to, tokenId);
+}
+
+export circuit _unsafeTransferFrom(
+  caller: Caller,
+  fromAddress: Either<Bytes<32>, ContractAddress>,
+  to: Either<Bytes<32>, ContractAddress>,
+  tokenId: Uint<128>
+): [] {
+  return NonFungibleToken__unsafeTransferFrom(caller, fromAddress, to, tokenId);
+}
+
+export circuit _mint(to: Either<Bytes<32>, ContractAddress>, tokenId: Uint<128>): [] {
+  return NonFungibleToken__mint(to, tokenId);
+}
+
+export circuit _unsafeMint(to: Either<Bytes<32>, ContractAddress>, tokenId: Uint<128>): [] {
+  return NonFungibleToken__unsafeMint(to, tokenId);
+}

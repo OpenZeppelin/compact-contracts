@@ -67,9 +67,9 @@ pragma language_version >= 0.28.0;
  *
  * `caller` is an argument. The composing contract gets it from an
  * authenticator, see `IAuthenticator`. This module acts on
- * `caller.account.left` and rejects a contract caller. Registration records
- * `pk` under that id. Every other circuit taking `caller` also proves the EK
- * registered for it.
+ * `caller.account.left` and rejects a contract caller. Registration rejects a
+ * zero caller and records `pk` under that id. Every other circuit taking
+ * `caller` also proves the EK registered for it.
  *
  * @warning Seed freshness. Seed freshness is load-bearing for confidentiality
  * on EVERY path. The seed-to-randomness expansion is deterministic and public,
@@ -703,12 +703,13 @@ module ConfidentialFungibleToken {
    * the returned value (e.g. assert it is KYC-approved) to restrict who may
    * register. See the module header note on caller-identity gating.
    *
-   * @constraints k=13, rows=5771
+   * @constraints k=13, rows=5779
    *
    * Requirements:
    *
    * - `pk` is the key derived from the caller's EK.
    * - Contract is initialized.
+   * - `caller` is not the zero account.
    * - The caller is not already registered.
    *
    * @param {Caller} caller - The authenticated caller.
@@ -732,6 +733,7 @@ module ConfidentialFungibleToken {
    * Requirements:
    *
    * - Contract is initialized.
+   * - `caller` is not the zero account.
    * - The caller is not already registered.
    *
    * @param {Caller} caller - The authenticated caller.
@@ -744,6 +746,7 @@ module ConfidentialFungibleToken {
             ): Bytes<32> {
     assertInitialized();
     const accountId = Account_publicKeyOf(caller.account);
+    assert(accountId != default<Bytes<32>>, "ConfidentialFungibleToken: invalid caller");
     assert(!_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: already registered");
 

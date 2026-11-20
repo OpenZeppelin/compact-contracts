@@ -72,6 +72,26 @@ const operatorRolesList = [OPERATOR_ROLE_1, OPERATOR_ROLE_2];
 const commitmentOperators = [OP1.either, OP2.either, OP3.either];
 const allOperators = [...commitmentOperators, OP1_CONTRACT];
 
+// Zero accounts
+const zeroKeyAccounts = [
+  ['zero account', eitherCommitment(zeroBytes)],
+  [
+    'non-canonical zero account',
+    {
+      is_left: true,
+      left: zeroBytes,
+      right: { bytes: new Uint8Array(32).fill(0xff) },
+    },
+  ],
+] as const;
+const zeroAccounts = [
+  ...zeroKeyAccounts,
+  [
+    'contract-arm zero account',
+    { is_left: false, left: zeroBytes, right: { bytes: zeroBytes } },
+  ],
+] as const;
+
 let accessControl: AccessControlSimulator;
 
 const operatorTypes = [
@@ -384,6 +404,20 @@ describe('AccessControl', () => {
         false,
       );
     });
+
+    it.each(zeroKeyAccounts)(
+      'should fail if admin grants role to the %s',
+      async (_, account) => {
+        await accessControl.privateState.injectSecretKey(ADMIN.secretKey);
+
+        await expect(
+          accessControl.grantRole(OPERATOR_ROLE_1, account),
+        ).rejects.toThrow('AccessControl: invalid account');
+        expect(await accessControl.hasRole(OPERATOR_ROLE_1, account)).toBe(
+          false,
+        );
+      },
+    );
   });
 
   describe('revokeRole', () => {
@@ -658,6 +692,18 @@ describe('AccessControl', () => {
         true,
       );
     });
+
+    it.each(zeroKeyAccounts)(
+      'should fail to grant role to the %s',
+      async (_, account) => {
+        await expect(
+          accessControl._grantRole(OPERATOR_ROLE_1, account),
+        ).rejects.toThrow('AccessControl: invalid account');
+        expect(await accessControl.hasRole(OPERATOR_ROLE_1, account)).toBe(
+          false,
+        );
+      },
+    );
   });
 
   describe('_unsafeGrantRole', () => {
@@ -754,6 +800,18 @@ describe('AccessControl', () => {
         await accessControl._unsafeGrantRole(OPERATOR_ROLE_1, dirtyEither),
       ).toBe(false);
     });
+
+    it.each(zeroAccounts)(
+      'should fail to grant role to the %s',
+      async (_, account) => {
+        await expect(
+          accessControl._unsafeGrantRole(OPERATOR_ROLE_1, account),
+        ).rejects.toThrow('AccessControl: invalid account');
+        expect(await accessControl.hasRole(OPERATOR_ROLE_1, account)).toBe(
+          false,
+        );
+      },
+    );
   });
 
   describe('_revokeRole', () => {

@@ -155,6 +155,24 @@ describe('Allowlist', () => {
     });
   });
 
+  describe('zero account', () => {
+    const zeroAccounts = [
+      ['zero account', account('')],
+      ['contract-arm zero account', contract('')],
+      [
+        'non-canonical zero account',
+        { ...account(''), right: { bytes: BOB.left } },
+      ],
+    ] as const;
+
+    it.each(zeroAccounts)('should fail to allow the %s', async (_, zero) => {
+      await expect(allowlist.allow(zero)).rejects.toThrow(
+        'Allowlist: invalid account',
+      );
+      expect(await allowlist.isAllowed(zero)).toBe(false);
+    });
+  });
+
   describe('simulator wiring', () => {
     it('exposes the public ledger via getPublicState', async () => {
       const sim = await AllowlistSimulator.create();

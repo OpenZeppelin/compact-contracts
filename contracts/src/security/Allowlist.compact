@@ -93,13 +93,18 @@ module Allowlist {
   /**
    * @description Adds `account` to the allowlist.
    *
-   * @constraints k=8, rows=225
+   * @constraints k=8, rows=239
+   *
+   * Requirements:
+   *
+   * - `account` is not the zero account.
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to allow.
    * @return {[]} - Empty tuple.
    */
   export circuit _allow(account: Account): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!Utils_isTargetZero(canonAcct), "Allowlist: invalid account");
     _allowed.insert(disclose(canonAcct));
   }
 
