@@ -10,9 +10,7 @@ pragma language_version >= 0.28.0;
  * represent a set of permissions.
  *
  * This module derives no caller. Every authenticating circuit takes a
- * `Caller`, which the composing contract gets from an authenticator and
- * passes to every module it drives. How the caller is authenticated is the
- * authenticator's concern, see `Caller` in the `Account` module.
+ * `Caller`, see `Caller` in the `Account` module.
  *
  * Roles are referred to by their `Bytes<32>` identifier. These should be exposed
  * in the top-level contract and be unique. One way to achieve this is by

@@ -32,8 +32,7 @@ pragma language_version >= 0.28.0;
  *     so the account itself may be public. The holder computes it off-chain with {computeAccountCommitment}
  *     and gives it to the admin. It does not bind the contract instance: the same account and blinding
  *     in two instances give both admins the same value. This module derives no caller. Every
- *     authenticating circuit takes a `Caller`, which the composing
- *     contract gets from an authenticator and passes to every module it drives.
+ *     authenticating circuit takes a `Caller`, see `Caller` in the `Account` module.
  *     The caller must be a key caller: a contract caller is rejected. A zero account and a zero
  *     blinding are rejected. One `accountCommitment` can hold several roles within the same contract
  *     instance.

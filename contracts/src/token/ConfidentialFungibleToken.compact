@@ -201,7 +201,7 @@ pragma language_version >= 0.28.0;
  * about compliance policy (freeze, KYC, pause); a composing contract layers
  * that on top. Every gated value reaches this module as an argument, so the
  * wrapper and this module see the same value. For the caller, the composing
- * contract authenticates once with its authenticator (see `Caller` in the
+ * contract authenticates with its authenticator (see `Caller` in the
  * `Account` module) and passes the same `Caller` to this module and to any
  * gate (allowlist, blocklist):
  *

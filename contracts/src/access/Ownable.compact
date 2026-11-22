@@ -11,9 +11,7 @@ pragma language_version >= 0.28.0;
  * This approach is perfectly reasonable for contracts that have a single administrative user.
  *
  * This module derives no caller. Every authenticating circuit takes a
- * `Caller`, which the composing contract gets from an authenticator and
- * passes to every module it drives. How the caller is authenticated is the
- * authenticator's concern, see `Caller` in the `Account` module.
+ * `Caller`, see `Caller` in the `Account` module.
  *
  * The initial owner must be set by using the `initialize` circuit during construction.
  * This can later be changed with `transferOwnership`.

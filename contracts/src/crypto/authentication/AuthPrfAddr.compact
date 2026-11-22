@@ -11,7 +11,7 @@ pragma language_version >= 0.28.0;
  * authenticator does.
  *
  * The composing contract calls `authenticate(salt)` and passes the returned
- * caller to every module it drives.
+ * caller to the modules that take one.
  *
  * ```compact
  * export circuit transfer(
@@ -101,8 +101,10 @@ module AuthPrfAddr {
    *
    * @warning Shared salt:
    * Two contracts with the same salt give one secret the same account on
-   * both, which links the user across them. Use a per-deployment value unless
-   * the contracts are meant to share identities.
+   * both, which links the user across them. The contract fixes the salt, so
+   * a user avoids the link only by using a different secret key on each. Use
+   * a per-deployment value unless the contracts are meant to share
+   * identities.
    *
    * @param {Bytes<32>} salt - The per-deployment salt.
    * @return {Caller} - The authenticated caller.

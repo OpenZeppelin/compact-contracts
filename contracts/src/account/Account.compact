@@ -5,7 +5,7 @@ pragma language_version >= 0.28.0;
 
 /**
  * @module Account
- * @description The account every module in this library stores and takes:
+ * @description The account that modules in this library store and take:
  * the `PublicKey` and `Account` types and two accessors. It also holds the
  * `Caller` every authenticating circuit in this library takes. An
  * authenticator module produces a `Caller`. No witness, no ledger state and
@@ -40,7 +40,7 @@ pragma language_version >= 0.28.0;
  * exports:
  * - `authenticate(salt): Caller`, which derives the caller's account under
  *   `salt`. The salt is per deployment, never per module, so one deployment
- *   gives one account to every module the contract drives.
+ *   gives one account to every module that takes a caller.
  * - A pure `deriveAccount`, so a client computes the same account off-chain.
  *
  * The account it returns is canonical: the inactive arm is zero. A module
