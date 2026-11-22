@@ -11,15 +11,15 @@ name: Live Test Suite
 #   - on a PR, opt-in, by applying a `live-tests:<target>` label, or
 #     `live-tests:all` for every target (re-apply to re-run). The bare
 #     `live-tests` label is rejected by the plan job: per-file legs would make it
-#     60+ checks on the PR, so the full fan-out has to be spelled out. Each label
+#     dozens of checks on the PR, so the full fan-out has to be spelled out. Each label
 #     runs on its own, so several targets can run on one PR at once.
 #
 # One plan job, then a PIPELINE PER TARGET:
 #
-#   plan ─┬─ compile-access ── live-access   (7 spec files, in parallel)
-#         ├─ compile-crypto ── live-crypto   (3)
-#         ├─ compile-token  ── live-token    (16)
-#         └─ ...                             (46 spec files over 7 targets)
+#   plan ─┬─ compile-access ── live-access   (its spec files, in parallel)
+#         ├─ compile-crypto ── live-crypto
+#         ├─ compile-token  ── live-token
+#         └─ ...
 #
 # Each target's spec files start the moment THAT target is built. The shape is
 # forced by Actions: `needs` is job-level, so a single compile matrix feeding a
@@ -31,7 +31,7 @@ name: Live Test Suite
 #
 # Two consequences of that literalness:
 #   - the steps live in reusable workflows (`live-compile.yml`, `live-suite.yml`)
-#     so the pairs below stay declarations rather than 18 copies of a job;
+#     so the pairs below stay declarations rather than multiple copies of a job;
 #   - KNOWN_TARGETS has to be kept in step with the pairs, and the plan job fails
 #     in seconds if a discovered `src/` category has no pair (`live-ci.ts`), so a
 #     new category can never be silently missing from the live run.
@@ -39,8 +39,8 @@ name: Live Test Suite
 # Per spec file rather than per target because a target is one long serial job
 # (the 2026-08-24 nightly spent 5.75h in `live-token`) while the files are
 # independent: every suite job resets its own stack, so nothing one spec leaves on
-# the node can fail another. The compile layer is what makes that affordable — 16
-# token spec jobs must not mean 16 token compiles. A file over the leg budget
+# the node can fail another. The compile layer is what makes that affordable: one
+# token compile serves every token spec job. A file over the leg budget
 # (MAX_LEG_MS in scripts/ci/split.ts, weighed by the previous run's measured
 # per-test durations when the plan job could download its reports, by test count
 # otherwise) fans out further: several legs of the same file,
@@ -76,10 +76,10 @@ on:
 
 # Deny by default, at the workflow level rather than per job.
 #
-# The 18 job pairs below are `uses:` declarations with no steps of their own, and
+# The job pairs below are `uses:` declarations with no steps of their own, and
 # a job without a `permissions:` block inherits whatever the repository's default
 # GITHUB_TOKEN scope happens to be — which CodeQL flags, once per job. Setting the
-# floor here covers all of them in one place instead of adding 18 identical blocks
+# floor here covers all of them in one place instead of adding identical blocks
 # to jobs whose whole point is to stay one-liners. The two jobs that need more
 # (`plan` reads a previous run's artifacts, `report-nightly` writes the tracking
 # issue and prunes caches) declare it themselves, and a job-level block replaces
@@ -204,7 +204,7 @@ jobs:
       && needs.plan.outputs.legs-access != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -240,7 +240,7 @@ jobs:
       && needs.plan.outputs.legs-account != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -276,7 +276,7 @@ jobs:
       && needs.plan.outputs.legs-crypto != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -312,7 +312,7 @@ jobs:
       && needs.plan.outputs.legs-math != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -348,7 +348,7 @@ jobs:
       && needs.plan.outputs.legs-multisig != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -384,7 +384,7 @@ jobs:
       && needs.plan.outputs.legs-security != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -420,7 +420,7 @@ jobs:
       && needs.plan.outputs.legs-token != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -456,7 +456,7 @@ jobs:
       && needs.plan.outputs.legs-utils != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
@@ -492,7 +492,7 @@ jobs:
       && needs.plan.outputs.legs-integration != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
-      # Sum of the 9 per-target caps bounds the fan-out; Actions has no global
+      # Sum of the per-target caps bounds the fan-out; Actions has no global
       # one. The org shares 60 concurrent jobs and an uncapped run peaked at 58.
       max-parallel: ${{ github.event_name == 'schedule' && 4 || 2 }}
       # `include` rather than an axis product: the legs are the (file, name)
