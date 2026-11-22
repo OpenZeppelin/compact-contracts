@@ -209,8 +209,8 @@ Key generation for a circuit that produces Jubjub points without taking a Jubjub
 scalar or point as an input still fails upstream; see [Known issues](CHANGELOG.md#known-issues).
 
 `@constraints` on a circuit that takes a `Caller` excludes authentication, and
-on one that takes a `Blinding` the blinding read. A deployed circuit pays the
-authenticator's `authenticate` line and `RandBlinding.read` once each, on top.
+on one that takes a `Blinding` the blinding read. A deployed circuit adds the
+cost of each `authenticate` and `RandBlinding.read` call it makes.
 
 ## Development
 
