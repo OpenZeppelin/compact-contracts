@@ -32,7 +32,7 @@ pragma language_version >= 0.28.0;
  *
  * @warning Produce the caller here:
  * A deployed contract never takes the caller as a parameter of an exported
- * circuit. See the warning on `IAuthenticator`.
+ * circuit. See the warning on `Caller` in the `Account` module.
  *
  * @notice Scope:
  * - `authenticate` replaces the witness that identified the caller. A module
@@ -58,9 +58,7 @@ pragma language_version >= 0.28.0;
 module AuthPrfAddr {
   import CompactStandardLibrary;
 
-  import { Caller } from "./interfaces/IAuthenticator";
-
-  import { Account, PublicKey } from "../../account/Account";
+  import { Account, Caller, PublicKey } from "../../account/Account";
 
   import "../prf/PrfAddr" prefix PrfAddr_;
 

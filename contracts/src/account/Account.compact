@@ -6,8 +6,11 @@ pragma language_version >= 0.28.0;
 /**
  * @module Account
  * @description The account every module in this library stores and takes:
- * the `PublicKey` and `Account` types and two accessors. No witness, no
- * ledger state and no derivation.
+ * the `PublicKey` and `Account` types and two accessors. It also holds the
+ * `Caller` every authenticating circuit in this library takes. An
+ * authenticator module produces a `Caller`. No witness, no ledger state and
+ * no derivation: a module imports this to name the caller without learning
+ * how the caller was authenticated.
  *
  * A module imports the types by name with no prefix. For the accessors it
  * imports the module under the `Account_` prefix.
@@ -30,6 +33,54 @@ pragma language_version >= 0.28.0;
  * - `PublicKey`: `Bytes<32>`, the type of a `left` arm. A public value bound
  *   one-way to a secret. Its holder proves knowledge of the secret. It
  *   verifies no signature.
+ * - `account`: the `Account` of a `Caller`, who the caller is.
+ *
+ * @dev Authenticators:
+ * An authenticator is a module that produces a `Caller`. By convention it
+ * exports:
+ * - `authenticate(salt): Caller`, which derives the caller's account under
+ *   `salt`. The salt is per deployment, never per module, so one deployment
+ *   gives one account to every module the contract drives.
+ * - A pure `deriveAccount`, so a client computes the same account off-chain.
+ *
+ * The account it returns is canonical: the inactive arm is zero. A module
+ * may compare the account as a whole.
+ *
+ * It never returns the zero account. Modules reserve it as a marker, such as
+ * a renounced owner. A module does not rely on the authenticator for this:
+ * it rejects the zero account itself wherever that account would pass a
+ * check or be granted authority.
+ *
+ * The authenticators of this library are under `crypto/authentication`.
+ *
+ * @dev Why a struct:
+ * An authenticated account and one passed in as an argument have the same
+ * type. `Caller` types them apart, so a plain account in the caller's place
+ * does not compile.
+ *
+ * @warning Produce the caller, never accept one:
+ * An exported circuit of a deployed contract MUST NOT take a `Caller`
+ * parameter. The transaction sender chooses it, so they choose the account
+ * every gate sees. Only the deployed contract calls an authenticator, and it
+ * passes the result down.
+ *
+ * ```compact
+ * // Module circuit: the composing contract supplies the caller.
+ * export circuit assertOnlyOwner(caller: Caller): [] { ... }
+ *
+ * // Deployed contract: authenticate inside the circuit.
+ * export circuit withdraw(value: Uint<128>): [] {
+ *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   Ownable_assertOnlyOwner(caller);
+ *   ...
+ * }
+ * ```
+ *
+ * @warning Not unforgeable:
+ * Compact structs are not opaque, so a composing contract can build
+ * `Caller { account: anyAccount }` and no module can tell it from an
+ * authenticated one. The type makes one derivation the default and a second
+ * one visible. It does not make identity confusion impossible.
  */
 module Account {
   import CompactStandardLibrary;
@@ -46,6 +97,16 @@ module Account {
    * alias: any `Either<Bytes<32>, ContractAddress>` is an `Account`.
    */
   export type Account = Either<PublicKey, ContractAddress>;
+
+  /**
+   * @description A caller an authenticator produced, as opposed to an
+   * account passed in as an argument.
+   * @type {Either<Bytes<32>, ContractAddress>} account - The caller's
+   * account.
+   */
+  export struct Caller {
+    account: Account;
+  }
 
   /**
    * @description The public key behind `account`. A module whose accounts

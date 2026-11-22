@@ -66,7 +66,7 @@ pragma language_version >= 0.28.0;
  *    Seed freshness @warning below.
  *
  * `caller` is an argument. The composing contract gets it from an
- * authenticator, see `IAuthenticator`. This module acts on
+ * authenticator, see `Caller` in the `Account` module. This module acts on
  * `caller.account.left` and rejects a contract caller. Registration rejects a
  * zero caller and records `pk` under that id. Every other circuit taking
  * `caller` also proves the EK registered for it.
@@ -201,9 +201,9 @@ pragma language_version >= 0.28.0;
  * about compliance policy (freeze, KYC, pause); a composing contract layers
  * that on top. Every gated value reaches this module as an argument, so the
  * wrapper and this module see the same value. For the caller, the composing
- * contract authenticates once with its authenticator (see `IAuthenticator`) and
- * passes the same `Caller` to this module and to any gate
- * (allowlist, blocklist):
+ * contract authenticates once with its authenticator (see `Caller` in the
+ * `Account` module) and passes the same `Caller` to this module and to any
+ * gate (allowlist, blocklist):
  *
  * ```compact
  * export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
@@ -308,7 +308,7 @@ pragma language_version >= 0.28.0;
 module ConfidentialFungibleToken {
   import CompactStandardLibrary;
 
-  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
+  import { Caller } from "../account/Account";
 
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;

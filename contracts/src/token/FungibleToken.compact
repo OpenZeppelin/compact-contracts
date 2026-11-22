@@ -10,7 +10,7 @@ pragma language_version >= 0.28.0;
  * This module derives no caller. Each circuit that acts for the caller takes a
  * `Caller`, which the composing contract gets from an authenticator and
  * passes to every module it drives. How the caller is authenticated is the
- * authenticator's concern, see `IAuthenticator`.
+ * authenticator's concern, see `Caller` in the `Account` module.
  *
  * @notice One notable difference regarding this implementation and the EIP20 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
@@ -70,9 +70,7 @@ pragma language_version >= 0.28.0;
 module FungibleToken {
   import CompactStandardLibrary;
 
-  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
-
-  import { Account } from "../account/Account";
+  import { Account, Caller } from "../account/Account";
 
   import "../utils/Utils" prefix Utils_;
 

@@ -16,7 +16,7 @@ import {
 /** `Account`: a `left` public key or a `right` contract address. */
 export type Account = Either<Uint8Array, ContractAddress>;
 
-/** `IAuthenticator.Caller`. */
+/** `Caller`: a caller an authenticator produced. */
 export type Caller = { account: Account };
 
 /**

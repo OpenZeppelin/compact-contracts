@@ -35,9 +35,7 @@ Compact imports are written in four groups, in this order, with one blank line b
 ```compact
 import CompactStandardLibrary;
 
-import { Caller } from "./interfaces/IAuthenticator";
-
-import { Account, PublicKey } from "../../account/Account";
+import { Account, Caller, PublicKey } from "../../account/Account";
 
 import "../prf/PrfAddr" prefix PrfAddr_;
 ```

@@ -38,10 +38,6 @@ const AUTH_SOURCE = readFileSync(
   new URL('../AuthPrfAddr.compact', import.meta.url),
   'utf8',
 );
-const MOCK_SOURCE = readFileSync(
-  new URL('./mocks/MockAuthPrfAddr.compact', import.meta.url),
-  'utf8',
-);
 
 /** `left(persistentHash([tag, salt, sk]))`, the account `deriveAccount` returns. */
 const buildAccount = (sk: Uint8Array, salt: Uint8Array): Account => ({
@@ -191,13 +187,7 @@ describe('AuthPrfAddr', () => {
     });
   });
 
-  describe('IAuthenticator', () => {
-    it('should declare that the mock implements IAuthenticator', () => {
-      expect(codeLines(MOCK_SOURCE)).toContain(
-        'contract implements IAuthenticator;',
-      );
-    });
-
+  describe('signature', () => {
     it('should expose authenticate(salt: Bytes<32>): Caller', () => {
       const authenticate = readContractInfo(ARTIFACT).circuits.find(
         ({ name }) => name === 'authenticate',
