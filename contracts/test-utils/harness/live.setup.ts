@@ -1,4 +1,3 @@
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createLogger } from '@midnight-ntwrk/testkit-js';
 import pino from 'pino';
 import { beforeAll, beforeEach, expect } from 'vitest';
@@ -32,14 +31,11 @@ import {
  * seed; its three signers start empty and are topped up from it before the
  * pool's readiness gate.
  *
- * Order matters: pin the process network id first (deployContract and the
- * indexer provider read it globally), register the backend, then build the
- * wallets up front so specs can read each published `MIDNIGHT_<ALIAS>_COIN_PK`
- * at module load (e.g. a forwarder's parent key, or a multisig's live signer
- * set). Top-level await; setup files are awaited before test files.
+ * Order matters: register the backend, then build the wallets up front so
+ * specs can read each published `MIDNIGHT_<ALIAS>_COIN_PK` at module load
+ * (e.g. a forwarder's parent key, or a multisig's live signer set). Top-level
+ * await; setup files are awaited before test files.
  */
-
-setNetworkId('undeployed');
 
 // The forks pool sets `VITEST_POOL_ID` to 1..maxWorkers before setup files
 // load; it is this worker's partition index. Defaults to 1 on a non-forked run.

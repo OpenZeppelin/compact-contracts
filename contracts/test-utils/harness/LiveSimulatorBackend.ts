@@ -136,7 +136,10 @@ function compileArtifact(
 
 /** Reads on-chain public state + tx status from the indexer. */
 function makePublicDataProvider(env: LocalTestConfiguration) {
-  return indexerPublicDataProvider(env.indexer, env.indexerWS);
+  return indexerPublicDataProvider({
+    queryURL: env.indexer,
+    subscriptionURL: env.indexerWS,
+  });
 }
 
 /** Loads the artifact's proving keys + zkir from its artifact directory. */
@@ -149,7 +152,7 @@ function makeProofProvider(
   env: LocalTestConfiguration,
   zkConfigProvider: ReturnType<typeof makeZkConfigProvider>,
 ) {
-  return httpClientProofProvider(env.proofServer, zkConfigProvider);
+  return httpClientProofProvider({ url: env.proofServer, zkConfigProvider });
 }
 
 /**
@@ -329,6 +332,7 @@ export class LiveSimulatorBackend {
       zkConfigProvider,
       proofProvider: makeProofProvider(this.env, zkConfigProvider),
       privateStateProvider: makePrivateStateProvider(),
+      config: { networkId: this.env.networkId, ttlSeconds: 3600 },
     };
   }
 

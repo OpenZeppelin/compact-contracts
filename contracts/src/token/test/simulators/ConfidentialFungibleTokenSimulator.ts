@@ -266,12 +266,14 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
       effects: built.context.callContext.currentQueryContext.effects,
       // A budget, not a measurement: replay costs differ slightly from the build,
       // and an exact figure fails with "ran out of gas budget" before any read is
-      // compared, which would look like a rejection for the wrong reason
+      // compared, which would look like a rejection for the wrong reason.
+      // `bytesDeleted` is the exception: it is a floor the replay must reach,
+      // and the build's figure overstates what one replay deletes, so claim none
       gas: {
         readTime: g.readTime * 100n,
         computeTime: g.computeTime * 100n,
         bytesWritten: g.bytesWritten * 100n,
-        bytesDeleted: g.bytesDeleted * 100n,
+        bytesDeleted: 0n,
       },
     };
   }
