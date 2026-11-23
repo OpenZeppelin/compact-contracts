@@ -234,6 +234,7 @@ module NativeShieldedStatelessTreasury<#t> {
    *
    * Requirements:
    *
+   * - `instanceSalt` is not zero.
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
    * - `n` must be at least `t`.

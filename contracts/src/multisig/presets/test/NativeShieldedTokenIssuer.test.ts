@@ -282,6 +282,20 @@ describe('NativeShieldedTokenIssuer', () => {
       ).rejects.toThrow('Signer: signer already active');
     });
 
+    it('should fail when the instance salt is zero', async () => {
+      await expect(
+        NativeShieldedTokenIssuer2To3Simulator.create(
+          new Uint8Array(32),
+          TOKEN_DOMAIN,
+          TOKEN_NAME,
+          TOKEN_SYMBOL,
+          TOKEN_DECIMALS,
+          SIGNER_COMMITMENTS,
+          true,
+        ),
+      ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid salt');
+    });
+
     it('stores the token metadata', async () => {
       multisig = await freshMultisig();
       expect(await multisig.name()).toStrictEqual(TOKEN_NAME);

@@ -162,6 +162,16 @@ describe('NativeShieldedStatelessTreasury', () => {
         );
       expect(await multisig.isSigner(unknown)).toEqual(false);
     });
+
+    it('should fail when the instance salt is zero', async () => {
+      await expect(
+        NativeShieldedStatelessTreasury_2To3Simulator.create(
+          new Uint8Array(32),
+          SIGNER_COMMITMENTS,
+          true,
+        ),
+      ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid salt');
+    });
   });
 
   describe('when initialized', () => {
