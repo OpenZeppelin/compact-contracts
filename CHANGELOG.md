@@ -22,12 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Move the Midnight JS stack to its stable releases:
-  - `midnight-js` `5.0.0-beta.7` → `5.0.0`
-  - `@midnight-ntwrk/compact-js` `2.5.5-rc.8` → `3.0.0`
-  - `@midnightntwrk/ledger-v9` `1.0.0-rc.5` → `1.0.0`
+  - `midnight-js` `5.0.0-beta.7` → `5.0.1`
+  - `@midnight-ntwrk/compact-js` `2.5.5-rc.8` → `3.0.2`
+  - `@midnightntwrk/ledger-v9` `1.0.0-rc.5` → `1.0.2`
   - `@openzeppelin/compact-simulator` `^0.5.0` → `^0.6.0`
   - `@openzeppelin/compact-cli` `^0.2.0` → `^0.3.0`
-  - `@openzeppelin/compact-deployer` `^0.4.0` → `^0.5.0`
+  - `@openzeppelin/compact-deployer` `^0.4.0` → `^0.5.2`
   The local stack runs proof server `9.0.1`, node `2.1.101` and indexer `4.4.101` (#1254)
 
 ### Known issues
