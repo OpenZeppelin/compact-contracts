@@ -388,7 +388,10 @@ module ConfidentialFungibleToken {
   /**
    * @description Registered ElGamal encryption keys, one per account.
    * Registration is one-shot: a second registration for the same account is
-   * rejected.
+   * rejected. Written once per account by this module (`register`) and never
+   * updated. Every `pk` this module passes to `ElGamal_addEncrypted` /
+   * `_subEncrypted` is a lookup here, never a circuit parameter. That is how
+   * the module meets the key-association precondition stated on those helpers.
    * @type {Bytes<32>} accountId - The account identifier.
    * @type {JubjubPoint} encryptionKey - The account's ElGamal public key.
    * @type {Map<accountId, encryptionKey>}
