@@ -6,7 +6,7 @@ import {
   encodeShieldedCoinInfo as makeCoin,
 } from '#test-utils/fixtures/nativeShieldedToken.js';
 import { executeMsgHash } from '../../test/EcdsaTestUtils.js';
-import { ShieldedMultiSigV2_1To3Simulator } from './simulators/ShieldedMultiSigV2_1To3Simulator.js';
+import { NativeShieldedStatelessTreasury_1To3Simulator } from './simulators/NativeShieldedStatelessTreasury_1To3Simulator.js';
 
 const RecipientKind = { ShieldedUser: 0 };
 
@@ -20,7 +20,7 @@ const S3 = signerFromLabel('v2-signer-3');
 const OUTSIDER = signerFromLabel('v2-outsider');
 
 const SIGNER_COMMITMENTS = [S1, S2, S3].map((s) =>
-  ShieldedMultiSigV2_1To3Simulator.calculateSignerId(
+  NativeShieldedStatelessTreasury_1To3Simulator.calculateSignerId(
     s.publicKey,
     INSTANCE_SALT,
   ),
@@ -40,11 +40,11 @@ const COIN = {
 const hexBytes = (hex: string): Uint8Array =>
   Uint8Array.from(Buffer.from(hex, 'hex'));
 
-let multisig: ShieldedMultiSigV2_1To3Simulator;
+let multisig: NativeShieldedStatelessTreasury_1To3Simulator;
 
 /** The digest the contract computes for sending `amount` of `COIN` to `TO` at its current nonce. */
 async function executeDigest(
-  m: ShieldedMultiSigV2_1To3Simulator,
+  m: NativeShieldedStatelessTreasury_1To3Simulator,
   amount: bigint,
 ): Promise<Uint8Array> {
   return executeMsgHash({
@@ -58,9 +58,12 @@ async function executeDigest(
 }
 
 const freshMultisig = () =>
-  ShieldedMultiSigV2_1To3Simulator.create(INSTANCE_SALT, SIGNER_COMMITMENTS);
+  NativeShieldedStatelessTreasury_1To3Simulator.create(
+    INSTANCE_SALT,
+    SIGNER_COMMITMENTS,
+  );
 
-describe('ShieldedMultiSigV2 1-of-3', () => {
+describe('NativeShieldedStatelessTreasury 1-of-3', () => {
   describe('view', () => {
     beforeAll(async () => {
       multisig = await freshMultisig();

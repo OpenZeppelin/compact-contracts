@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockInitializable,
-} from '../../../../artifacts/MockInitializable/contract/index.js';
+} from '../../../../artifacts/security/test/mocks/MockInitializable/contract/index.js';
 import {
   InitializablePrivateState,
   InitializableWitnesses,

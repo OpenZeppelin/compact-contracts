@@ -11,7 +11,7 @@ import {
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNativeShieldedTokenCore/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockNativeShieldedTokenCore/contract/index.js';
 
 /**
  * The core module declares no witnesses, so the private state is empty and the

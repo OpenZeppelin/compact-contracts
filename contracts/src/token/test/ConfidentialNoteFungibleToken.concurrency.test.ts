@@ -48,7 +48,7 @@ import type {
 import {
   pureCircuits as core,
   Contract as MockCore,
-} from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
+} from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
 import {
   ConfidentialNoteFungibleTokenWitnesses,
   createNoteWallet,

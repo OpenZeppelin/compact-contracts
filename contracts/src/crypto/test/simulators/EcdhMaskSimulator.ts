@@ -7,7 +7,7 @@ import {
   type EcdhMask_Ciphertext as Ciphertext,
   ledger,
   Contract as MockEcdhMask,
-} from '../../../../artifacts/MockEcdhMask/contract/index.js';
+} from '../../../../artifacts/crypto/test/mocks/MockEcdhMask/contract/index.js';
 
 export type { Ciphertext };
 
@@ -60,6 +60,19 @@ export class EcdhMaskSimulator extends EcdhMaskSimulatorBase {
    */
   public kdf(sShared: JubjubPoint, domain: Uint8Array): Promise<bigint> {
     return this.circuits.impure.kdf(sShared, domain);
+  }
+
+  /** @description Digests the shared point, the secret input of `kdf`. */
+  public pointDigest(sShared: JubjubPoint): Promise<Uint8Array> {
+    return this.circuits.impure.pointDigest(sShared);
+  }
+
+  /** @description Derives the mask for `domain` from a point digest. */
+  public kdfFromDigest(
+    digest: Uint8Array,
+    domain: Uint8Array,
+  ): Promise<bigint> {
+    return this.circuits.impure.kdfFromDigest(digest, domain);
   }
 
   /**

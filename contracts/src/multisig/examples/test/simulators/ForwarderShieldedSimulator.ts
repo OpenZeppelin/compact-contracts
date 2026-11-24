@@ -10,7 +10,7 @@ import {
   type ShieldedCoinInfo,
   type ShieldedSendResult,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/ForwarderShieldedExample/contract/index.js';
+} from '../../../../../artifacts/multisig/examples/ForwarderShieldedExample/contract/index.js';
 import {
   EmptyPrivateState,
   emptyWitnesses,

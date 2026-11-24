@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockUnshieldedTreasury,
-} from '../../../../artifacts/MockUnshieldedTreasury/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockUnshieldedTreasury/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type UnshieldedRecipient = {

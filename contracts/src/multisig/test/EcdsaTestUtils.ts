@@ -188,7 +188,7 @@ export function burnFromSelfMsgHash(params: {
   );
 }
 
-/** ShieldedMultiSigV2 `execute` digest. `contractAddress` is `kernel.self().bytes`. */
+/** NativeShieldedStatelessTreasury `execute` digest. `contractAddress` is `kernel.self().bytes`. */
 export function executeMsgHash(params: {
   contractAddress: Uint8Array;
   instanceSalt: Uint8Array;
@@ -199,7 +199,7 @@ export function executeMsgHash(params: {
 }): Uint8Array {
   return bytesOf(
     TypedDataEncoder.hash(
-      domain('ShieldedMultiSigV2', params.instanceSalt),
+      domain('NativeShieldedStatelessTreasury', params.instanceSalt),
       EXECUTE_TYPES,
       {
         contractAddress: hexOf(params.contractAddress),

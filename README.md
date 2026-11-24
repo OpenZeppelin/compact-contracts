@@ -1,4 +1,4 @@
-[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.34.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact/)
+[![Generic badge](https://img.shields.io/badge/Compact%20Compiler-0.36.0-1abc9c.svg)](https://docs.midnight.network/relnotes/compact/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 This project is built on the Midnight Network.
@@ -10,7 +10,7 @@ This project is built on the Midnight Network.
 
 > ## ⚠️ WARNING! ⚠️
 >
-> This repo contains highly experimental code.
+> Pre-release versions (`-alpha`, `-rc`) contain experimental, unaudited code.
 > Expect rapid iteration.
 > **Use at your own risk.**
 
@@ -37,8 +37,7 @@ Follow Midnight's [Compact Developer Tools installation guide](https://docs.midn
 ```bash
 $ compact compile --version
 
-Compactc version: 0.34.0
-0.34.0
+0.36.0 (b5d9e4dfc 2026-11-03)
 ```
 
 ### Installation
@@ -64,7 +63,7 @@ Import the modules through `./node_modules/@openzeppelin/compact-contracts/...`.
 ```typescript
 // MyContract.compact
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 import "./node_modules/@openzeppelin/compact-contracts/access/Ownable"
@@ -189,15 +188,10 @@ Compiling 14 circuits:
 Overall progress [====================] 14/14
 ```
 
-ZKIR v3: the library targets ZKIR v2, the compiler 0.34.0 default.
-Pass `--feature-zkir-v3` only when the contract reaches a module that needs it:
-the secp256k1-based `crypto/Ecdsa` and `multisig/Secp256k1EcdsaMultisig`,
-or the `keccak256`-based `crypto/Eip712`.
-`multisig/presets/ShieldedMultiSigV2`, `multisig/presets/NativeShieldedTokenIssuer`
-and the `multisig/examples/` contracts reach both.
-`utils/EvmAbi` needs no `keccak256` of its own and compiles on either backend.
-Compiling the other modules under v3 currently hits upstream blockers,
-listed under [Known issues](CHANGELOG.md#known-issues).
+ZKIR v3: compiler 0.36.0 emits ZKIR v3 only, and `--feature-zkir-v3` is gone.
+Every `@constraints` annotation in the library is a ZKIR v3 measurement.
+Key generation for a circuit that produces Jubjub points without taking a Jubjub
+scalar or point as an input still fails upstream; see [Known issues](CHANGELOG.md#known-issues).
 
 ## Development
 
@@ -233,6 +227,8 @@ yarn compile
 yarn test
 ```
 
+Integration and live suites are described in [TESTING.md](TESTING.md).
+
 ### Check/apply Biome formatter
 
 ```bash
@@ -247,6 +243,7 @@ yarn lint:fix
 ```bash
 yarn compile:access
 yarn compile:archive
+yarn compile:math
 ...
 ```
 
@@ -278,9 +275,11 @@ rm -rf .turbo/
 
 ## Security
 
-This project is still in a very early and experimental phase. It has never been audited nor thoroughly reviewed for security vulnerabilities. DO NOT USE IT IN PRODUCTION.
+For production, use a stable release (no `-alpha` or `-rc` suffix) on the Midnight ledger it targets. Pre-releases are not audited and should not be used in production.
 
-Please report any security issues you find to <security@openzeppelin.com>.
+Scopes and audited commits are listed in [audits](./audits/README.md).
+
+Please report any security issues you find to <security@openzeppelin.com>. See [SECURITY.md](SECURITY.md).
 
 ### Provenance
 

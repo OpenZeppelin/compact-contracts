@@ -1,6 +1,6 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../artifacts/MockZOwnablePK/contract/index.js';
+import type { Ledger } from '../../../../artifacts/access/test/mocks/MockZOwnablePK/contract/index.js';
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,

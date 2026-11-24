@@ -16,7 +16,7 @@ import {
   Contract as MockZOwnableNativeShieldedToken,
   type ShieldedCoinInfo,
   type ZswapCoinPublicKey,
-} from '../../../../../artifacts/MockZOwnableNativeShieldedToken/contract/index.js';
+} from '../../../../../artifacts/token/presets/test/mocks/MockZOwnableNativeShieldedToken/contract/index.js';
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,

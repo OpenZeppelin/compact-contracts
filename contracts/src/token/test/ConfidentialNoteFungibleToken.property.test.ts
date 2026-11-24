@@ -14,7 +14,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
+import { pureCircuits as core } from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
 
 // ---------------------------------------------------------------------------
 // Generators, each pinned to the circuit's own type

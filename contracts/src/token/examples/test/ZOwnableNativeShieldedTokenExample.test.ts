@@ -8,7 +8,7 @@ import { shieldedTestKey } from '#test-utils/fixtures/shieldedKey.js';
 import {
   Contract as Ex,
   ledger,
-} from '../../../../artifacts/ZOwnableNativeShieldedTokenExample/contract/index.js';
+} from '../../../../artifacts/token/examples/ZOwnableNativeShieldedTokenExample/contract/index.js';
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,

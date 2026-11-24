@@ -7,7 +7,7 @@ import {
   type Either,
   ledger,
   Contract as MockNonFungibleToken,
-} from '../../../../artifacts/MockNonFungibleToken/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockNonFungibleToken/contract/index.js';
 import {
   NonFungibleTokenPrivateState,
   NonFungibleTokenWitnesses,

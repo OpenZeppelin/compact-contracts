@@ -40,7 +40,7 @@ import {
   Contract as MockToken,
   type ShieldedCoinInfo,
   type Witnesses,
-} from '../../../../artifacts/MockZOwnableNativeShieldedToken/contract/index.js';
+} from '../../../../artifacts/token/presets/test/mocks/MockZOwnableNativeShieldedToken/contract/index.js';
 import { createIdHash } from './simulators/ZOwnableNativeShieldedTokenSimulator.js';
 
 // ---------------------------------------------------------------------------

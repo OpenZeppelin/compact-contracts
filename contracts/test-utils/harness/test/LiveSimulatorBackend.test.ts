@@ -182,6 +182,17 @@ describe('LiveSimulatorBackend', () => {
       expect(ctx).toStrictEqual({ liveContext: true });
     });
 
+    it('loads the module from the artifact directory compact.toml names', async () => {
+      await capturedBuildContext(deployBackend())(REQUEST);
+
+      expect(loadContract).toHaveBeenCalledWith(
+        path.join(
+          REPO_ROOT,
+          'contracts/artifacts/access/test/mocks/MockOwnable',
+        ),
+      );
+    });
+
     it("passes every pooled wallet's encryption key to the live context", async () => {
       const buildContext = capturedBuildContext(deployBackend());
       await buildContext(REQUEST);

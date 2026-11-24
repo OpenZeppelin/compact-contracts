@@ -4,14 +4,14 @@
   "private": true,
   "packageManager": "yarn@4.12.0",
   "workspaces": [
-    "contracts/",
-    "packages/*"
+    "contracts/"
   ],
   "scripts": {
     "compile": "turbo run compile --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:access": "turbo run compile:access --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:archive": "turbo run compile:archive --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:crypto": "turbo run compile:crypto --filter=@openzeppelin/compact-contracts --log-prefix=none",
+    "compile:math": "turbo run compile:math --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:multisig": "turbo run compile:multisig --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:security": "turbo run compile:security --filter=@openzeppelin/compact-contracts --log-prefix=none",
     "compile:token": "turbo run compile:token --filter=@openzeppelin/compact-contracts --log-prefix=none",
@@ -46,11 +46,10 @@
     "postcss": "8.5.10",
     "picomatch": "4.0.4",
     "ip-address": "10.1.1",
-    "@midnight-ntwrk/compact-runtime": "0.19.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.19.0"
+    "@midnight-ntwrk/compact-runtime": "0.21.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

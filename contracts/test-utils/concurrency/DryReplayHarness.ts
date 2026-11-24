@@ -114,13 +114,13 @@ export class DryReplayHarness<P> implements ConcurrencyHarness<ChargedState> {
 
   async build<R>(call: Call, at: ChargedState): Promise<Pending<R>> {
     const circuit = this.circuitFor(call);
-    const context = createCircuitContext(
-      call.circuitId,
-      this.address,
-      this.coinPublicKey,
-      at,
-      this.privateState,
-    );
+    const context = createCircuitContext({
+      circuitId: call.circuitId,
+      contractAddress: this.address,
+      coinPublicKeyOrZswapState: this.coinPublicKey,
+      contractState: at,
+      privateState: this.privateState,
+    });
     const results = await circuit(context, ...(call.args as never[]));
 
     // Runtime 0.18 moved proof data onto the context, as one entry per call in

@@ -2,7 +2,7 @@ import { createSimulator } from '@openzeppelin/compact-simulator';
 import {
   Contract as ComposedTokens,
   ledger,
-} from '../../../artifacts/ComposedTokens/contract/index.js';
+} from '../../../artifacts/integration/ComposedTokens/contract/index.js';
 
 type EmptyPrivateState = Record<string, never>;
 

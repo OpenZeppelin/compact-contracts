@@ -4,7 +4,7 @@
 // Exposes the EcdhMask module's circuits so they can be driven from off-chain
 // tests. DO NOT deploy or use this contract in any production application.
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 import "../../EcdhMask" prefix EcdhMask_;
@@ -19,6 +19,16 @@ ledger _invocations: Counter;
 export circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
   _invocations.increment(1);
   return EcdhMask_kdf(sShared, domain);
+}
+
+export circuit pointDigest(sShared: JubjubPoint): Bytes<32> {
+  _invocations.increment(1);
+  return EcdhMask_pointDigest(sShared);
+}
+
+export circuit kdfFromDigest(digest: Bytes<32>, domain: Bytes<32>): Field {
+  _invocations.increment(1);
+  return EcdhMask_kdfFromDigest(digest, domain);
 }
 
 export circuit encrypt(

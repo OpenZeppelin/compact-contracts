@@ -7,7 +7,7 @@ import {
   type Either,
   ledger,
   Contract as MockOwnable,
-} from '../../../../artifacts/MockOwnable/contract/index.js';
+} from '../../../../artifacts/access/test/mocks/MockOwnable/contract/index.js';
 import {
   OwnablePrivateState,
   OwnableWitnesses,

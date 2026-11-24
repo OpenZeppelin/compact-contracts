@@ -4,7 +4,7 @@
 // Exposes the Ecdh module's pure circuits so they can be driven from off-chain
 // tests. DO NOT deploy or use this contract in any production application.
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 import "../../Ecdh" prefix Ecdh_;

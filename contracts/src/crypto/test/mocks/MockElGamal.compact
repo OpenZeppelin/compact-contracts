@@ -5,7 +5,7 @@
 // driven directly from off-chain tests. DO NOT deploy or use this contract in
 // any production application.
 
-pragma language_version >= 0.26.0;
+pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
@@ -18,22 +18,37 @@ export { ElGamal_Ciphertext }
 // the code evaluated but never proven.
 ledger _invocations: Counter;
 
+// ZKIR v3 enables its Jubjub gadget only for a circuit that takes a
+// `JubjubScalar` or `JubjubPoint` input (argument, witness value or ledger read). The four
+// wrappers below produce points or scalars from bytes and would otherwise fail
+// key generation (LFDT-Minokawa/compact#616); reading this cell is the input.
+// It changes nothing about what they compute or return.
+ledger _anchor: JubjubPoint;
+
+constructor() {
+  _anchor = ecMulGenerator(1 as JubjubScalar);
+}
+
 export circuit secretToScalar(secret: Bytes<32>): JubjubScalar {
+  const _jubjub = _anchor;
   _invocations.increment(1);
   return ElGamal_secretToScalar(secret);
 }
 
 export circuit derivePk(ek: Bytes<32>): JubjubPoint {
+  const _jubjub = _anchor;
   _invocations.increment(1);
   return ElGamal_derivePk(ek);
 }
 
 export circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): JubjubScalar {
+  const _jubjub = _anchor;
   _invocations.increment(1);
   return ElGamal_expandRandomness(seed, tag);
 }
 
 export circuit encryptZero(): ElGamal_Ciphertext {
+  const _jubjub = _anchor;
   _invocations.increment(1);
   return ElGamal_encryptZero();
 }

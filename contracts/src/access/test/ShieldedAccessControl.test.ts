@@ -8,7 +8,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../artifacts/MockShieldedAccessControl/contract/index.js';
+import type { Ledger } from '../../../artifacts/access/test/mocks/MockShieldedAccessControl/contract/index.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
 import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
 
@@ -69,7 +69,7 @@ const buildRoleCommitmentHash = (
 
 const buildNullifierHash = (commitment: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
-  const bDomain = new TextEncoder().encode(NULLIFIER_DOMAIN);
+  const bDomain = encodePadded32(NULLIFIER_DOMAIN);
 
   const nullifier = persistentHash(rt_type, [commitment, bDomain]);
   return nullifier;

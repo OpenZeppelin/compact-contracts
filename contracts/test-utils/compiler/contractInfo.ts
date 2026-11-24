@@ -36,6 +36,8 @@ const COMPACT_TYPE_NAMES = [
   'Bytes',
   'Enum',
   'Field',
+  'JubjubPoint',
+  'JubjubScalar',
   'List',
   'Map',
   'Opaque',
@@ -56,6 +58,16 @@ export interface NamedCompactType {
 /** `Field`, the native scalar. A `bigint` at runtime. */
 export interface FieldTypeInfo {
   readonly 'type-name': 'Field';
+}
+
+/** `JubjubPoint`, a curve point. `{ x: bigint, y: bigint }` at runtime. */
+export interface JubjubPointTypeInfo {
+  readonly 'type-name': 'JubjubPoint';
+}
+
+/** `JubjubScalar`, a curve scalar. A `bigint` at runtime. */
+export interface JubjubScalarTypeInfo {
+  readonly 'type-name': 'JubjubScalar';
 }
 
 /** `Boolean`. A `boolean` at runtime. */
@@ -150,6 +162,8 @@ export type CompactTypeInfo =
   | BytesTypeInfo
   | EnumTypeInfo
   | FieldTypeInfo
+  | JubjubPointTypeInfo
+  | JubjubScalarTypeInfo
   | ListTypeInfo
   | MapTypeInfo
   | OpaqueTypeInfo
@@ -457,14 +471,14 @@ export function parseContractInfo(
  * Loads the compiler metadata for a built artifact. Read at call time, so
  * importing this module never requires a compiled artifact.
  *
- * @param artifactName - The directory under `contracts/artifacts`, usually a
- *   mock, e.g. `MockConfidentialNoteFungibleToken`.
+ * @param artifactPath - The directory under `contracts/artifacts`, which mirrors
+ *   the source tree, e.g. `token/test/mocks/MockConfidentialNoteFungibleToken`.
  * @throws If the artifact has not been built, or if its metadata carries a tag
  * outside {@link CompactTypeName} or {@link LedgerStorage}.
  */
-export function readContractInfo(artifactName: string): ContractInfo {
+export function readContractInfo(artifactPath: string): ContractInfo {
   const path = new URL(
-    `../../artifacts/${artifactName}/compiler/contract-info.json`,
+    `../../artifacts/${artifactPath}/compiler/contract-info.json`,
     import.meta.url,
   );
 
@@ -473,13 +487,13 @@ export function readContractInfo(artifactName: string): ContractInfo {
     text = readFileSync(path, 'utf8');
   } catch (cause) {
     throw new Error(
-      `readContractInfo: no compiler metadata for '${artifactName}'. ` +
+      `readContractInfo: no compiler metadata for '${artifactPath}'. ` +
         'Compile the contract first, then re-run.',
       { cause },
     );
   }
 
-  return parseContractInfo(text, artifactName);
+  return parseContractInfo(text, artifactPath);
 }
 
 /** Ledger slots in declaration order. */

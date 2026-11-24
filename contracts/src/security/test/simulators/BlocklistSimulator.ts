@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockBlocklist,
-} from '../../../../artifacts/MockBlocklist/contract/index.js';
+} from '../../../../artifacts/security/test/mocks/MockBlocklist/contract/index.js';
 import {
   BlocklistPrivateState,
   BlocklistWitnesses,

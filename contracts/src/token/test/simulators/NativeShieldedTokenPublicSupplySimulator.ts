@@ -5,7 +5,7 @@ import {
 import {
   ledger,
   Contract as MockNativeShieldedTokenPublicSupply,
-} from '../../../../artifacts/MockNativeShieldedTokenPublicSupply/contract/index.js';
+} from '../../../../artifacts/token/test/mocks/MockNativeShieldedTokenPublicSupply/contract/index.js';
 
 /**
  * The supply extension declares no witnesses, so the private state is empty and

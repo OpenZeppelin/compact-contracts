@@ -21,7 +21,7 @@ import type {
   QualifiedShieldedCoinInfo,
   ShieldedCoinInfo,
   ZswapCoinPublicKey,
-} from '../../../../artifacts/MockNativeShieldedTokenIssuer2To3/contract/index.js';
+} from '../../../../artifacts/multisig/presets/test/mocks/MockNativeShieldedTokenIssuer2To3/contract/index.js';
 import {
   burnFromSelfMsgHash,
   burnMsgHash,
@@ -1526,7 +1526,7 @@ describe('NativeShieldedTokenIssuer', () => {
         multisig = await freshMultisig();
       });
 
-      it('should reject a ShieldedMultiSigV2 execute signature', async () => {
+      it('should reject a NativeShieldedStatelessTreasury execute signature', async () => {
         const digest = executeMsgHash({
           contractAddress: addrBytes(multisig),
           instanceSalt: INSTANCE_SALT,

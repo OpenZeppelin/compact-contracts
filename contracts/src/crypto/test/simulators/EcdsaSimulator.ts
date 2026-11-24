@@ -7,7 +7,7 @@ import type { EcdsaSignature } from '#test-utils/fixtures/ecdsa.js';
 import {
   ledger,
   Contract as MockEcdsa,
-} from '../../../../artifacts/MockEcdsa/contract/index.js';
+} from '../../../../artifacts/crypto/test/mocks/MockEcdsa/contract/index.js';
 
 // The Ecdsa module is stateless and declares no witnesses, so the private
 // state and witness set are both empty.

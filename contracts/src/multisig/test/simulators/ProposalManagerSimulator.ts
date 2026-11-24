@@ -6,7 +6,7 @@ import {
   ledger,
   Contract as MockProposalManager,
   pureCircuits,
-} from '../../../../artifacts/MockProposalManager/contract/index.js';
+} from '../../../../artifacts/multisig/test/mocks/MockProposalManager/contract/index.js';
 import { EmptyPrivateState, emptyWitnesses } from '../EmptyWitnesses.js';
 
 type Recipient = { kind: number; address: Uint8Array };

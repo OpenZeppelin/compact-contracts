@@ -18,7 +18,7 @@ import type { Call } from '#test-utils/concurrency/types.js';
 import {
   ledger,
   Contract as MockReplayHarness,
-} from '../../../artifacts/MockReplayHarness/contract/index.js';
+} from '../../../artifacts/utils/test/mocks/MockReplayHarness/contract/index.js';
 
 type PrivateState = Record<string, never>;
 

@@ -8,7 +8,7 @@ import {
   ledger,
   Contract as MockZOwnablePK,
   type ZswapCoinPublicKey,
-} from '../../../../artifacts/MockZOwnablePK/contract/index.js';
+} from '../../../../artifacts/access/test/mocks/MockZOwnablePK/contract/index.js';
 import {
   ZOwnablePKPrivateState,
   ZOwnablePKWitnesses,

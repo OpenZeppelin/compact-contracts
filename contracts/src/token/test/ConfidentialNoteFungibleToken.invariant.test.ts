@@ -19,7 +19,7 @@ import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
-import { pureCircuits as core } from '../../../artifacts/MockConfidentialNoteFungibleToken/contract/index.js';
+import { pureCircuits as core } from '../../../artifacts/token/test/mocks/MockConfidentialNoteFungibleToken/contract/index.js';
 import { ConfidentialNoteFungibleTokenSimulator } from './simulators/ConfidentialNoteFungibleTokenSimulator.js';
 import {
   INSTANCE_SALT,
