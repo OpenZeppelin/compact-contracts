@@ -70,9 +70,11 @@ pragma language_version >= 0.26.0;
  *
  * @dev Weak keys. Encrypting under the identity point yields `c2 = m` with no
  * masking (the plaintext is exposed), and the identity is a valid subgroup
- * point so the runtime subgroup guarantee does NOT catch it. `encryptPoint`
- * therefore asserts `pk != identity`, and every encryption path routes through
- * it, so confidentiality is protected regardless of the importer. An importing
+ * point so the runtime subgroup guarantee does NOT catch it. The identity is
+ * the affine point `(0, 1)`, constructed as `ecMulGenerator(0)` throughout, and
+ * point equality compares affine coordinates. `encryptPoint` therefore asserts
+ * `pk != identity`, and every encryption path routes through it, so
+ * confidentiality is protected regardless of the importer. An importing
  * module MAY additionally reject an identity `pk` where keys enter the system
  * (e.g. at registration) to fail fast with a clear error rather than at first
  * encryption — a UX nicety, not a confidentiality requirement.

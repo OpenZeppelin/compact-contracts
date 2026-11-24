@@ -52,7 +52,8 @@ pragma language_version >= 0.26.0;
  * `decrypt` guards the same point, refusing an identity ephemeral rather than
  * unmasking against that public constant.
  * These are the only weak inputs (for a subgroup key, `S = identity` iff the
- * ephemeral point is the identity).
+ * ephemeral point is the identity). The identity's representation and point
+ * equality are as in `crypto/ElGamal`.
  *
  * @dev Integrity. The pad is malleable and NO authentication is added here. This
  * is safe in the intended on-chain use, where the ciphertext is computed

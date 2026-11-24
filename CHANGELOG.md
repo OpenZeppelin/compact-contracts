@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `ConfidentialFungibleToken`: `allowance` builds its absent-pair entry from `ecMulGenerator(0)` instead of `constructJubjubPoint(0, 1)`, matching the id guards in `ElGamal` and `EcdhMask` (#1136)
+
 ## 0.4.0 (2026-11-04)
 
 ### Changed
