@@ -1,4 +1,7 @@
-import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
+import {
+  constructJubjubPoint,
+  ecMulGenerator,
+} from '@midnight-ntwrk/compact-runtime';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { pureCircuits } from '../../../artifacts/MockEcdhMask/contract/index.js';
@@ -113,6 +116,15 @@ describe('EcdhMask', () => {
       const identity = ecMulGenerator(0n);
       expect(() => pureCircuits.encrypt(identity, 1000n, 42n, DOMAIN)).toThrow(
         'identity pk',
+      );
+    });
+
+    it('rejects the identity public key given as the coordinate pair (0, 1)', () => {
+      // The guard compares against `ecMulGenerator(0)`; the same point spelled
+      // as affine coordinates must be caught too.
+      const identity = constructJubjubPoint(0n, 1n);
+      expect(() => pureCircuits.encrypt(identity, 1000n, 42n, DOMAIN)).toThrow(
+        'EcdhMask: identity pk',
       );
     });
 
