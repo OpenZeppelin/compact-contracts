@@ -85,6 +85,8 @@ const CHARLIE = makeUser('CHARLIE');
 const NAME = 'ConfidentialToken';
 const SYMBOL = 'CT';
 const DECIMALS = 6n;
+const INIT = true;
+const BAD_INIT = false;
 
 let cft: ConfidentialFungibleTokenSimulator;
 let elgamal: ElGamalSimulator;
@@ -97,6 +99,55 @@ beforeAll(async () => {
   ecdhMask = await EcdhMaskSimulator.create();
 });
 
+// Every exported circuit except `initialize` must refuse to run before
+// `initialize` (see the module header). Views included: a reader should not
+// have to re-derive which circuits are covered.
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: initialization',
+  () => {
+    beforeEach(async () => {
+      cft = await ConfidentialFungibleTokenSimulator.create(
+        NAME,
+        SYMBOL,
+        DECIMALS,
+        BAD_INIT,
+      );
+    });
+
+    type FailingCircuit = [
+      method: keyof ConfidentialFungibleTokenSimulator,
+      args: unknown[],
+    ];
+    const circuitsToFail: FailingCircuit[] = [
+      ['balanceOf', [ALICE.accountId]],
+      ['pendingOf', [ALICE.accountId]],
+      ['allowance', [ALICE.accountId, BOB.accountId]],
+      ['isRegistered', [ALICE.accountId]],
+      ['register', []],
+      ['sweep', []],
+      ['transfer', [BOB.accountId, 1n]],
+      ['_move', [BOB.accountId, 1n]],
+      ['approve', [BOB.accountId, 1n]],
+      ['transferFrom', [ALICE.accountId, BOB.accountId, 1n]],
+      ['_mint', [ALICE.accountId, 1n]],
+      ['_burn', [1n]],
+      ['_burnFrom', [ALICE.accountId, 1n]],
+      ['clearMemos', [0n]],
+    ];
+
+    it.each(circuitsToFail)(
+      'should revert %s before initialize',
+      async (method, args) => {
+        await expect(
+          (cft[method] as (...a: unknown[]) => Promise<unknown>)(...args),
+        ).rejects.toThrow(
+          'ConfidentialFungibleToken: contract not initialized',
+        );
+      },
+    );
+  },
+);
+
 describe.skipIf(isLiveBackend())(
   'ConfidentialFungibleToken: registration',
   () => {
@@ -105,6 +156,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
     });
 
@@ -316,6 +368,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
     });
 
@@ -372,6 +425,7 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: transfer', () => {
       NAME,
       SYMBOL,
       DECIMALS,
+      INIT,
     );
   });
 
@@ -452,6 +506,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
     });
 
@@ -732,6 +787,25 @@ describe.skipIf(isLiveBackend())(
       await expect(cft.approve(new Uint8Array(32), 10n)).rejects.toThrow(
         'ConfidentialFungibleToken: invalid spender',
       );
+    });
+
+    it('rejects an approve exceeding the spendable balance', async () => {
+      await registerAll();
+      await cft.privateState.switchIdentity(
+        ALICE.secretKey,
+        ALICE.encryptionKey,
+      );
+      await cft._mint(ALICE.accountId, 100n);
+      await cft.sweep();
+      await cft.privateState.cachePlaintext(
+        await cft.balanceOf(ALICE.accountId),
+        100n,
+      );
+      await expect(cft.approve(BOB.accountId, 101n)).rejects.toThrow(
+        'ConfidentialFungibleToken: insufficient balance',
+      );
+      // The bound is the balance itself: approving exactly 100 is allowed.
+      await cft.approve(BOB.accountId, 100n);
     });
 
     it('rejects transferFrom to the zero account', async () => {
@@ -1020,6 +1094,13 @@ describe.skipIf(isLiveBackend())(
         cft.transferFrom(ALICE.accountId, CHARLIE.accountId, 1n),
       ).rejects.toThrow('ConfidentialFungibleToken: insufficient allowance');
     });
+
+    it('approve(spender, 0) stores a real memo, not the sentinel', async () => {
+      await approveBob(100n, 0n);
+
+      const entry = await cft.allowance(ALICE.accountId, BOB.accountId);
+      expect(entry.ownerMemo.ephemeralPk).not.toEqual(identityPoint());
+    });
   },
 );
 
@@ -1035,6 +1116,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
     });
 
@@ -1056,10 +1138,34 @@ describe.skipIf(isLiveBackend())(
       expect(bal).toEqual(await cft.balanceOf(BOB.accountId));
     });
 
-    it('allowance returns the default entry when no escrow exists', async () => {
-      expect(await cft.allowance(ALICE.accountId, BOB.accountId)).toEqual(
-        await cft.allowance(BOB.accountId, CHARLIE.accountId),
-      );
+    it('returns the absent-allowance placeholder when no escrow exists', async () => {
+      // Pin the exact shape, not just that two missing pairs agree: every
+      // point is the identity. The amounts are Enc(0); `ownerMemo` is a
+      // sentinel, not an encrypted zero, and wallets branch on this shape.
+      const id = identityPoint();
+      for (const [owner, spender] of [
+        [ALICE.accountId, BOB.accountId],
+        [BOB.accountId, CHARLIE.accountId],
+      ]) {
+        const entry = await cft.allowance(owner, spender);
+        expect(entry.spenderCt.c1).toEqual(id);
+        expect(entry.spenderCt.c2).toEqual(id);
+        expect(entry.ownerCt.c1).toEqual(id);
+        expect(entry.ownerCt.c2).toEqual(id);
+        expect(entry.ownerMemo.ephemeralPk).toEqual(id);
+        expect(entry.ownerMemo.ct).toBe(0n);
+      }
+
+      // The sentinel memo is not decryptable: `EcdhMask_decrypt` rejects it.
+      const { ownerMemo } = await cft.allowance(ALICE.accountId, BOB.accountId);
+      const ownerScalar = await elgamal.secretToScalar(ALICE.encryptionKey);
+      await expect(
+        ecdhMask.decrypt(
+          ownerMemo,
+          ownerScalar,
+          padTag('OZ_CFT_escrow_owner_v1'),
+        ),
+      ).rejects.toThrow('identity ephemeral');
     });
   },
 );
@@ -1079,6 +1185,7 @@ describe.skipIf(isLiveBackend())('ConfidentialFungibleToken: memos', () => {
       NAME,
       SYMBOL,
       DECIMALS,
+      INIT,
     );
   });
 
@@ -1260,6 +1367,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
       for (const u of [ALICE, BOB]) {
         await cft.privateState.switchIdentity(u.secretKey, u.encryptionKey);
@@ -1340,6 +1448,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
     });
 
@@ -1468,6 +1577,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
     });
 
@@ -1547,6 +1657,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
     });
 
@@ -1601,6 +1712,7 @@ describe.skipIf(isLiveBackend())(
         NAME,
         SYMBOL,
         DECIMALS,
+        INIT,
       );
       await cft.privateState.switchIdentity(
         ALICE.secretKey,
@@ -1708,7 +1820,7 @@ describe.skipIf(isLiveBackend())(
 
 describe('ConfidentialFungibleToken: receive-path smoke', () => {
   const deploy = () =>
-    ConfidentialFungibleTokenSimulator.create(NAME, SYMBOL, DECIMALS, {
+    ConfidentialFungibleTokenSimulator.create(NAME, SYMBOL, DECIMALS, INIT, {
       privateState: ConfidentialFungibleTokenPrivateState.withSecrets(
         ALICE.secretKey,
         ALICE.encryptionKey,

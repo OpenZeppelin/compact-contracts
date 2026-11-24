@@ -14,7 +14,8 @@ type Proposal = {
   to: Recipient;
   color: Uint8Array;
   amount: bigint;
-  state: bigint;
+  expiry: bigint;
+  status: number;
 };
 
 type ProposalManagerArgs = readonly [];
@@ -44,15 +45,6 @@ export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
   ): Promise<ProposalManagerSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
     return super.create([], options) as Promise<ProposalManagerSimulator>;
-  }
-
-  // Pure circuits (state sentinels)
-  public executedState(): bigint {
-    return pureCircuits.executedState();
-  }
-
-  public cancelledState(): bigint {
-    return pureCircuits.cancelledState();
   }
 
   // Pure circuits (recipient helpers)
@@ -100,11 +92,16 @@ export class ProposalManagerSimulator extends ProposalManagerSimulatorBase {
   }
 
   /**
-   * TEST-ONLY. Writes a raw `state` onto a proposal, modelling a consuming
+   * TEST-ONLY. Writes a raw `status` onto a proposal, modelling a consuming
    * contract that imports `_proposals` by name and mutates it directly.
    */
-  public forceProposalState(id: bigint, state: bigint): Promise<[]> {
-    return this.circuits.impure.forceProposalState(id, state);
+  public forceProposalStatus(id: bigint, status: number): Promise<[]> {
+    return this.circuits.impure.forceProposalStatus(id, status);
+  }
+
+  /** TEST-ONLY. Writes a raw `expiry` onto a proposal; see `forceProposalStatus`. */
+  public forceProposalExpiry(id: bigint, expiry: bigint): Promise<[]> {
+    return this.circuits.impure.forceProposalExpiry(id, expiry);
   }
 
   public _createProposal(

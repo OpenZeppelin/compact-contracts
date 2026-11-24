@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (access/ZOwnablePK.compact)
+// OpenZeppelin Compact Contracts v0.4.0 (access/ZOwnablePK.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -105,8 +105,6 @@ module ZOwnablePK {
    *
    * @warning The `ownerId` must be calculated prior to contract deployment using the SHA256 hashing algorithm.
    * Using any other algorithm will result in a permanent loss of contract access.
-   *
-   * @constraints k=13, rows=6765
    *
    * Requirements:
    *

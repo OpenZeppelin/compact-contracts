@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (token/ConfidentialFungibleToken.compact)
+// OpenZeppelin Compact Contracts v0.4.0 (token/ConfidentialFungibleToken.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -28,12 +28,25 @@ pragma language_version >= 0.26.0;
  * (`extensions/ConfidentialFungibleTokenPublicSupply`) a composing contract pairs
  * with them if it wants a tracked supply.
  *
+ * @notice Allowances. `approve` funds the allowance at approve time: `value`
+ * moves out of the caller's spendable balance into the escrow, where it stays
+ * until spent or re-approved. Funding is required, not a choice: the spender
+ * holds no owner encryption key, so at spend time it can only prove against
+ * its own escrow copy, never that the owner's balance covers the allowance.
+ * An approve conserves the owner's holdings (spendable plus every outstanding
+ * escrow), so allowances across spenders can sum to the whole holding but
+ * never exceed it, and a re-approve replaces the prior one rather than
+ * stacking.
+ *
  * @notice Single-receiver. Auditor support, freeze, and admin-style seize are
  * deliberately left to companion modules or a future multi-receiver variant.
  * The escrow-spend primitive here (`_spendEscrow`) enables user-consenting
  * redemption (`_burnFrom`); admin-style seize against a non-cooperating owner
  * requires authority visibility into balances and is therefore out of scope
  * for the single-receiver base.
+ *
+ * @dev Initialization. Every exported circuit except `initialize` asserts the
+ * contract is initialized.
  *
  * @dev Trust model for witnesses.
  *
@@ -256,7 +269,13 @@ pragma language_version >= 0.26.0;
  * it is deployed, so off-chain code mirroring `derivePk` must use that one for
  * the life of the instance. Adopting a newer derivation cannot recover an
  * instance whose keys were stored under the old one. A changed derivation
- * applies to fresh deployments only.
+ * applies to fresh deployments only. Stored points are the other quiet one.
+ * `_encryptionKeys`, and the points inside every ciphertext in `_balances`,
+ * `_pending`, `_escrow` and `_memos`, persist in the runtime's `JubjubPoint`
+ * encoding: the affine `(x, y)` pair as two field elements. The runtime
+ * documents no stability guarantee for that encoding and nothing here versions
+ * or migrates it, so a runtime change to how a point is encoded or normalized
+ * is a breaking storage change for every existing instance.
  *
  * Residual griefing. The dual-balance split (see `sweep`) stops dust
  * credits from churning a victim's spendable ciphertext, but every `_credit`
@@ -390,7 +409,9 @@ module ConfidentialFungibleToken {
   /**
    * @description Escrowed allowances, keyed by owner then spender. Membership is
    * checked independently of the entry, so an allowance that was never escrowed
-   * is unspendable.
+   * is unspendable. A spend also requires both owner and spender to be
+   * registered, so an entry written here for an unregistered account (for
+   * example by a composing contract) is unspendable as well.
    * @type {Bytes<32>} owner - The account that escrowed the allowance.
    * @type {Bytes<32>} spender - The account allowed to spend it.
    * @type {EscrowEntry} entry - The escrowed allowance.
@@ -585,9 +606,8 @@ module ConfidentialFungibleToken {
   export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
     assertInitialized();
     if (!_balances.member(disclose(account))) {
-      // Unregistered accounts hold zero. Return a well-formed Enc(0) rather than
-      // `default<ElGamal_Ciphertext>`, whose zeroed points are not guaranteed to
-      // be valid curve points; this matches a registered account's fresh balance.
+      // Unregistered accounts hold zero: Enc(0), the same ciphertext a registered
+      // account starts with.
       return ElGamal_encryptZero();
     }
     return _balances.lookup(disclose(account));
@@ -618,28 +638,39 @@ module ConfidentialFungibleToken {
 
   /**
    * @description Returns the escrow entry (the encrypted allowance) that `owner`
-   * granted `spender`. When no allowance exists, returns a well-formed
-   * encrypted-zero entry (its encrypted amounts decrypt to 0, analogous to an
-   * ERC-20 zero allowance) rather than `default<EscrowEntry>`: the returned
-   * Jubjub points are on-curve, so the view is safe to prove (e.g. through a
-   * contract-to-contract call) and safe for a wallet to decrypt, whereas a zeroed
-   * default holds off-curve points. The cap is encrypted, not public.
+   * granted `spender`. When no allowance exists, returns a placeholder entry
+   * (encrypted amounts that decrypt to 0 and a sentinel memo, see the notices
+   * below), which is provable (e.g. through a contract-to-contract call). The
+   * cap is encrypted, not public.
    *
-   * @notice "No allowance" and "an allowance of 0" both read as encrypted-zero;
-   * a caller that must distinguish them reads `_escrow` membership off-chain. This
-   * getter grants nothing, the spend path (`transferFrom`/`burnFrom`) gates on
-   * `_escrow` membership independently, so a non-existent allowance is unspendable.
+   * @notice The placeholder's `spenderCt` and `ownerCt` are genuine encryptions
+   * of 0. Its `ownerMemo` is not: it is a sentinel for an absent allowance,
+   * recognised by `ephemeralPk == identity`, which `EcdhMask_encrypt` never
+   * produces and `EcdhMask_decrypt` rejects. A wallet must test for the
+   * sentinel rather than decrypt and narrow it.
    *
-   * @constraints k=10, rows=936
+   * @notice "No allowance" and "an allowance of 0" both read as encrypted-zero in
+   * the amount fields; the memo sentinel tells them apart, since `approve` stores
+   * a real memo even for 0. This getter grants nothing, the spend path
+   * (`transferFrom`/`burnFrom`) gates on `_escrow` membership independently, so a
+   * non-existent allowance is unspendable.
+   *
+   * @constraints k=11, rows=1484
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
-   * @return {EscrowEntry} - The encrypted escrow entry (encrypted-zero if none).
+   * @return {EscrowEntry} - The encrypted escrow entry (a placeholder with the
+   * absent-allowance sentinel if none).
    */
   export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
+    assertInitialized();
     if (!_escrow.member(disclose(owner)) ||
         !_escrow.lookup(disclose(owner)).member(disclose(spender))) {
-      const id = constructJubjubPoint(0 as Field, 1 as Field);
+      const id = ecMulGenerator(0 as JubjubScalar);
       const zeroCt = ElGamal_Ciphertext { c1: id, c2: id };
       return EscrowEntry {
         spenderCt: zeroCt,
@@ -656,12 +687,17 @@ module ConfidentialFungibleToken {
   /**
    * @description Returns whether `account` has registered an encryption key.
    *
-   * @constraints k=9, rows=303
+   * @constraints k=9, rows=305
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
    *
    * @param {Bytes<32>} account - The account to query.
    * @return {Boolean} - True if `account` is registered.
    */
   export circuit isRegistered(account: Bytes<32>): Boolean {
+    assertInitialized();
     return _encryptionKeys.member(disclose(account));
   }
 
@@ -812,6 +848,12 @@ module ConfidentialFungibleToken {
    * `sum(balances) == totalSupply` invariant. Pair it with a debit (as `transfer`
    * does) or a supply increase (as a supply layer's `mint` does).
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - `account` is non-zero and registered.
+   *
    * @param account - The recipient account id.
    * @param value - The amount to credit.
    */
@@ -928,7 +970,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @constraints k=16, rows=41623
+   * @constraints k=16, rows=41621
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating.
    * The sender is derived from the same authentication `_debit` performs, so the
@@ -946,7 +988,6 @@ module ConfidentialFungibleToken {
    * @return {Bytes<32>} - The caller's (sender's) accountId.
    */
   export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-    assertInitialized();
     // Derive the sender from the same authentication `_debit` uses, so the
     // returned id is exactly the account whose funds moved.
     const senderId = _debit(value);
@@ -966,7 +1007,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @constraints k=16, rows=41612
+   * @constraints k=16, rows=41610
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -992,7 +1033,6 @@ module ConfidentialFungibleToken {
    * @return {Bytes<32>} - The caller's accountId (for caller-side gating).
    */
   export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
-    assertInitialized();
     const senderId = _debit(value);
     _credit(to, value);
     return senderId;
@@ -1125,7 +1165,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * ???? @constraints k=17, rows=68920
+   * @constraints k=17, rows=68922
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1135,6 +1175,7 @@ module ConfidentialFungibleToken {
    * - `value` is within `MAX_TRANSFER_VALUE()`.
    * - `to` is registered and is not the zero account.
    * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   * - `fromAddress` and the caller are registered.
    *
    * @param {Bytes<32>} fromAddress - The owner whose escrow is drawn on.
    * @param {Bytes<32>} to - The recipient account.
@@ -1146,7 +1187,6 @@ module ConfidentialFungibleToken {
                    to: Bytes<32>,
                    value: Uint<128>
                    ): Bytes<32> {
-    assertInitialized();
     _assertValueInBound(value);
     assert(to != default<Bytes<32>>,
            "ConfidentialFungibleToken: invalid receiver");
@@ -1299,6 +1339,13 @@ module ConfidentialFungibleToken {
    * not prove the post-refund balance on a later re-approve/revoke. See the
    * `EscrowEntry` field doc.
    *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `value` is within `MAX_TRANSFER_VALUE()`.
+   * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   * - `fromAddress` and the caller are registered.
+   *
    * @param fromAddress - The owner whose escrow the caller (spender) draws on.
    * @param value - The amount to consume from the allowance.
    */
@@ -1310,6 +1357,10 @@ module ConfidentialFungibleToken {
     assert(_escrow.member(disclose(fromAddress)) &&
            _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
            "ConfidentialFungibleToken: no escrow");
+    assert(_encryptionKeys.member(disclose(spenderId)),
+           "ConfidentialFungibleToken: spender not registered");
+    assert(_encryptionKeys.member(disclose(fromAddress)),
+           "ConfidentialFungibleToken: owner not registered");
 
     const entry = _escrow.lookup(disclose(fromAddress)).lookup(disclose(spenderId));
 
@@ -1374,13 +1425,14 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * ???? @constraints k=16, rows=42201
+   * @constraints k=16, rows=42205
    *
    * Requirements:
    *
    * - Contract is initialized.
    * - `value` is within `MAX_TRANSFER_VALUE()`.
    * - An escrow from `fromAddress` to the caller exists with at least `value`.
+   * - `fromAddress` and the caller are registered.
    *
    * @param {Bytes<32>} fromAddress - The owner whose escrow is consumed.
    * @param {Uint<128>} value - The amount to burn.
@@ -1437,9 +1489,8 @@ module ConfidentialFungibleToken {
           spenderCt: ElGamal_encryptZero(),
           ownerCt:   ElGamal_encryptZero(),
           // Transient placeholder: this slot exists only so the refund reads an
-          // on-curve no-op, and it is removed immediately below, so the memo is
-          // never decrypted. Use an on-curve identity point (never a `default`,
-          // which is off-curve).
+          // identity no-op, and it is removed immediately below, so the memo is
+          // never decrypted.
           ownerMemo: EcdhMask_Ciphertext {
             ephemeralPk: ecMulGenerator(0 as JubjubScalar),
             ct: 0 as Field

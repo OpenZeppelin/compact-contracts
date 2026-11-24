@@ -45,7 +45,7 @@ export interface EitherRecipient {
   right: { bytes: Uint8Array };
 }
 
-/** A `Proposal_Recipient` as the artifact encodes it: kind enum + address. */
+/** A `Recipient` as the artifact encodes it: kind enum + address. */
 export interface KindRecipient {
   kind: number;
   address: Uint8Array;

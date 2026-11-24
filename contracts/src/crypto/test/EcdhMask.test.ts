@@ -1,4 +1,7 @@
-import { ecMulGenerator } from '@midnight-ntwrk/compact-runtime';
+import {
+  constructJubjubPoint,
+  ecMulGenerator,
+} from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -132,9 +135,25 @@ describe('EcdhMask', () => {
       ).rejects.toThrow('identity pk');
     });
 
+    it('rejects the identity public key given as the coordinate pair (0, 1)', async () => {
+      // The guard compares against `ecMulGenerator(0)`; the same point spelled
+      // as affine coordinates must be caught too.
+      const identity = constructJubjubPoint(0n, 1n);
+      await expect(
+        contract.encrypt(identity, 1000n, 42n, DOMAIN),
+      ).rejects.toThrow('EcdhMask: identity pk');
+    });
+
     it('rejects a zero ephemeral', async () => {
       await expect(contract.encrypt(PK, 1000n, 0n, DOMAIN)).rejects.toThrow(
         'zero ephemeral',
+      );
+    });
+
+    it('rejects an identity ephemeral on decrypt', async () => {
+      const placeholder = { ephemeralPk: ecMulGenerator(0n), ct: 0n };
+      await expect(contract.decrypt(placeholder, EK, DOMAIN)).rejects.toThrow(
+        'EcdhMask: identity ephemeral',
       );
     });
   });

@@ -127,6 +127,28 @@ describe('UnshieldedTreasury module', () => {
         'UnshieldedTreasury: zero amount',
       );
     });
+
+    it('should reject a send to the treasury itself', async () => {
+      await treasury._deposit(COLOR, AMOUNT);
+      await expect(treasury.sendToSelf(COLOR, AMOUNT)).rejects.toThrow(
+        'UnshieldedTreasury: self-send',
+      );
+      expect(await treasury.getTokenBalance(COLOR)).toEqual(AMOUNT);
+    });
+
+    // Dry only: the node rejects the send, as no contract claims the output.
+    it.skipIf(isLiveBackend())(
+      'should not reject a foreign contract address (the guard is self-specific)',
+      async () => {
+        await treasury._deposit(COLOR, AMOUNT);
+        await treasury._send(
+          utils.createEitherTestUnshieldedContract('not-the-treasury'),
+          COLOR,
+          AMOUNT,
+        );
+        expect(await treasury.getTokenBalance(COLOR)).toEqual(0n);
+      },
+    );
   });
 
   describe('zero-amount deposit', () => {
@@ -284,27 +306,6 @@ describe('UnshieldedTreasury module', () => {
       );
       expect(o.kind).toEqual('rejected');
       expect(o.message).toMatch(/u64/);
-    });
-
-    // Creates a contract-owned UTXO that `_send` never claimed. Discriminates:
-    // still credited AND spendable -> `_balances` diverged low; credited but not
-    // spendable -> stranded; not credited -> destroyed.
-    it('a self-send is accepted; report whether the funds survive', async () => {
-      await treasury._deposit(COLOR, AMOUNT);
-      const sent = verdict(
-        await outcomeOf(() => treasury.sendToSelf(COLOR, AMOUNT)),
-        'self-send',
-      );
-      expect(sent.kind).toEqual('ok');
-
-      const stillCredited = await treasury.probeBalanceGte(COLOR, AMOUNT);
-      const spend = await outcomeOf(() =>
-        treasury.sendRaw(COLOR, AMOUNT, RECIPIENT),
-      );
-      console.log(
-        `  after self-send: mirror=${await treasury.getTokenBalance(COLOR)} protocolGte=${stillCredited} rawSpend=${spend.kind}${spend.kind !== 'ok' ? `: ${spend.message.slice(0, 140)}` : ''}`,
-      );
-      expect(spend.kind).not.toEqual('infra');
     });
   });
 });
