@@ -344,6 +344,11 @@ module ConfidentialFungibleToken {
   // is `balanceOf` (spendable) + `pendingOf` (pending).
   export ledger _balances: Map<Bytes<32>, ElGamal_Ciphertext>;
   export ledger _pending: Map<Bytes<32>, ElGamal_Ciphertext>;
+
+  // Written once per account by this module (`register`) and never updated.
+  // Every `pk` this module passes to `ElGamal_addEncrypted` / `_subEncrypted`
+  // is a lookup here, never a circuit parameter. That is how the module meets
+  // the key-association precondition stated on those helpers.
   export ledger _encryptionKeys: Map<Bytes<32>, JubjubPoint>;
   export ledger _memos: Map<Bytes<32>, List<EcdhMask_Ciphertext>>;
   export ledger _escrow: Map<Bytes<32>, Map<Bytes<32>, EscrowEntry>>;
