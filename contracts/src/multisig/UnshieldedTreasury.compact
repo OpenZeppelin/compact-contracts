@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.4.0-alpha.6 (multisig/UnshieldedTreasury.compact)
+// OpenZeppelin Compact Contracts v0.4.0 (multisig/UnshieldedTreasury.compact)
 
 pragma language_version >= 0.26.0;
 
@@ -61,6 +61,14 @@ module UnshieldedTreasury {
    * operation creates a zero-valued `_balances` entry, which
    * `getTokenBalance` reports the same as absence.
    *
+   * @warning Every non-zero deposit of a color rewrites the `_balances` entry
+   * that `_send` reads for that color, so a deposit that lands first
+   * invalidates every `_send` of the same color still waiting to be applied.
+   * A consumer that exposes `_deposit` without access control lets any
+   * depositor delay authorized sends for as long as they keep depositing; the
+   * sends must then be re-proven. No funds are lost. A zero-value deposit
+   * rewrites the entry with the same value and does not have this effect.
+   *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
    * authorization policy.
@@ -92,17 +100,16 @@ module UnshieldedTreasury {
   /**
    * @description Sends unshielded tokens from the treasury.
    *
-   * @warning Recipients are not validated. An unspendable recipient (such as a
-   * zero address) is accepted and permanently removes the funds from the
-   * contract. This is not a sanctioned burn — no unshielded equivalent of
-   * `shieldedBurnAddress` is exposed to contracts — so treat recipient
-   * validation as the consuming contract's responsibility.
+   * @warning Recipients other than this contract are not validated. An
+   * unspendable recipient (such as a zero address) is accepted and
+   * permanently removes the funds from the contract. This is not a
+   * sanctioned burn (no unshielded equivalent of `shieldedBurnAddress` is
+   * exposed to contracts), so treat recipient validation as the consuming
+   * contract's responsibility.
    *
-   * @warning Sending to this contract's own address zeroes the tracked balance
-   * while the funds stay held and spendable at the protocol level, after which
-   * `_send` will refuse to touch them. Recovery is only possible outside this
-   * module: a consumer may reconcile the exported `_balances`, or spend the
-   * funds through its own `sendUnshielded` call.
+   * @dev A self-addressed send is auto-received by `sendUnshielded` but
+   * still debited from `_balances`, so the funds would be stranded.
+   * Therefore, this circuit rejects sends to self.
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -110,6 +117,7 @@ module UnshieldedTreasury {
    *
    * Requirements:
    *
+   * - `recipient` must not be this contract's own address.
    * - The amount must be non-zero. The ledger rejects zero-value outputs.
    * - The treasury must hold sufficient balance for the given token color.
    *
@@ -124,6 +132,11 @@ module UnshieldedTreasury {
     color: Bytes<32>,
     amount: Uint<128>
   ): [] {
+    // `kernel.self()` stays outside the `||`: the compiler treats a ledger
+    // read behind a witness-conditioned branch as an undeclared disclosure
+    const self = kernel.self();
+    assert(!recipient.is_left || recipient.left != self,
+           "UnshieldedTreasury: self-send");
     assert(amount != 0, "UnshieldedTreasury: zero amount");
 
     const bal = getTokenBalance(color);

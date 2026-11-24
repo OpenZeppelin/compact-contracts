@@ -10,7 +10,7 @@ This project is built on the Midnight Network.
 
 > ## ⚠️ WARNING! ⚠️
 >
-> This repo contains highly experimental code.
+> Pre-release versions (`-alpha`, `-rc`) contain experimental, unaudited code.
 > Expect rapid iteration.
 > **Use at your own risk.**
 
@@ -278,9 +278,11 @@ rm -rf .turbo/
 
 ## Security
 
-This project is still in a very early and experimental phase. It has never been audited nor thoroughly reviewed for security vulnerabilities. DO NOT USE IT IN PRODUCTION.
+For production, use a stable release (no `-alpha` or `-rc` suffix) on the Midnight ledger it targets. Pre-releases are not audited and should not be used in production.
 
-Please report any security issues you find to <security@openzeppelin.com>.
+Scopes and audited commits are listed in [audits](./audits/README.md).
+
+Please report any security issues you find to <security@openzeppelin.com>. See [SECURITY.md](SECURITY.md).
 
 ### Provenance
 
