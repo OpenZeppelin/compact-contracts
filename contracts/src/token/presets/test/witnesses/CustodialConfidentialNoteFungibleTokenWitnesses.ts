@@ -49,7 +49,7 @@ export const CustodialConfidentialNoteFungibleTokenPrivateState = {
 };
 
 export interface ICustodialConfidentialNoteFungibleTokenWitnesses<L, P> {
-  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfPseudonymSK(context: WitnessContext<L, P>): [P, Uint8Array];
   wit_RandPrfExpandSeed(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
@@ -63,7 +63,7 @@ export const CustodialConfidentialNoteFungibleTokenWitnesses = <
 >(
   wallet: CustodialWallet,
 ): ICustodialConfidentialNoteFungibleTokenWitnesses<L, P> => ({
-  wit_AuthPrfAddrSK(context) {
+  wit_AuthPrfPseudonymSK(context) {
     return [context.privateState, wallet.secretKey];
   },
   wit_RandPrfExpandSeed(context) {

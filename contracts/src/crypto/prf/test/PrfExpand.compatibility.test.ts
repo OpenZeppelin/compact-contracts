@@ -69,7 +69,7 @@ beforeAll(async () => {
 // ---------------------------------------------------------------------------
 
 /**
- * The wrappers hash `{ { domain, slot, context }, seed }` through `PrfCore`.
+ * The wrappers hash `{ { domain, slot, context }, seed }` through `Prf`.
  * The references hash a flat `{ domain, slot, context, seed }` under other
  * struct names. Equality pins the field order with the seed last, and that
  * neither nesting nor struct names are hashed.

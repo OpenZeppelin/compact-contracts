@@ -50,8 +50,8 @@ import type {
 } from '../../../../artifacts/token/presets/test/mocks/MockCustodialConfidentialNoteFungibleToken/contract/index.js';
 import { pureCircuits as preset } from '../../../../artifacts/token/presets/test/mocks/MockCustodialConfidentialNoteFungibleToken/contract/index.js';
 import {
-  type Account,
   CustodialConfidentialNoteFungibleTokenSimulator,
+  type Identifier,
   type Note,
 } from './simulators/CustodialConfidentialNoteFungibleTokenSimulator.js';
 import { NOTE_SALT } from './witnesses/CustodialConfidentialNoteFungibleTokenWitnesses.js';
@@ -71,27 +71,27 @@ const bytes32 = (label: string): Uint8Array => {
 const hex = (bytes: Uint8Array): string =>
   `0x${Buffer.from(bytes).toString('hex')}`;
 
-const TAG = bytes32('AuthPrfAddr:account');
+const TAG = bytes32('AuthPrfPseudonym:identifier');
 
 /** The authenticator and core compatibility specs' inputs, so the pins share them. */
 const ALICE_SK = bytes32('ALICE');
 const SALT = bytes32('SALT');
 const NOTE: Note = { value: 100n, nonce: 7n };
 
-/** `deriveAccount(ALICE_SK, SALT).left`, as the AuthPrfAddr suite pins it. */
+/** `deriveIdentifier(ALICE_SK, SALT).left`, as the AuthPrfPseudonym suite pins it. */
 const PINNED_ACCOUNT =
-  '0xaf55d489c3c0228cece2bb86074c0bab748bd9e2419f5d1ab06bc1aa7ac6d8db';
+  '0xb0d976468fe705dd047a9a088de6db65ea11414fcdc60681fb8fc66b4ab50cc6';
 
-/** `commitOf(NOTE, deriveAccount(ALICE_SK, SALT))`. */
+/** `commitOf(NOTE, deriveIdentifier(ALICE_SK, SALT))`. */
 const PINNED_COMMITMENT =
-  '0xc544609033d9b69f5679dd94712dab1349fc7a51908059b21ba3a3f10d9bbdf8';
+  '0x873deefc1a89b7276ecfe6ba85b9bc692ae7c21a4c9647e17f6d4de71aae3f8e';
 
 /** `nullifierOf(NOTE)`, as the core suite pins it. */
 const PINNED_NULLIFIER =
   '0xfb3222fcc782cf98276a6d821788f1b81a78aa14aca248290de1fda823c30f17';
 
 /** `left(persistentHash([tag, salt, sk]))`, the authenticator's account. */
-const referenceAccount = (sk: Uint8Array, salt: Uint8Array): Account => ({
+const referenceAccount = (sk: Uint8Array, salt: Uint8Array): Identifier => ({
   is_left: true,
   left: persistentHash(new CompactTypeVector(3, new CompactTypeBytes(32)), [
     TAG,
@@ -123,7 +123,7 @@ const codeLines = (source: string): string[] =>
 // ---------------------------------------------------------------------------
 
 /**
- * The issuer id and every note key are `AuthPrfAddr` accounts. A deploy
+ * The issuer id and every note key are `AuthPrfPseudonym` accounts. A deploy
  * script installs an issuer id it derived off-chain, and a holder hands out
  * its note key, so the derivation is wire format.
  */
@@ -131,11 +131,13 @@ describe('CustodialConfidentialNoteFungibleToken compatibility: accounts', () =>
   // Pure circuits: no deployment, so these run on either backend.
 
   it('should derive the pinned account for a known secret and salt', () => {
-    expect(hex(preset.deriveAccount(ALICE_SK, SALT).left)).toBe(PINNED_ACCOUNT);
+    expect(hex(preset.deriveIdentifier(ALICE_SK, SALT).left)).toBe(
+      PINNED_ACCOUNT,
+    );
   });
 
   it('should match a persistentHash over the tag, salt and secret key', () => {
-    expect(preset.deriveAccount(ALICE_SK, SALT)).toStrictEqual(
+    expect(preset.deriveIdentifier(ALICE_SK, SALT)).toStrictEqual(
       referenceAccount(ALICE_SK, SALT),
     );
   });
@@ -153,7 +155,7 @@ describe('CustodialConfidentialNoteFungibleToken compatibility: accounts', () =>
       PINNED_ACCOUNT,
     );
     await expect(
-      token.mint(preset.deriveAccount(ALICE_SK, NOTE_SALT), 1n),
+      token.mint(preset.deriveIdentifier(ALICE_SK, NOTE_SALT), 1n),
     ).resolves.toMatchObject({ value: 1n });
   });
 });
@@ -170,7 +172,7 @@ describe('CustodialConfidentialNoteFungibleToken compatibility: accounts', () =>
 describe('CustodialConfidentialNoteFungibleToken compatibility: note digests', () => {
   it('should commit a known note to the pinned digest', () => {
     expect(
-      hex(preset.commitOf(NOTE, preset.deriveAccount(ALICE_SK, SALT))),
+      hex(preset.commitOf(NOTE, preset.deriveIdentifier(ALICE_SK, SALT))),
     ).toBe(PINNED_COMMITMENT);
   });
 
@@ -351,7 +353,7 @@ describe('CustodialConfidentialNoteFungibleToken compatibility: published surfac
       ],
       'result-type': BYTES_32,
     },
-    deriveAccount: {
+    deriveIdentifier: {
       pure: true,
       proof: false,
       arguments: [
@@ -407,7 +409,11 @@ describe('CustodialConfidentialNoteFungibleToken compatibility: published surfac
   it('should declare only the secret-key and seed witnesses', () => {
     expect(mock.witnesses).toStrictEqual([
       { name: 'wit_RandPrfExpandSeed', arguments: [], 'result type': BYTES_32 },
-      { name: 'wit_AuthPrfAddrSK', arguments: [], 'result type': BYTES_32 },
+      {
+        name: 'wit_AuthPrfPseudonymSK',
+        arguments: [],
+        'result type': BYTES_32,
+      },
     ]);
   });
 
@@ -428,7 +434,7 @@ describe('CustodialConfidentialNoteFungibleToken compatibility: published surfac
     };
     const pure: Exhaustive<NameOf<PureCircuits>> = {
       commitOf: true,
-      deriveAccount: true,
+      deriveIdentifier: true,
       nullifierOf: true,
     };
 

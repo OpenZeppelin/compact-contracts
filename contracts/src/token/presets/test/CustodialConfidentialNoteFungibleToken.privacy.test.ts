@@ -44,8 +44,8 @@ import {
   pureCircuits as preset,
 } from '../../../../artifacts/token/presets/test/mocks/MockCustodialConfidentialNoteFungibleToken/contract/index.js';
 import {
-  type Account,
   CustodialConfidentialNoteFungibleTokenSimulator,
+  type Identifier,
   type Note,
 } from './simulators/CustodialConfidentialNoteFungibleTokenSimulator.js';
 import {
@@ -68,9 +68,9 @@ const secretKey = (label: string): Uint8Array => {
 const ISSUER_SK = secretKey('ISSUER');
 const SUCCESSOR_SK = secretKey('SUCCESSOR');
 const ALICE_SK = secretKey('ALICE');
-const SUCCESSOR = preset.deriveAccount(SUCCESSOR_SK, ISSUER_SALT);
-const ALICE = preset.deriveAccount(ALICE_SK, NOTE_SALT);
-const BOB = preset.deriveAccount(secretKey('BOB'), NOTE_SALT);
+const SUCCESSOR = preset.deriveIdentifier(SUCCESSOR_SK, ISSUER_SALT);
+const ALICE = preset.deriveIdentifier(ALICE_SK, NOTE_SALT);
+const BOB = preset.deriveIdentifier(secretKey('BOB'), NOTE_SALT);
 
 // Planted so two probes derive byte-identical notes; the differential tests
 // need every input equal except the one secret under study.
@@ -106,7 +106,7 @@ class Probe {
       '0'.repeat(64),
       dummyContractAddress(),
       PROBE_TIME,
-      preset.deriveAccount(issuerSk, ISSUER_SALT),
+      preset.deriveIdentifier(issuerSk, ISSUER_SALT),
       ISSUER_SALT,
       NOTE_SALT,
       1n,
@@ -145,14 +145,14 @@ class Probe {
     this.wallet.secretKey = sk;
   }
 
-  mint(recipientPk: Account, value: bigint): Promise<[Note, Trace]> {
+  mint(recipientPk: Identifier, value: bigint): Promise<[Note, Trace]> {
     return this.run((ctx) =>
       this.contract.impureCircuits.mint(ctx, recipientPk, value),
     );
   }
 
   transfer(
-    recipientPk: Account,
+    recipientPk: Identifier,
     value: bigint,
     note: Note,
   ): Promise<[[Note, Note], Trace]> {
@@ -173,7 +173,7 @@ class Probe {
     );
   }
 
-  transferOwnership(newOwner: Account): Promise<[[], Trace]> {
+  transferOwnership(newOwner: Identifier): Promise<[[], Trace]> {
     return this.run((ctx) =>
       this.contract.impureCircuits.transferOwnership(ctx, newOwner),
     );
@@ -181,7 +181,7 @@ class Probe {
 
   /** The path entries of `note` under the acting secret's note key. */
   private pathOf(note: Note): MerkleTreePathEntry[] {
-    const owner = preset.deriveAccount(this.wallet.secretKey, NOTE_SALT);
+    const owner = preset.deriveIdentifier(this.wallet.secretKey, NOTE_SALT);
     const path = this.state.Token_Core__commitments.findPathForLeaf(
       preset.commitOf(note, owner),
     );
@@ -228,7 +228,7 @@ const encodingsOfBytes = (bytes: Uint8Array): string[] => [
 ];
 
 /** The atoms an account is published as: the flag, then each arm. */
-const encodingsOfAccount = (account: Account): string[] => [
+const encodingsOfAccount = (account: Identifier): string[] => [
   account.is_left ? '01' : '',
   encoded(account.left),
   encoded(account.right.bytes),
@@ -290,7 +290,7 @@ const expectSecretAbsent = (trace: Trace, secret: Uint8Array): void => {
   const published = bytesIn(trace.transcript);
   for (const form of [
     ...encodingsOfBytes(secret),
-    encoded(preset.deriveAccount(secret, NOTE_SALT).left),
+    encoded(preset.deriveIdentifier(secret, NOTE_SALT).left),
   ]) {
     expect(published).not.toContain(form);
   }
@@ -359,7 +359,7 @@ describe.skipIf(isLiveBackend())(
 
       expectSecretAbsent(trace, ISSUER_SK);
       expect(bytesIn(trace.transcript)).toContain(
-        encoded(preset.deriveAccount(ISSUER_SK, ISSUER_SALT).left),
+        encoded(preset.deriveIdentifier(ISSUER_SK, ISSUER_SALT).left),
       );
       expect(bytesIn(trace.privateOutputs)).toContain(encoded(ISSUER_SK));
     });
@@ -381,7 +381,7 @@ describe.skipIf(isLiveBackend())(
     it('should not publish the issuer note key when the issuer mints to itself', async () => {
       const probe = await Probe.create();
       const [, trace] = await probe.mint(
-        preset.deriveAccount(ISSUER_SK, NOTE_SALT),
+        preset.deriveIdentifier(ISSUER_SK, NOTE_SALT),
         100n,
       );
 
@@ -393,7 +393,7 @@ describe.skipIf(isLiveBackend())(
         fc.asyncProperty(anySecret(), anySecret(), async (secret, next) => {
           const probe = await Probe.create(secret);
           const before = probe.state;
-          const newOwner = preset.deriveAccount(next, ISSUER_SALT);
+          const newOwner = preset.deriveIdentifier(next, ISSUER_SALT);
           const [, trace] = await probe.transferOwnership(newOwner);
 
           expect(storedOf(trace.transcript)).toStrictEqual(
@@ -431,7 +431,7 @@ describe.skipIf(isLiveBackend())(
         expect(published).toContain(encoded(NOTE_SALT));
         expect(published).not.toContain(encoded(ISSUER_SALT));
         expect(published).not.toContain(
-          encoded(preset.deriveAccount(ISSUER_SK, ISSUER_SALT).left),
+          encoded(preset.deriveIdentifier(ISSUER_SK, ISSUER_SALT).left),
         );
       },
     );
@@ -510,13 +510,13 @@ describe.skipIf(isLiveBackend())(
       (
         await (
           await Probe.create(issuer)
-        ).transferOwnership(preset.deriveAccount(next, ISSUER_SALT))
+        ).transferOwnership(preset.deriveIdentifier(next, ISSUER_SALT))
       )[1];
 
     const transferTrace = async (holder: Uint8Array): Promise<Trace> => {
       const probe = await Probe.create();
       const [note] = await probe.mint(
-        preset.deriveAccount(holder, NOTE_SALT),
+        preset.deriveIdentifier(holder, NOTE_SALT),
         100n,
       );
       probe.actAs(holder);
@@ -547,7 +547,7 @@ describe.skipIf(isLiveBackend())(
           fc.pre(hex(a) !== hex(b));
 
           const moved = drift(await mintTrace(a), await mintTrace(b));
-          const owner = encoded(preset.deriveAccount(a, ISSUER_SALT).left);
+          const owner = encoded(preset.deriveIdentifier(a, ISSUER_SALT).left);
 
           expect(moved).toStrictEqual([owner, owner]);
         }),
@@ -587,12 +587,12 @@ describe.skipIf(isLiveBackend())(
               await handoverTrace(a, nextA),
               await handoverTrace(b, nextB),
             );
-            const owner = encoded(preset.deriveAccount(a, ISSUER_SALT).left);
+            const owner = encoded(preset.deriveIdentifier(a, ISSUER_SALT).left);
 
             expect(moved).toStrictEqual([
               owner,
               owner,
-              encoded(preset.deriveAccount(nextA, ISSUER_SALT).left),
+              encoded(preset.deriveIdentifier(nextA, ISSUER_SALT).left),
             ]);
           },
         ),
@@ -700,7 +700,7 @@ describe.runIf(isLiveBackend())(
     const expectNotOnWire = (wire: string, secret: Uint8Array): void => {
       for (const form of [
         ...encodingsOfBytes(secret),
-        encoded(preset.deriveAccount(secret, NOTE_SALT).left),
+        encoded(preset.deriveIdentifier(secret, NOTE_SALT).left),
       ]) {
         expect(wire).not.toContain(form);
       }
@@ -719,7 +719,7 @@ describe.runIf(isLiveBackend())(
 
       expectNotOnWire(wire, secret);
       // The positive control: the issuer id is public by design.
-      const id = preset.deriveAccount(secret, ISSUER_SALT).left;
+      const id = preset.deriveIdentifier(secret, ISSUER_SALT).left;
       expect(wire).toContain(encoded(id));
     });
 
@@ -732,7 +732,7 @@ describe.runIf(isLiveBackend())(
         });
 
       const from = await indexerHead();
-      await token.transferOwnership(preset.deriveAccount(next, ISSUER_SALT));
+      await token.transferOwnership(preset.deriveIdentifier(next, ISSUER_SALT));
       const wire = await wireOf(token, from, 'transferOwnership');
 
       expectNotOnWire(wire, secret);

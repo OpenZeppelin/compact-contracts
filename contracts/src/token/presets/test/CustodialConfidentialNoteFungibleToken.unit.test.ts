@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { expectRejection } from '#test-utils/assertions/rejection.js';
 import { pureCircuits as preset } from '../../../../artifacts/token/presets/test/mocks/MockCustodialConfidentialNoteFungibleToken/contract/index.js';
 import {
-  type Account,
   CustodialConfidentialNoteFungibleTokenSimulator,
+  type Identifier,
   type Note,
 } from './simulators/CustodialConfidentialNoteFungibleTokenSimulator.js';
 import {
@@ -38,17 +38,17 @@ const OTHER_SALT = secretKey('OTHER-SALT');
 // Every deployment below uses `ISSUER_SALT` and `NOTE_SALT` unless it says
 // otherwise. Issuer ids are accounts under the issuer salt, note keys
 // accounts under the note salt.
-const ISSUER = preset.deriveAccount(ISSUER_SK, ISSUER_SALT);
-const SUCCESSOR = preset.deriveAccount(SUCCESSOR_SK, ISSUER_SALT);
-const ALICE = preset.deriveAccount(ALICE_SK, NOTE_SALT);
-const BOB = preset.deriveAccount(BOB_SK, NOTE_SALT);
+const ISSUER = preset.deriveIdentifier(ISSUER_SK, ISSUER_SALT);
+const SUCCESSOR = preset.deriveIdentifier(SUCCESSOR_SK, ISSUER_SALT);
+const ALICE = preset.deriveIdentifier(ALICE_SK, NOTE_SALT);
+const BOB = preset.deriveIdentifier(BOB_SK, NOTE_SALT);
 
-const CONTRACT: Account = {
+const CONTRACT: Identifier = {
   is_left: false,
   left: ZERO,
   right: { bytes: secretKey('CONTRACT') },
 };
-const ZERO_ACCOUNT: Account = {
+const ZERO_ACCOUNT: Identifier = {
   is_left: true,
   left: ZERO,
   right: { bytes: ZERO },
@@ -106,12 +106,12 @@ const actAs = (sk: Uint8Array): void => {
 };
 
 /** Mints as the issuer. */
-const issue = (recipientPk: Account, value: bigint): Promise<Note> => {
+const issue = (recipientPk: Identifier, value: bigint): Promise<Note> => {
   actAs(ISSUER_SK);
   return token.mint(recipientPk, value);
 };
 
-const isCommitted = async (note: Note, ownerPk: Account): Promise<boolean> =>
+const isCommitted = async (note: Note, ownerPk: Identifier): Promise<boolean> =>
   (await token.getPublicState()).Token_Core__commitments.findPathForLeaf(
     preset.commitOf(note, ownerPk),
   ) !== undefined;
@@ -259,7 +259,9 @@ describe('CustodialConfidentialNoteFungibleToken: before initialize', () => {
   });
 
   it('should still derive accounts', async () => {
-    expect(await token.deriveAccount(ALICE_SK, NOTE_SALT)).toStrictEqual(ALICE);
+    expect(await token.deriveIdentifier(ALICE_SK, NOTE_SALT)).toStrictEqual(
+      ALICE,
+    );
   });
 });
 
@@ -274,12 +276,12 @@ describe('CustodialConfidentialNoteFungibleToken: the two salts', () => {
 
   it('should make the issuer the account of its secret under the issuer salt', async () => {
     expect(await token.owner()).toStrictEqual(
-      await token.deriveAccount(ISSUER_SK, ISSUER_SALT),
+      await token.deriveIdentifier(ISSUER_SK, ISSUER_SALT),
     );
   });
 
   it("should keep the issuer's note key apart from its issuer id", async () => {
-    const noteKey = await token.deriveAccount(ISSUER_SK, NOTE_SALT);
+    const noteKey = await token.deriveIdentifier(ISSUER_SK, NOTE_SALT);
 
     expect(noteKey).not.toStrictEqual(ISSUER);
     expect(noteKey).not.toStrictEqual(await token.owner());
@@ -295,7 +297,7 @@ describe('CustodialConfidentialNoteFungibleToken: the two salts', () => {
   });
 
   it('should not let a holder spend a note minted to its account under the issuer salt', async () => {
-    const wrongKey = preset.deriveAccount(ALICE_SK, ISSUER_SALT);
+    const wrongKey = preset.deriveIdentifier(ALICE_SK, ISSUER_SALT);
     const note = await issue(wrongKey, 100n);
     actAs(ALICE_SK);
 
@@ -309,7 +311,7 @@ describe('CustodialConfidentialNoteFungibleToken: the two salts', () => {
   it('should not let the issuer mint when its id was derived under the note salt', async () => {
     token = await CustodialConfidentialNoteFungibleTokenSimulator.create({
       wallet: { secretKey: ISSUER_SK },
-      issuer: preset.deriveAccount(ISSUER_SK, NOTE_SALT),
+      issuer: preset.deriveIdentifier(ISSUER_SK, NOTE_SALT),
     });
 
     await expectRejection(token.mint(ALICE, 100n), ERR.notOwner);
@@ -322,7 +324,7 @@ describe('CustodialConfidentialNoteFungibleToken: the two salts', () => {
     });
 
     expect(await token.owner()).toStrictEqual(
-      preset.deriveAccount(ISSUER_SK, OTHER_SALT),
+      preset.deriveIdentifier(ISSUER_SK, OTHER_SALT),
     );
     expect(await token.owner()).not.toStrictEqual(ISSUER);
     await expect(token.mint(ALICE, 100n)).resolves.toMatchObject({
@@ -597,7 +599,7 @@ describe('CustodialConfidentialNoteFungibleToken: transferOwnership', () => {
       actAs(sk);
 
       await expectRejection(
-        token.transferOwnership(preset.deriveAccount(sk, ISSUER_SALT)),
+        token.transferOwnership(preset.deriveIdentifier(sk, ISSUER_SALT)),
         ERR.notOwner,
       );
       expect(await cells()).toStrictEqual(before);
@@ -650,7 +652,7 @@ describe('CustodialConfidentialNoteFungibleToken: pure views', () => {
   });
 
   it('should derive the same account through the simulator and off-chain', async () => {
-    expect(await token.deriveAccount(BOB_SK, NOTE_SALT)).toStrictEqual(BOB);
+    expect(await token.deriveIdentifier(BOB_SK, NOTE_SALT)).toStrictEqual(BOB);
   });
 });
 
@@ -663,7 +665,7 @@ describe('CustodialConfidentialNoteFungibleToken: simulator wiring', () => {
     token = await CustodialConfidentialNoteFungibleTokenSimulator.create();
 
     expect(await token.owner()).toStrictEqual(
-      preset.deriveAccount(token.wallet.secretKey, ISSUER_SALT),
+      preset.deriveIdentifier(token.wallet.secretKey, ISSUER_SALT),
     );
     await token.mint(ALICE, 1n);
   });

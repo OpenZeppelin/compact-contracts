@@ -39,7 +39,7 @@ import {
   pureCircuits as preset,
 } from '../../../../artifacts/token/presets/test/mocks/MockCustodialConfidentialNoteFungibleToken/contract/index.js';
 import type {
-  Account,
+  Identifier,
   Note,
 } from './simulators/CustodialConfidentialNoteFungibleTokenSimulator.js';
 import {
@@ -60,17 +60,17 @@ const NAMES = ['issuer', 'alice', 'bob'] as const;
 
 type Holder = 'alice' | 'bob';
 
-const ISSUER = preset.deriveAccount(labelledSecret('issuer'), ISSUER_SALT);
+const ISSUER = preset.deriveIdentifier(labelledSecret('issuer'), ISSUER_SALT);
 
-const NOTE_KEYS: Readonly<Record<Holder, Account>> = {
-  alice: preset.deriveAccount(labelledSecret('alice'), NOTE_SALT),
-  bob: preset.deriveAccount(labelledSecret('bob'), NOTE_SALT),
+const NOTE_KEYS: Readonly<Record<Holder, Identifier>> = {
+  alice: preset.deriveIdentifier(labelledSecret('alice'), NOTE_SALT),
+  bob: preset.deriveIdentifier(labelledSecret('bob'), NOTE_SALT),
 };
 
 /** Two candidate ids, so two handovers built on one snapshot stay distinguishable. */
 const TARGETS = [
-  preset.deriveAccount(labelledSecret('first-successor'), ISSUER_SALT),
-  preset.deriveAccount(labelledSecret('second-successor'), ISSUER_SALT),
+  preset.deriveIdentifier(labelledSecret('first-successor'), ISSUER_SALT),
+  preset.deriveIdentifier(labelledSecret('second-successor'), ISSUER_SALT),
 ] as const;
 
 const NOTE_VALUE = 100n;
@@ -145,7 +145,7 @@ const ownerAfter = (
   first: Operation,
   second: Operation,
   outcome: Outcome,
-): Account => {
+): Identifier => {
   if (outcome === 'both-landed' && WRITES_OWNER[second]) return TARGETS[1];
   if (WRITES_OWNER[first]) return TARGETS[0];
   return ISSUER;

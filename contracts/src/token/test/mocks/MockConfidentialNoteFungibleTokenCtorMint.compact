@@ -8,7 +8,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import "../../../crypto/prf/PrfAddr" prefix PrfAddr_;
+import "../../../crypto/prf/PrfPseudonym" prefix PrfPseudonym_;
 import "../../ConfidentialNoteFungibleToken"<32, Field> prefix Core_;
 import "../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
 
@@ -36,7 +36,7 @@ constructor(instanceSalt: Bytes<32>, note: Core_Note, ownerPk: Field, twice: Boo
 
 circuit callerPk(): Field {
   return degradeToTransient(
-    PrfAddr_derivePk<Bytes<32>>(pad(32, "CNFT:pk"), _instanceSalt, wit_ConfidentialNoteSK())
+    PrfPseudonym_derivePseudonym<Bytes<32>>(pad(32, "CNFT:pk"), _instanceSalt, wit_ConfidentialNoteSK())
   );
 }
 

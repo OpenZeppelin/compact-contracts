@@ -20,9 +20,9 @@ import {
 
 type Ledger = ReturnType<typeof ledger>;
 type PS = CustodialConfidentialNoteFungibleTokenPrivateState;
-type Account = Either<Uint8Array, ContractAddress>;
+type Identifier = Either<Uint8Array, ContractAddress>;
 
-type ExampleArgs = readonly [Account, Uint8Array, Uint8Array];
+type ExampleArgs = readonly [Identifier, Uint8Array, Uint8Array];
 
 const secretKey = (label: string): Uint8Array => {
   const sk = new Uint8Array(32);
@@ -32,9 +32,9 @@ const secretKey = (label: string): Uint8Array => {
 
 const ISSUER_SK = secretKey('ISSUER');
 const ALICE_SK = secretKey('ALICE');
-const ISSUER = pureCircuits.deriveAccount(ISSUER_SK, ISSUER_SALT);
-const ALICE = pureCircuits.deriveAccount(ALICE_SK, NOTE_SALT);
-const BOB = pureCircuits.deriveAccount(secretKey('BOB'), NOTE_SALT);
+const ISSUER = pureCircuits.deriveIdentifier(ISSUER_SK, ISSUER_SALT);
+const ALICE = pureCircuits.deriveIdentifier(ALICE_SK, NOTE_SALT);
+const BOB = pureCircuits.deriveIdentifier(secretKey('BOB'), NOTE_SALT);
 
 /** The witnesses answer from this wallet; a case sets the acting secret. */
 const wallet: CustodialWallet = { secretKey: ISSUER_SK };

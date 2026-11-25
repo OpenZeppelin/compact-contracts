@@ -22,8 +22,8 @@ import {
   CustodialConfidentialNoteFungibleTokenPrivateState as PrivateState,
 } from '../witnesses/CustodialConfidentialNoteFungibleTokenWitnesses.js';
 
-/** `Account`: a `left` public key or a `right` contract address. */
-export type Account = Either<Uint8Array, ContractAddress>;
+/** `Identifier`: a `left` public key or a `right` contract address. */
+export type Identifier = Either<Uint8Array, ContractAddress>;
 
 export type Note = Token_Core_Note;
 
@@ -38,7 +38,7 @@ type Options = SimulatorOptions<
 >;
 
 type CustodialArgs = readonly [
-  issuer: Account,
+  issuer: Identifier,
   issuerSalt: Uint8Array,
   noteSalt: Uint8Array,
   inits: bigint,
@@ -94,7 +94,7 @@ export class CustodialConfidentialNoteFungibleTokenSimulator extends CustodialCo
   static async create(
     options: Options & {
       wallet?: CustodialWallet;
-      issuer?: Account;
+      issuer?: Identifier;
       issuerSalt?: Uint8Array;
       noteSalt?: Uint8Array;
       inits?: bigint;
@@ -113,7 +113,7 @@ export class CustodialConfidentialNoteFungibleTokenSimulator extends CustodialCo
     // biome-ignore lint/complexity/noThisInStatic: super.create keeps subclass `this`
     const simulator = (await super.create(
       [
-        issuer ?? pureCircuits.deriveAccount(wallet.secretKey, salt),
+        issuer ?? pureCircuits.deriveIdentifier(wallet.secretKey, salt),
         salt,
         noteSalt ?? NOTE_SALT,
         inits ?? 1n,
@@ -130,13 +130,13 @@ export class CustodialConfidentialNoteFungibleTokenSimulator extends CustodialCo
   }
 
   /** Mints `value` to `recipientPk`. Gated by the issuer secret. */
-  public mint(recipientPk: Account, value: bigint): Promise<Note> {
+  public mint(recipientPk: Identifier, value: bigint): Promise<Note> {
     return this.circuits.impure.mint(recipientPk, value);
   }
 
   /** Spends the caller's `note` into a recipient note plus change. */
   public transfer(
-    recipientPk: Account,
+    recipientPk: Identifier,
     value: bigint,
     note: Note,
     path: MerkleTreePathEntry[],
@@ -154,23 +154,23 @@ export class CustodialConfidentialNoteFungibleTokenSimulator extends CustodialCo
   }
 
   /** Hands the issuer role to `newOwner`. Gated by the issuer secret. */
-  public transferOwnership(newOwner: Account): Promise<[]> {
+  public transferOwnership(newOwner: Identifier): Promise<[]> {
     return this.circuits.impure.transferOwnership(newOwner);
   }
 
   /** The current issuer id. */
-  public owner(): Promise<Account> {
+  public owner(): Promise<Identifier> {
     return this.circuits.impure.owner();
   }
 
-  public deriveAccount(
+  public deriveIdentifier(
     secretKey: Uint8Array,
     salt: Uint8Array,
-  ): Promise<Account> {
-    return this.circuits.pure.deriveAccount(secretKey, salt);
+  ): Promise<Identifier> {
+    return this.circuits.pure.deriveIdentifier(secretKey, salt);
   }
 
-  public commitOf(note: Note, pk: Account): Promise<Uint8Array> {
+  public commitOf(note: Note, pk: Identifier): Promise<Uint8Array> {
     return this.circuits.pure.commitOf(note, pk);
   }
 
@@ -186,7 +186,7 @@ export class CustodialConfidentialNoteFungibleTokenSimulator extends CustodialCo
    */
   public async pathOf(
     note: Note,
-    ownerPk: Account,
+    ownerPk: Identifier,
   ): Promise<MerkleTreePathEntry[]> {
     const path = (
       await this.getPublicState()

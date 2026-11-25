@@ -11,7 +11,7 @@ import {
 export type { Note };
 
 /** `Either<Bytes<32>, ContractAddress>`, the owner key the preset commits to. */
-export type Account = {
+export type Identifier = {
   is_left: boolean;
   left: Uint8Array;
   right: { bytes: Uint8Array };
@@ -77,7 +77,7 @@ export class ConfidentialNoteFungibleTokenUtilsSimulator extends ConfidentialNot
   }
 
   /** @description `commitOf` at an `Either<Bytes<32>, ContractAddress>` owner key. */
-  public commitOfEither(note: Note, pk: Account): Promise<Uint8Array> {
+  public commitOfEither(note: Note, pk: Identifier): Promise<Uint8Array> {
     return this.circuits.impure.commitOfEither(note, pk);
   }
 
@@ -105,7 +105,7 @@ export class ConfidentialNoteFungibleTokenUtilsSimulator extends ConfidentialNot
   }
 
   /** @description `persistentCommit` reference for {@link commitOfEither}. */
-  public refCommitOfEither(note: Note, pk: Account): Promise<Uint8Array> {
+  public refCommitOfEither(note: Note, pk: Identifier): Promise<Uint8Array> {
     return this.circuits.impure.refCommitOfEither(note, pk);
   }
 

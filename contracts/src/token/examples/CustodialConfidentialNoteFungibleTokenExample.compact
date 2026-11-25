@@ -28,7 +28,7 @@ export {
 
 /**
  * @param {Either<Bytes<32>, ContractAddress>} issuer - The first issuer,
- * `deriveAccount(secretKey, issuerSalt)` computed off-chain.
+ * `deriveIdentifier(secretKey, issuerSalt)` computed off-chain.
  * @param {Bytes<32>} issuerSalt - Random per-deployment salt for the issuer
  * role.
  * @param {Bytes<32>} noteSalt - Random per-deployment salt for note ownership.
@@ -75,11 +75,11 @@ export circuit owner(): Either<Bytes<32>, ContractAddress> {
   return Token_owner();
 }
 
-export pure circuit deriveAccount(
+export pure circuit deriveIdentifier(
   secretKey: Bytes<32>,
   salt: Bytes<32>,
 ): Either<Bytes<32>, ContractAddress> {
-  return Token_deriveAccount(secretKey, salt);
+  return Token_deriveIdentifier(secretKey, salt);
 }
 
 export pure circuit commitOf(

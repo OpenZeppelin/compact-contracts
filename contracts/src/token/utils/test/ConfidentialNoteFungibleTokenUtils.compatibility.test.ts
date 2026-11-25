@@ -39,8 +39,8 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  type Account,
   ConfidentialNoteFungibleTokenUtilsSimulator,
+  type Identifier,
   type Note,
 } from './simulators/ConfidentialNoteFungibleTokenUtilsSimulator.js';
 
@@ -80,11 +80,11 @@ const NOTE: Note = { value: 100n, nonce: 7n };
 const FIELD_KEY =
   262435359501940701077170570879675701887870845687505442111448399011781289948n;
 
-/** The preset suite's account for Alice, `deriveAccount(ALICE_SK, SALT)`. */
-const ACCOUNT: Account = {
+/** The preset suite's account for Alice, `deriveIdentifier(ALICE_SK, SALT)`. */
+const ACCOUNT: Identifier = {
   is_left: true,
   left: fromHex(
-    '0xaf55d489c3c0228cece2bb86074c0bab748bd9e2419f5d1ab06bc1aa7ac6d8db',
+    '0xb0d976468fe705dd047a9a088de6db65ea11414fcdc60681fb8fc66b4ab50cc6',
   ),
   right: { bytes: new Uint8Array(32) },
 };
@@ -93,7 +93,7 @@ const GOLDEN = {
   commitOfField:
     '0x068859b75b0836a669483ca2bf97928e347d0226f7b21ae2d484bf2f86982003',
   commitOfEither:
-    '0xc544609033d9b69f5679dd94712dab1349fc7a51908059b21ba3a3f10d9bbdf8',
+    '0x873deefc1a89b7276ecfe6ba85b9bc692ae7c21a4c9647e17f6d4de71aae3f8e',
   nullifierOf:
     '0xfb3222fcc782cf98276a6d821788f1b81a78aa14aca248290de1fda823c30f17',
   issuedTagOf:
@@ -135,7 +135,7 @@ const referencePrf = (tag: string, note: Note): Uint8Array =>
     note.nonce,
   ]);
 
-const accountValue = (pk: Account): unknown[] => [
+const accountValue = (pk: Identifier): unknown[] => [
   pk.is_left,
   pk.left,
   [pk.right.bytes],
@@ -153,7 +153,7 @@ beforeAll(async () => {
 
 /**
  * The module commits to `{ tag, [value, pk] }` through `HashCommitment` and
- * hashes `{ tag, nonce }` through `PrfCore`. The reference circuits commit or
+ * hashes `{ tag, nonce }` through `Prf`. The reference circuits commit or
  * hash a flat struct, so equality pins the field order and that neither
  * nesting nor struct names are hashed.
  */
@@ -205,7 +205,7 @@ describe('ConfidentialNoteFungibleTokenUtils compatibility: key encoding', () =>
 
   // The Either encoding adds the flag and the `right` bytes around `left`.
   it('should commit a Field key and an Either key holding its cast to distinct digests', async () => {
-    const holdingCast: Account = {
+    const holdingCast: Identifier = {
       is_left: true,
       left: fieldToBytes(FIELD_KEY),
       right: { bytes: new Uint8Array(32) },

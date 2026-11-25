@@ -21,7 +21,7 @@ pragma language_version >= 0.28.0;
  * ```
  *
  * @dev Notation:
- * - `PRF_k(x)`: `PrfCore.evaluate(x, k)`.
+ * - `PRF_k(x)`: `Prf.evaluate(x, k)`.
  * - `COMM_r(m)`: `HashCommitment.commit(domain, m, r)`.
  * - `pk`: the owner key, a value of the type the token is instantiated with.
  * - `cm = COMM_nonce(value, pk)` under `"CNFT:commitment"`.
@@ -39,7 +39,7 @@ module ConfidentialNoteFungibleTokenUtils {
   import CompactStandardLibrary;
 
   import "../../crypto/commitment/HashCommitment" prefix HashCommitment_;
-  import "../../crypto/prf/PrfCore" prefix PrfCore_;
+  import "../../crypto/prf/Prf" prefix Prf_;
 
   /**
    * @description A unit of value. Ownership is not a field: a note belongs to
@@ -86,7 +86,7 @@ module ConfidentialNoteFungibleTokenUtils {
    * @return {Bytes<32>} - The nullifier published when the note is spent.
    */
   export pure circuit nullifierOf(note: Note): Bytes<32> {
-    return PrfCore_evaluate<Bytes<32>, Field>(
+    return Prf_evaluate<Bytes<32>, Field>(
       pad(32, "CNFT:nullifier"),
       note.nonce
     );
@@ -104,7 +104,7 @@ module ConfidentialNoteFungibleTokenUtils {
    * @return {Bytes<32>} - The tag published when the note is committed.
    */
   export pure circuit issuedTagOf(note: Note): Bytes<32> {
-    return PrfCore_evaluate<Bytes<32>, Field>(
+    return Prf_evaluate<Bytes<32>, Field>(
       pad(32, "CNFT:issued"),
       note.nonce
     );

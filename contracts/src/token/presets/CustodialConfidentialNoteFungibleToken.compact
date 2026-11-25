@@ -7,7 +7,7 @@ pragma language_version >= 0.28.0;
  * @module CustodialConfidentialNoteFungibleToken<#depth>
  * @description A note-based confidential token managed by an issuer: only the
  * issuer mints, and any holder transfers or burns its own notes. Wires
- * `ConfidentialNoteFungibleToken`, `Ownable` and `AuthPrfAddr`.
+ * `ConfidentialNoteFungibleToken`, `Ownable` and `AuthPrfPseudonym`.
  *
  * ```compact
  * import "../presets/CustodialConfidentialNoteFungibleToken"<32> prefix Token_;
@@ -34,12 +34,12 @@ pragma language_version >= 0.28.0;
  * - Holder: whoever owns a note. It transfers and burns its own notes.
  *
  * @dev Identity:
- * - Every circuit authenticates the caller once, with `AuthPrfAddr`. No
+ * - Every circuit authenticates the caller once, with `AuthPrfPseudonym`. No
  *   circuit takes a caller as an argument, so each is safe to re-export.
  * - A note's owner key is the holder's account under `_noteSalt`.
  * - The issuer authenticates under `_issuerSalt`. The salts differ, so the
  *   public owner id is unrelated to the issuer's note-owner key.
- * - `deriveAccount(secretKey, salt)` computes either off-chain. A holder
+ * - `deriveIdentifier(secretKey, salt)` computes either off-chain. A holder
  *   shares its account under `_noteSalt` to receive notes.
  *
  * @notice Privacy:
@@ -51,7 +51,7 @@ pragma language_version >= 0.28.0;
  * - Private: amounts, senders, recipients, and which holder the issuer is.
  *
  * @notice Security:
- * - Secret-key requirements are `AuthPrfAddr`'s. A lost issuer key, or a
+ * - Secret-key requirements are `AuthPrfPseudonym`'s. A lost issuer key, or a
  *   handover to a wrong id, ends minting for good.
  * - A note sent to a contract address cannot be spent: no circuit here
  *   authenticates a contract. `mint` and `transfer` reject such a recipient.
@@ -62,18 +62,18 @@ pragma language_version >= 0.28.0;
  * `@constraints` tags are measured there.
  *
  * @notice Client-side duties:
- * - Implement `wit_AuthPrfAddrSK` and `wit_RandPrfExpandSeed`.
+ * - Implement `wit_AuthPrfPseudonymSK` and `wit_RandPrfExpandSeed`.
  * - Note handling, Merkle paths, backup and delivery are the core's: see
  *   `ConfidentialNoteFungibleToken`.
  */
 module CustodialConfidentialNoteFungibleToken<#depth> {
   import CompactStandardLibrary;
 
-  import { Account } from "../../account/Account";
+  import { Identifier } from "../../identifier/Identifier";
 
   import "../ConfidentialNoteFungibleToken"<depth, Either<Bytes<32>, ContractAddress>> prefix Core_;
   import "../../access/Ownable" prefix Ownable_;
-  import "../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+  import "../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
   import "../utils/ConfidentialNoteFungibleTokenUtils" prefix ConfidentialNoteFungibleTokenUtils_;
 
   // The composed modules' state and the note type, re-exported so an
@@ -107,13 +107,13 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
    * - `issuer` is not a ContractAddress.
    *
    * @param {Either<Bytes<32>, ContractAddress>} issuer - The first issuer,
-   * `deriveAccount(secretKey, issuerSalt)` computed off-chain.
+   * `deriveIdentifier(secretKey, issuerSalt)` computed off-chain.
    * @param {Bytes<32>} issuerSalt - A strong random value for the issuer role.
    * @param {Bytes<32>} noteSalt - A strong random value for note ownership.
    * @return {[]} - Empty tuple.
    */
   export circuit initialize(
-                   issuer: Account,
+                   issuer: Identifier,
                    issuerSalt: Bytes<32>,
                    noteSalt: Bytes<32>
                    ): [] {
@@ -145,10 +145,10 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
    * @return {Core_Note} - The new note, returned as a local private result.
    */
   export circuit mint(
-                   recipientPk: Account,
+                   recipientPk: Identifier,
                    value: Uint<128>
                    ): Core_Note {
-    Ownable_assertOnlyOwner(AuthPrfAddr_authenticate(_issuerSalt));
+    Ownable_assertOnlyOwner(AuthPrfPseudonym_authenticate(_issuerSalt));
     assert(recipientPk.is_left,
            "CustodialConfidentialNoteFungibleToken: contract recipient");
     return Core__mint(recipientPk, value);
@@ -178,7 +178,7 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
    * change note.
    */
   export circuit transfer(
-                   recipientPk: Account,
+                   recipientPk: Identifier,
                    value: Uint<128>,
                    note: Core_Note,
                    path: Vector<depth, MerkleTreePathEntry>
@@ -187,8 +187,8 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
            "CustodialConfidentialNoteFungibleToken: contract recipient");
     assert(_noteSalt != default<Bytes<32>>,
            "CustodialConfidentialNoteFungibleToken: contract not initialized");
-    const caller = AuthPrfAddr_authenticate(_noteSalt);
-    return Core__transfer(caller.account, recipientPk, value, note, path);
+    const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+    return Core__transfer(caller.identifier, recipientPk, value, note, path);
   }
 
   /**
@@ -217,8 +217,8 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
                    ): Core_Note {
     assert(_noteSalt != default<Bytes<32>>,
            "CustodialConfidentialNoteFungibleToken: contract not initialized");
-    const caller = AuthPrfAddr_authenticate(_noteSalt);
-    return Core__burn(caller.account, value, note, path);
+    const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+    return Core__burn(caller.identifier, value, note, path);
   }
 
   /**
@@ -236,13 +236,13 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
    * - `newOwner` is not a ContractAddress and not zero.
    *
    * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new issuer,
-   * `deriveAccount(newSecretKey, _issuerSalt)`.
+   * `deriveIdentifier(newSecretKey, _issuerSalt)`.
    * @return {[]} - Empty tuple.
    */
   export circuit transferOwnership(
-                   newOwner: Account
+                   newOwner: Identifier
                    ): [] {
-    Ownable_transferOwnership(AuthPrfAddr_authenticate(_issuerSalt), newOwner);
+    Ownable_transferOwnership(AuthPrfPseudonym_authenticate(_issuerSalt), newOwner);
   }
 
   /**
@@ -252,7 +252,7 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
    *
    * @return {Either<Bytes<32>, ContractAddress>} - The owner id.
    */
-  export circuit owner(): Account {
+  export circuit owner(): Identifier {
     return Ownable_owner();
   }
 
@@ -264,11 +264,11 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
    * @param {Bytes<32>} salt - `_noteSalt` or `_issuerSalt`.
    * @return {Either<Bytes<32>, ContractAddress>} - The account.
    */
-  export pure circuit deriveAccount(
+  export pure circuit deriveIdentifier(
                         secretKey: Bytes<32>,
                         salt: Bytes<32>
-                        ): Account {
-    return AuthPrfAddr_deriveAccount(secretKey, salt);
+                        ): Identifier {
+    return AuthPrfPseudonym_deriveIdentifier(secretKey, salt);
   }
 
   /**
@@ -280,9 +280,9 @@ module CustodialConfidentialNoteFungibleToken<#depth> {
    */
   export pure circuit commitOf(
                         note: Core_Note,
-                        pk: Account
+                        pk: Identifier
                         ): Bytes<32> {
-    return ConfidentialNoteFungibleTokenUtils_commitOf<Account>(note, pk);
+    return ConfidentialNoteFungibleTokenUtils_commitOf<Identifier>(note, pk);
   }
 
   /**

@@ -78,11 +78,11 @@ export circuit owner(): Either<Bytes<32>, ContractAddress> {
   return Token_owner();
 }
 
-export pure circuit deriveAccount(
+export pure circuit deriveIdentifier(
   secretKey: Bytes<32>,
   salt: Bytes<32>,
 ): Either<Bytes<32>, ContractAddress> {
-  return Token_deriveAccount(secretKey, salt);
+  return Token_deriveIdentifier(secretKey, salt);
 }
 
 export pure circuit commitOf(

@@ -20,7 +20,7 @@ ledger _invocations: Counter;
 
 // Flat copies of each preimage, with the tags written out. The `ref*`
 // circuits hash them without calling the module, `HashCommitment` or
-// `PrfCore`.
+// `Prf`.
 struct RefFieldMessage {
   domain: Bytes<32>;
   value: Uint<128>;

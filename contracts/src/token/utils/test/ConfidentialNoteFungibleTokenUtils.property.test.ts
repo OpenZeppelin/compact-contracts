@@ -16,8 +16,8 @@ import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  type Account,
   ConfidentialNoteFungibleTokenUtilsSimulator,
+  type Identifier,
   type Note,
 } from './simulators/ConfidentialNoteFungibleTokenUtilsSimulator.js';
 
@@ -41,7 +41,7 @@ const note = (): fc.Arbitrary<Note> =>
   fc.record({ value: uint128(), nonce: field() });
 
 /** An `Either<Bytes<32>, ContractAddress>` with every field drawn. */
-const account = (): fc.Arbitrary<Account> =>
+const account = (): fc.Arbitrary<Identifier> =>
   fc.record({
     is_left: fc.boolean(),
     left: bytes32(),
@@ -53,7 +53,7 @@ const component = () => fc.constantFrom('value', 'nonce', 'key');
 
 const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
-const accountKey = (pk: Account): string =>
+const accountKey = (pk: Identifier): string =>
   `${pk.is_left}:${hex(pk.left)}:${hex(pk.right.bytes)}`;
 
 const PROPERTY_RUNS = isLiveBackend() ? 2 : 100;

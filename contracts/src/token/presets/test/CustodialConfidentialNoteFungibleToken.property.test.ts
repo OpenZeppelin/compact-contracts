@@ -6,7 +6,7 @@
  * claims where nobody chose, and a failure shrinks to the smallest
  * counterexample.
  *
- * Runs on either backend. `deriveAccount` is pure and evaluates locally even
+ * Runs on either backend. `deriveIdentifier` is pure and evaluates locally even
  * on live, so its properties run 100 times anywhere. The other properties
  * deploy the mock per run, and every call is a transaction on live, so they
  * run twice there.
@@ -55,17 +55,17 @@ const deploy = (sk: Uint8Array, issuerSalt: Uint8Array, noteSalt: Uint8Array) =>
   });
 
 // ---------------------------------------------------------------------------
-// deriveAccount
+// deriveIdentifier
 // ---------------------------------------------------------------------------
 
-describe('CustodialConfidentialNoteFungibleToken property: deriveAccount', () => {
+describe('CustodialConfidentialNoteFungibleToken property: deriveIdentifier', () => {
   it('should give one secret distinct accounts under any two distinct salts', () => {
     fc.assert(
       fc.property(secret(), salt(), salt(), (sk, a, b) => {
         fc.pre(hex(a) !== hex(b));
 
-        expect(preset.deriveAccount(sk, a)).not.toStrictEqual(
-          preset.deriveAccount(sk, b),
+        expect(preset.deriveIdentifier(sk, a)).not.toStrictEqual(
+          preset.deriveIdentifier(sk, b),
         );
       }),
     );
@@ -76,7 +76,7 @@ describe('CustodialConfidentialNoteFungibleToken property: deriveAccount', () =>
   it('should derive a left account for any secret and salt', () => {
     fc.assert(
       fc.property(secret(), salt(), (sk, s) => {
-        const account = preset.deriveAccount(sk, s);
+        const account = preset.deriveIdentifier(sk, s);
 
         expect(account.is_left).toBe(true);
         expect(account.right.bytes).toStrictEqual(new Uint8Array(32));
@@ -132,7 +132,7 @@ describe(
           async (sk, other, a, b) => {
             fc.pre(hex(sk) !== hex(other) && hex(a) !== hex(b));
             const token = await deploy(sk, a, b);
-            const recipient = preset.deriveAccount(other, b);
+            const recipient = preset.deriveIdentifier(other, b);
 
             await expect(token.mint(recipient, 1n)).resolves.toMatchObject({
               value: 1n,
@@ -154,11 +154,11 @@ describe(
               wallet: { secretKey: sk },
               issuerSalt: a,
               noteSalt: b,
-              issuer: preset.deriveAccount(sk, b),
+              issuer: preset.deriveIdentifier(sk, b),
             });
 
           await expectRejection(
-            token.mint(preset.deriveAccount(sk, b), 1n),
+            token.mint(preset.deriveIdentifier(sk, b), 1n),
             ERR.notOwner,
           );
         }),
@@ -176,9 +176,9 @@ describe(
           async (sk, next, a, b) => {
             fc.pre(hex(sk) !== hex(next) && hex(a) !== hex(b));
             const token = await deploy(sk, a, b);
-            const recipient = preset.deriveAccount(next, b);
+            const recipient = preset.deriveIdentifier(next, b);
 
-            await token.transferOwnership(preset.deriveAccount(next, a));
+            await token.transferOwnership(preset.deriveIdentifier(next, a));
 
             await expectRejection(token.mint(recipient, 1n), ERR.notOwner);
             token.wallet.secretKey = next;
@@ -212,7 +212,7 @@ describe(
           async (issuer, holder, other, a, b) => {
             fc.pre(hex(holder) !== hex(other) && hex(a) !== hex(b));
             const token = await deploy(issuer, a, b);
-            const owner = preset.deriveAccount(holder, b);
+            const owner = preset.deriveIdentifier(holder, b);
             const note = await token.mint(owner, 100n);
             const path = await token.pathOf(note, owner);
 

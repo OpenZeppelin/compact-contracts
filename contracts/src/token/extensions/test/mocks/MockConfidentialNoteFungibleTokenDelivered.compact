@@ -11,7 +11,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import "../../../../crypto/prf/PrfAddr" prefix PrfAddr_;
+import "../../../../crypto/prf/PrfPseudonym" prefix PrfPseudonym_;
 import "../../../ConfidentialNoteFungibleToken"<32, Field> prefix Core_;
 import "../../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
 import "../../ConfidentialNoteFungibleTokenDelivery" prefix Delivery_;
@@ -72,7 +72,7 @@ export circuit burn(senderEncPk: JubjubPoint, value: Uint<128>): [] {
 // nullifier, and the delivery opener.
 export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
   return degradeToTransient(
-    PrfAddr_derivePk<Bytes<32>>(pad(32, "CNFT:pk"), salt, sk)
+    PrfPseudonym_derivePseudonym<Bytes<32>>(pad(32, "CNFT:pk"), salt, sk)
   );
 }
 

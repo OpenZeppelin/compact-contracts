@@ -33,7 +33,7 @@ pragma language_version >= 0.28.0;
  * space. Zcash hashes the seed first. This layout hashes it last.
  *
  * @dev Layout:
- * `PrfCore.evaluate` over `{domain, slot, context}` with `seed` as key. The
+ * `Prf.evaluate` over `{domain, slot, context}` with `seed` as key. The
  * hash covers `domain`, `slot`, the fields of `context` in order, then
  * `seed`.
  *
@@ -54,10 +54,10 @@ pragma language_version >= 0.28.0;
 module PrfExpand {
   import CompactStandardLibrary;
 
-  import "./PrfCore" prefix PrfCore_;
+  import "./Prf" prefix Prf_;
 
   /**
-   * @description The `PrfCore.evaluate` input, in wire-format order.
+   * @description The `Prf.evaluate` input, in wire-format order.
    * @type {Bytes<32>} domain - The purpose tag.
    * @type {Bytes<32>} slot - The per-output tag.
    * @type {T} context - What the output is bound to.
@@ -69,7 +69,7 @@ module PrfExpand {
   }
 
   /**
-   * @description `out = PrfCore.evaluate({domain, slot, context}, seed)`.
+   * @description `out = Prf.evaluate({domain, slot, context}, seed)`.
    *
    * @param {Bytes<32>} domain - The purpose tag.
    * @param {Bytes<32>} slot - The per-output tag.
@@ -83,7 +83,7 @@ module PrfExpand {
                         context: T,
                         seed: Bytes<32>
                         ): Bytes<32> {
-    return PrfCore_evaluate<Input<T>, Bytes<32>>(
+    return Prf_evaluate<Input<T>, Bytes<32>>(
       Input<T> { domain: domain, slot: slot, context: context },
       seed
     );

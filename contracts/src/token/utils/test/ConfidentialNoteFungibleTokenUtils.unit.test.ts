@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  type Account,
   ConfidentialNoteFungibleTokenUtilsSimulator,
+  type Identifier,
   type Note,
 } from './simulators/ConfidentialNoteFungibleTokenUtilsSimulator.js';
 
@@ -27,7 +27,7 @@ const ZERO_NOTE: Note = { value: 0n, nonce: 0n };
 const FIELD_KEY = 123456789n;
 const OTHER_FIELD_KEY = 987654321n;
 
-const account = (label: string): Account => ({
+const account = (label: string): Identifier => ({
   is_left: true,
   left: bytes32(label),
   right: { bytes: new Uint8Array(32) },

@@ -39,7 +39,10 @@ const bytes32 = (label: string): Uint8Array => {
 
 const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
-const WITNESS_NAMES = ['wit_AuthPrfAddrSK', 'wit_RandPrfExpandSeed'] as const;
+const WITNESS_NAMES = [
+  'wit_AuthPrfPseudonymSK',
+  'wit_RandPrfExpandSeed',
+] as const;
 
 describe('CustodialConfidentialNoteFungibleTokenWitnesses: salts', () => {
   it('should hold two distinct non-zero 32-byte salts', () => {
@@ -79,13 +82,13 @@ describe('CustodialConfidentialNoteFungibleTokenWitnesses: private state', () =>
   });
 });
 
-describe('CustodialConfidentialNoteFungibleTokenWitnesses: wit_AuthPrfAddrSK', () => {
+describe('CustodialConfidentialNoteFungibleTokenWitnesses: wit_AuthPrfPseudonymSK', () => {
   it("should return the wallet's secret", () => {
     const wallet = createCustodialWallet();
     const witnesses =
       CustodialConfidentialNoteFungibleTokenWitnesses<Ledger>(wallet);
 
-    const [, sk] = witnesses.wit_AuthPrfAddrSK(context());
+    const [, sk] = witnesses.wit_AuthPrfPseudonymSK(context());
 
     expect(sk).toBe(wallet.secretKey);
   });
@@ -95,9 +98,9 @@ describe('CustodialConfidentialNoteFungibleTokenWitnesses: wit_AuthPrfAddrSK', (
     const witnesses =
       CustodialConfidentialNoteFungibleTokenWitnesses<Ledger>(wallet);
 
-    const [, first] = witnesses.wit_AuthPrfAddrSK(context());
+    const [, first] = witnesses.wit_AuthPrfPseudonymSK(context());
     wallet.secretKey = bytes32('SECOND');
-    const [, second] = witnesses.wit_AuthPrfAddrSK(context());
+    const [, second] = witnesses.wit_AuthPrfPseudonymSK(context());
 
     expect(first).toStrictEqual(bytes32('FIRST'));
     expect(second).toStrictEqual(bytes32('SECOND'));

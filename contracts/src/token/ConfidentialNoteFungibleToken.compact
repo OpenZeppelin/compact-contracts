@@ -11,7 +11,7 @@ pragma language_version >= 0.28.0;
  *
  * @dev Notation:
  * - `H(...)`: `persistentHash` (SHA-256), a `Bytes<32>` digest.
- * - `PRF_k(x)`: `PrfCore.evaluate(x, k)`, which is `H(x, k)`.
+ * - `PRF_k(x)`: `Prf.evaluate(x, k)`, which is `H(x, k)`.
  * - `COMM_r(m)`: `HashCommitment.commit(domain, m, r)`, the stdlib
  *   `persistentCommit` over `{domain, m}`.
  * - NOTE: a UTxO `(value, nonce)`. A balance is the sum of one's unspent notes.
@@ -186,9 +186,9 @@ pragma language_version >= 0.28.0;
  *   note: Core_Note,
  *   path: Vector<32, MerkleTreePathEntry>
  * ): [Core_Note, Core_Note] {
- *   const caller = AuthPrfAddr_authenticate(_noteSalt);
+ *   const caller = AuthPrfPseudonym_authenticate(_noteSalt);
  *   return Core__transfer(
- *     caller.account,
+ *     caller.identifier,
  *     recipientPk,
  *     value,
  *     note,
