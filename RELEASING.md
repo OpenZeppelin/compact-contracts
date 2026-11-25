@@ -56,9 +56,11 @@ alpha counter.
 ## Common flows
 
 **Scheduled alpha (from `main`)**
+
 - Prepare release on `main`, version `X.Y.0-alpha.N` → merge → publishes `beta`.
 
 **Audit starts (cut the release line)**
+
 - `git branch release/X.Y.x <audit-sha> && git push origin release/X.Y.x`
   (creating the branch cuts nothing — its version is already tagged).
 - Prepare release on `release/X.Y.x`, version `X.Y.0-rc.1` (tick
@@ -66,6 +68,7 @@ alpha counter.
 - rc fixes later: repeat with `X.Y.0-rc.2`, etc.
 
 **Audit clears (stable + next alpha, same day)**
+
 - Merge audit fixes into `release/X.Y.x`.
 - Prepare release on `release/X.Y.x`, version `X.Y.0` (tick
   `allow_empty_changelog` if `## Unreleased` is empty) → merge → publishes `latest`.

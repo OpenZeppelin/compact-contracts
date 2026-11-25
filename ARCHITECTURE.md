@@ -12,6 +12,7 @@ under the npm `latest` tag; `main` is the alpha line under `beta` ([`RELEASING.m
 Audit boundaries are the exact commits and scopes in [`audits/README.md`](audits/README.md). An
 audit of a release does not cover later changes on `main`. Module headers are the reference; the
 [docs](https://docs.openzeppelin.com/contracts-compact) cover some modules. The design preserves:
+
 1. **Composable building blocks.** Modules and presets are imported; `examples/` holds deployables.
 2. **No trusted witnesses.** Authorization and integrity hold in-circuit for any witness value.
 3. **Explicit disclosure.** Shielded modules list what they reveal; public state is flagged as such.

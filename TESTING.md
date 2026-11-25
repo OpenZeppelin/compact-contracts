@@ -69,6 +69,7 @@ filter matches nothing under is skipped; a filter that matches nothing anywhere 
 ### Flake check and exit codes
 
 If any files fail, a second round re-runs just those files on a fresh node with one worker:
+
 - Fails round 1, passes round 2: **FLAKY** (exit 0, reported loudly).
 - Fails both rounds, or never reports in round 2: **REAL** (exit 1).
 - Infrastructure abort (stack, compile, lock): exit 2.
@@ -80,6 +81,7 @@ full suite.
 
 All live tests share one node, so state left by an earlier run can fail a later one. A guard
 enforces two rules and fails fast, before any wallet build:
+
 1. **Start from a fresh node.** Stale state makes shielded spends fail with node
    `Custom error: 103`. The guard aborts if it finds any shielded coin event beyond genesis.
    The runner resets for you; reset manually with `yarn env:up`.
@@ -116,6 +118,7 @@ in VS Code. On Linux, prefix `systemd-inhibit --why="live tests"` for a long run
 
 The live suite takes hours, so [`live.yml`](.github/workflows/live.yml) runs it separately
 from the PR checks and is never a required check:
+
 - **Nightly** on `main`. A failed nightly opens (or comments on) a `live-nightly` tracking
   issue, which closes automatically on the next green run.
 - **On demand**: run `Live Test Suite` from the Actions tab (or `gh workflow run live.yml`),
