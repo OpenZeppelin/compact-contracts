@@ -2,6 +2,7 @@
 
 Start here when contributing to this repository with an AI coding agent. The rules live in the
 same files that human contributors use:
+
 - [`GUIDELINES.md`](GUIDELINES.md): coding conventions, testing, linting and documentation.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md): repository layout, design decisions and constraints.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): contribution process, PR conventions and the test suites.

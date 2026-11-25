@@ -31,6 +31,7 @@ the single source of truth for naming, section ordering, idioms, testing and doc
 The design rationale and constraints live in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 Read both before opening a PR.
 The items below are the hard gates your contribution must clear:
+
 - **Test coverage**: minimum 95% per-file coverage on TypeScript sources (witnesses and simulators),
   checked with `yarn test:coverage`.
   Compact coverage is reported but not gated.
@@ -43,6 +44,7 @@ The items below are the hard gates your contribution must clear:
 ## Commit and PR conventions
 
 The single source of truth for how changes land, and humans and agents follow the same rules:
+
 - **Sign every commit.**
   Configure commit signing before your first contribution;
   unsigned commits will not be merged.
@@ -75,6 +77,7 @@ The single source of truth for how changes land, and humans and agents follow th
 AI coding assistants are welcome (see [`AGENTS.md`](AGENTS.md) for the agent setup),
 but review thoroughly every line you submit.
 What does not change is who is answerable for the result:
+
 - **You are responsible for the quality of everything you submit, whatever tools produced it.**
   Read, understand and test the code before opening a PR.
   If you cannot explain why a change is correct, it is not ready.
