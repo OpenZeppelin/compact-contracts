@@ -25,7 +25,7 @@ const bytes32 = (label: string): Uint8Array => {
   return bytes;
 };
 
-const TAG = bytes32('AuthPrfAddr:account');
+const TAG = bytes32('AuthPrfPseudonym:identifier');
 const SALT = bytes32('salt');
 const OTHER_SALT = bytes32('other salt');
 const SK = bytes32('key');
@@ -39,7 +39,7 @@ const AUTH_SOURCE = readFileSync(
   'utf8',
 );
 
-/** `left(persistentHash([tag, salt, sk]))`, the account `deriveAccount` returns. */
+/** `left(persistentHash([tag, salt, sk]))`, the account `deriveIdentifier` returns. */
 const buildAccount = (sk: Uint8Array, salt: Uint8Array): Identifier => ({
   is_left: true,
   left: persistentHash(new CompactTypeVector(3, new CompactTypeBytes(32)), [
@@ -71,34 +71,34 @@ describe('AuthPrfPseudonym', () => {
     });
   });
 
-  describe('deriveAccount', () => {
+  describe('deriveIdentifier', () => {
     it('should match the persistentHash derivation', async () => {
       for (const label of ['ALICE_SK', 'BOB_SK', 'CHARLIE_SK']) {
         const sk = bytes32(label);
 
-        expect(await auth.deriveAccount(sk, SALT)).toEqual(
+        expect(await auth.deriveIdentifier(sk, SALT)).toEqual(
           buildAccount(sk, SALT),
         );
       }
     });
 
     it('should return a left account with a zero right arm', async () => {
-      const account = await auth.deriveAccount(SK, SALT);
+      const account = await auth.deriveIdentifier(SK, SALT);
 
       expect(account.is_left).toBe(true);
       expect(account.right).toEqual({ bytes: ZERO });
     });
 
     it('should be deterministic for the same secret key and salt', async () => {
-      expect(await auth.deriveAccount(SK, SALT)).toEqual(
-        await auth.deriveAccount(SK, SALT),
+      expect(await auth.deriveIdentifier(SK, SALT)).toEqual(
+        await auth.deriveIdentifier(SK, SALT),
       );
     });
 
     it('should produce distinct accounts for distinct keys', async () => {
       const accounts = await Promise.all(
         ['A', 'B', 'C'].map((label) =>
-          auth.deriveAccount(bytes32(label), SALT),
+          auth.deriveIdentifier(bytes32(label), SALT),
         ),
       );
 
@@ -110,14 +110,14 @@ describe('AuthPrfPseudonym', () => {
     });
 
     it('should produce a different account with a different salt', async () => {
-      expect(await auth.deriveAccount(SK, OTHER_SALT)).not.toEqual(
-        await auth.deriveAccount(SK, SALT),
+      expect(await auth.deriveIdentifier(SK, OTHER_SALT)).not.toEqual(
+        await auth.deriveIdentifier(SK, SALT),
       );
     });
 
     // No guard: an all-zero secret key still derives.
     it('should accept a zero-byte secret key', async () => {
-      expect(await auth.deriveAccount(ZERO, SALT)).toEqual(
+      expect(await auth.deriveIdentifier(ZERO, SALT)).toEqual(
         buildAccount(ZERO, SALT),
       );
     });
@@ -126,13 +126,13 @@ describe('AuthPrfPseudonym', () => {
   describe('authenticate', () => {
     it("should return a Caller holding the witness key's account", async () => {
       expect(await auth.authenticate(SALT)).toEqual({
-        account: buildAccount(SK, SALT),
+        identifier: buildAccount(SK, SALT),
       });
     });
 
-    it('should equal deriveAccount over the witness key', async () => {
-      expect((await auth.authenticate(SALT)).account).toEqual(
-        await auth.deriveAccount(SK, SALT),
+    it('should equal deriveIdentifier over the witness key', async () => {
+      expect((await auth.authenticate(SALT)).identifier).toEqual(
+        await auth.deriveIdentifier(SK, SALT),
       );
     });
 
@@ -142,7 +142,7 @@ describe('AuthPrfPseudonym', () => {
       });
       const fromOther = await other.authenticate(SALT);
 
-      expect(fromOther).toEqual({ account: buildAccount(OTHER_SK, SALT) });
+      expect(fromOther).toEqual({ identifier: buildAccount(OTHER_SK, SALT) });
       expect(fromOther).not.toEqual(await auth.authenticate(SALT));
     });
 
@@ -164,7 +164,7 @@ describe('AuthPrfPseudonym', () => {
         await auth.authenticate(address),
       );
       expect(await auth.authenticateForThisContract()).toEqual({
-        account: buildAccount(SK, address),
+        identifier: buildAccount(SK, address),
       });
     });
 
@@ -179,7 +179,7 @@ describe('AuthPrfPseudonym', () => {
 
       expect(selfAddress(other)).not.toEqual(selfAddress(auth));
       expect(await other.authenticateForThisContract()).toEqual({
-        account: buildAccount(SK, selfAddress(other)),
+        identifier: buildAccount(SK, selfAddress(other)),
       });
       expect(await other.authenticateForThisContract()).not.toEqual(
         await auth.authenticateForThisContract(),
@@ -199,24 +199,24 @@ describe('AuthPrfPseudonym', () => {
       expect(authenticate?.['result-type']).toMatchObject({
         'type-name': 'Struct',
         name: 'Caller',
-        elements: [{ name: 'account' }],
+        elements: [{ name: 'identifier' }],
       });
     });
   });
 
   describe('purity', () => {
-    it('should keep deriveAccount pure and both authenticate circuits provable', () => {
+    it('should keep deriveIdentifier pure and both authenticate circuits provable', () => {
       expect(circuitSurface(readContractInfo(ARTIFACT))).toStrictEqual([
         { name: 'authenticate', pure: false, proof: true },
         { name: 'authenticateForThisContract', pure: false, proof: true },
-        { name: 'deriveAccount', pure: true, proof: false },
+        { name: 'deriveIdentifier', pure: true, proof: false },
       ]);
     });
 
     // Called with no deployment and no contract state.
-    it('should run deriveAccount off-chain to the same account', async () => {
-      expect(pureCircuits.deriveAccount(SK, SALT)).toEqual(
-        await auth.deriveAccount(SK, SALT),
+    it('should run deriveIdentifier off-chain to the same account', async () => {
+      expect(pureCircuits.deriveIdentifier(SK, SALT)).toEqual(
+        await auth.deriveIdentifier(SK, SALT),
       );
     });
 

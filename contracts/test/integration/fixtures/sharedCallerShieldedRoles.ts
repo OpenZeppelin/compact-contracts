@@ -178,10 +178,10 @@ export const findRoleHolders = (
 export const CALLER_SALT = padTag('CALLER_SALT');
 export const INSTANCE_SALT = padTag('INSTANCE_SALT');
 
-/** Mirrors `AuthPrfPseudonym.deriveAccount(secretKey, CALLER_SALT).left`. */
+/** Mirrors `AuthPrfPseudonym.deriveIdentifier(secretKey, CALLER_SALT).left`. */
 const buildAccountId = (secretKey: Uint8Array): Uint8Array =>
   persistentHash(new CompactTypeVector(3, new CompactTypeBytes(32)), [
-    padTag('AuthPrfAddr:account'),
+    padTag('AuthPrfPseudonym:identifier'),
     CALLER_SALT,
     secretKey,
   ]);

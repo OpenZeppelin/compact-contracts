@@ -33,7 +33,7 @@ pragma language_version >= 0.28.0;
  *   controls the account, a key or a contract.
  * - `UnpackedIdentifier`: an `Identifier` as its kind and the 32 bytes of
  *   its active arm.
- * - `account`: the `Identifier` of a `Caller`, who the caller is.
+ * - `identifier`: the field of a `Caller`, who the caller is.
  *
  * @dev Authenticators:
  * An authenticator is a module that produces a `Caller`. By convention it
@@ -41,7 +41,8 @@ pragma language_version >= 0.28.0;
  * - `authenticate(salt): Caller`, which derives the caller's account under
  *   `salt`. The salt is per deployment, never per module, so one deployment
  *   gives one account to every module that takes a caller.
- * - A pure `deriveAccount`, so a client computes the same account off-chain.
+ * - A pure `deriveIdentifier`, so a client computes the same identifier
+ *   off-chain.
  *
  * The account it returns is canonical: the inactive arm is zero. A module
  * may compare the account as a whole.
@@ -78,7 +79,7 @@ pragma language_version >= 0.28.0;
  *
  * @warning Not unforgeable:
  * Compact structs are not opaque, so a composing contract can build
- * `Caller { account: anyAccount }` and no module can tell it from an
+ * `Caller { identifier: anyIdentifier }` and no module can tell it from an
  * authenticated one. The type makes one derivation the default and a second
  * one visible. It does not make identity confusion impossible.
  */
@@ -95,12 +96,12 @@ module Identifier {
 
   /**
    * @description A caller an authenticator produced, as opposed to an
-   * account passed in as an argument.
-   * @type {Either<Bytes<32>, ContractAddress>} account - The caller's
-   * account.
+   * identifier passed in as an argument.
+   * @type {Either<Bytes<32>, ContractAddress>} identifier - The caller's
+   * identifier.
    */
   export struct Caller {
-    account: Identifier;
+    identifier: Identifier;
   }
 
   /**

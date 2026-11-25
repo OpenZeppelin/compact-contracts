@@ -9,7 +9,7 @@ pragma language_version >= 0.28.0;
  *
  * Balances are stored as ElGamal ciphertexts on Jubjub. Account identity is
  * the `Caller` the composing contract passes in as
- * `caller`; the account id is `caller.account.left`. Encryption uses this
+ * `caller`; the account id is `caller.identifier.left`. Encryption uses this
  * module's witness `wit_ConfidentialTokenEK` to derive an ElGamal keypair
  * `(ek, pk)` via `ElGamal_derivePk`, where
  * `pk = g^degradeToTransient(persistentHash([ElGamal domain tag, EK]))`.
@@ -25,7 +25,7 @@ pragma language_version >= 0.28.0;
  * published identifier revealing the encryption key. The domain separation is
  * what makes that safe. Do not remove it. See `ElGamal.secretToScalar` and
  * the authenticator's account derivation, for example
- * `AuthPrfPseudonym.deriveAccount`.
+ * `AuthPrfPseudonym.deriveIdentifier`.
  *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
@@ -67,9 +67,9 @@ pragma language_version >= 0.28.0;
  *
  * `caller` is an argument. The composing contract gets it from an
  * authenticator, see `Caller` in the `Identifier` module. This module acts on
- * `caller.account.left` and rejects a contract caller. Registration rejects a
- * zero caller and records `pk` under that id. Every other circuit taking
- * `caller` also proves the EK registered for it.
+ * `caller.identifier.left` and rejects a contract caller. Registration
+ * rejects a zero caller and records `pk` under that id. Every other circuit
+ * taking `caller` also proves the EK registered for it.
  *
  * @warning Seed freshness. Seed freshness is load-bearing for confidentiality
  * on EVERY path. The seed-to-randomness expansion is deterministic and public,
@@ -176,7 +176,7 @@ pragma language_version >= 0.28.0;
  *      know the remainder folded back into their balance.
  *
  * @dev Hash function discipline. Every hash is built on `persistentHash` (no
- * direct use of `transientHash`). The account id (`caller.account.left`,
+ * direct use of `transientHash`). The account id (`caller.identifier.left`,
  * from the contract's authenticator) is used as a raw map key.
  * Deriving Jubjub scalars (pk derivation, the decryption check, and per-credit
  * randomness) applies `degradeToTransient` to a `persistentHash` output so the
@@ -217,7 +217,7 @@ pragma language_version >= 0.28.0;
  * `registerWithKey`,
  * `_burn`, `transfer`, `_move`, `approve`, `transferFrom`, `sweep`,
  * `_burnFrom` and `clearMemos`. All but `clearMemos` RETURN the caller's
- * `accountId`, which equals `caller.account.left`.
+ * `accountId`, which equals `caller.identifier.left`.
  * An assert failing anywhere in
  * a Compact circuit invalidates the whole transaction, so a gate placed after
  * the call prevents the operation too.
@@ -284,7 +284,7 @@ pragma language_version >= 0.28.0;
  *
  * EOA-only. Contract-to-contract (c2c) is out of scope. Accounts here are
  * externally-owned: identity is a key-controlled account, the `left` of
- * `caller.account` (see `Identifier`), and spending requires the holder to
+ * `caller.identifier` (see `Identifier`), and spending requires the holder to
  * prove a balance plaintext under a secret encryption key (`EK`) supplied via
  * witness.
  * A contract has no private state, so it cannot custody such a key; it could
@@ -1321,7 +1321,7 @@ module ConfidentialFungibleToken {
    * @return {Bytes<32>} - The bytes of the caller's key identifier.
    */
   circuit _callerId(caller: Caller): Bytes<32> {
-    const id = Identifier_unpack(caller.account);
+    const id = Identifier_unpack(caller.identifier);
     assert(id.kind == IdentifierKind.Key, "ConfidentialFungibleToken: contract caller");
     return id.bytes;
   }

@@ -39,13 +39,13 @@ const bytes32 = (label: string): Uint8Array => {
 const fromHex = (value: string): Uint8Array =>
   new Uint8Array(Buffer.from(value.slice(2), 'hex'));
 
-const TAG = bytes32('AuthPrfAddr:account');
+const TAG = bytes32('AuthPrfPseudonym:identifier');
 const GOLDEN_SK = bytes32('ALICE');
 const GOLDEN_SALT = bytes32('SALT');
 
-/** `deriveAccount(GOLDEN_SK, GOLDEN_SALT).left`. */
+/** `deriveIdentifier(GOLDEN_SK, GOLDEN_SALT).left`. */
 const GOLDEN_ACCOUNT =
-  '0xaf55d489c3c0228cece2bb86074c0bab748bd9e2419f5d1ab06bc1aa7ac6d8db';
+  '0xb0d976468fe705dd047a9a088de6db65ea11414fcdc60681fb8fc66b4ab50cc6';
 
 const goldenAccount = () => ({
   is_left: true,
@@ -74,20 +74,20 @@ describe('AuthPrfPseudonym compatibility: layout', () => {
       [TAG, GOLDEN_SALT, GOLDEN_SK],
     );
 
-    expect((await auth.deriveAccount(GOLDEN_SK, GOLDEN_SALT)).left).toEqual(
+    expect((await auth.deriveIdentifier(GOLDEN_SK, GOLDEN_SALT)).left).toEqual(
       reference,
     );
   });
 
   it('should reproduce the pinned account', async () => {
-    expect(await auth.deriveAccount(GOLDEN_SK, GOLDEN_SALT)).toEqual(
+    expect(await auth.deriveIdentifier(GOLDEN_SK, GOLDEN_SALT)).toEqual(
       goldenAccount(),
     );
   });
 
   it('should authenticate to the pinned account', async () => {
     expect(await auth.authenticate(GOLDEN_SALT)).toEqual({
-      account: goldenAccount(),
+      identifier: goldenAccount(),
     });
   });
 });

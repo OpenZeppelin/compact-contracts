@@ -262,7 +262,7 @@ module MultiToken {
                    approved: Boolean
                    ): [] {
     assertInitialized();
-    const callerAccount = caller.account;
+    const callerAccount = caller.identifier;
     _setApprovalForAll(callerAccount, operator, approved);
   }
 
@@ -459,7 +459,7 @@ module MultiToken {
                    ): [] {
     assertInitialized();
 
-    const callerAccount = caller.account;
+    const callerAccount = caller.identifier;
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     if (disclose(canonFrom) != disclose(callerAccount)) {
       assert(isApprovedForAll(canonFrom, callerAccount), "MultiToken: unauthorized operator");

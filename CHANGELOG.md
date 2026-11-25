@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `identifier/Identifier`: the `Identifier` type (`Either<Bytes<32>, ContractAddress>`) and the `Caller` struct an authenticator produces, with the pure accessor `unpack`, which returns an identifier's kind (`IdentifierKind`) and the 32 bytes of its active arm as an `UnpackedIdentifier`. (#1243)
 - Add the `crypto/prf` modules: `Prf.evaluate<T, K>(input, key)` hashes an input under a secret key, and `PrfPseudonym.derivePseudonym<S>(domain, salt, sk)` derives a 32-byte pseudonym from a secret under a purpose tag and a salt. (#1243)
-- Add `crypto/authentication/AuthPrfPseudonym`. `authenticate(salt)` authenticates by knowledge of a secret key (`wit_AuthPrfPseudonymSK`) and returns a `Caller`. A pure `deriveAccount` computes the same account off-chain. (#1243)
+- Add `crypto/authentication/AuthPrfPseudonym`. `authenticate(salt)` authenticates by knowledge of a secret key (`wit_AuthPrfPseudonymSK`) and returns a `Caller`. A pure `deriveIdentifier` computes the same account off-chain. (#1243)
 - Add `identifier/extensions/IdentifierCommitment`: the pure `commit(domain, publicKey, blinding)` returns an `IdentifierCommitment` (`Bytes<32>`), a hiding commitment to an account's key, `persistentCommit` over `{domain, publicKey}` with `blinding`. (#1243)
 - Add `crypto/randomness/RandBlinding`: `read()` returns the caller's blinding factor (`wit_RandBlindingFactor`) as a `Blinding` (`Bytes<32>`) and rejects zero with `RandBlinding: zero blinding`. (#1243)
 
@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **Breaking:** Remove the key witnesses `wit_OwnableSK`, `wit_AccessControlSK`, `wit_secretKey`, `wit_FungibleTokenSK`, `wit_NonFungibleTokenSK`, `wit_MultiTokenSK` and `wit_ConfidentialTokenSK`. Each module takes the caller as an argument. (#1243)
-- **Breaking:** Remove `computeAccountId` from `Utils`, `ShieldedAccessControl` and `ConfidentialFungibleToken`. `AuthPrfPseudonym.deriveAccount(secretKey, salt)` replaces it. (#1243)
+- **Breaking:** Remove `computeAccountId` from `Utils`, `ShieldedAccessControl` and `ConfidentialFungibleToken`. `AuthPrfPseudonym.deriveIdentifier(secretKey, salt)` replaces it. (#1243)
 
 ### Known issues
 

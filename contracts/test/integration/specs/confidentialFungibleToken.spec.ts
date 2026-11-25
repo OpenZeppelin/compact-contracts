@@ -41,7 +41,7 @@ const createTestKey = (label: string): Uint8Array => {
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt = new CompactTypeVector(3, new CompactTypeBytes(32));
   return persistentHash(rt, [
-    padTag('AuthPrfAddr:account'),
+    padTag('AuthPrfPseudonym:identifier'),
     padTag('ComposedCFTPublicSupply'),
     sk,
   ]);

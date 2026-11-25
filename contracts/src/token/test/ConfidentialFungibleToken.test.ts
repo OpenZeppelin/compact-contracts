@@ -31,7 +31,7 @@ import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialF
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
   return persistentHash(rt_type, [
-    padTag('AuthPrfAddr:account'),
+    padTag('AuthPrfPseudonym:identifier'),
     padTag('MockConfidentialFungibleToken'),
     sk,
   ]);
@@ -1779,7 +1779,7 @@ describe.skipIf(isLiveBackend())(
       right: { bytes: address },
     });
 
-    const callerOf = (account: Identifier): Caller => ({ account });
+    const callerOf = (account: Identifier): Caller => ({ identifier: account });
 
     const ALICE_ID = bytesOf(1);
     const BOB_ID = bytesOf(2);

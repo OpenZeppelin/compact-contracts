@@ -15,7 +15,7 @@ import { AccessControlSimulator } from './simulators/AccessControlSimulator.js';
 // Helpers
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
-  const domain = createTestSK('AuthPrfAddr:account');
+  const domain = createTestSK('AuthPrfPseudonym:identifier');
   const salt = createTestSK('MockAccessControl');
   return persistentHash(rt_type, [domain, salt, sk]);
 };
@@ -950,7 +950,9 @@ describe('AccessControl: abnormal callers', () => {
     right: { bytes: address },
   });
 
-  const callerOf = (account: Caller['account']): Caller => ({ account });
+  const callerOf = (account: Caller['identifier']): Caller => ({
+    identifier: account,
+  });
 
   const ADMIN_KEY = new Uint8Array(32).fill(1);
   const OPERATOR_KEY = new Uint8Array(32).fill(2);
@@ -1066,7 +1068,11 @@ describe('AccessControl: abnormal callers', () => {
     });
 
     it('should revoke the canonical account in renounceRole with its own account as confirmation', async () => {
-      await accessControlCaller.renounceRole(operator, ROLE, operator.account);
+      await accessControlCaller.renounceRole(
+        operator,
+        ROLE,
+        operator.identifier,
+      );
       expect(await accessControlCaller.hasRole(ROLE, OPERATOR_ACCOUNT)).toBe(
         false,
       );

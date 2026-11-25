@@ -317,7 +317,7 @@ module FungibleToken {
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
-    const owner = caller.account;
+    const owner = caller.identifier;
     _unsafeUncheckedTransfer(owner, to, value);
     return true;
   }
@@ -374,7 +374,7 @@ module FungibleToken {
                          ): Boolean {
     assertInitialized();
 
-    const owner = caller.account;
+    const owner = caller.identifier;
     _approve(owner, spender, value);
     return true;
   }
@@ -448,7 +448,7 @@ module FungibleToken {
                    ): Boolean {
     assertInitialized();
 
-    const spender = caller.account;
+    const spender = caller.identifier;
     _spendAllowance(fromAddress, spender, value);
     _unsafeUncheckedTransfer(fromAddress, to, value);
     return true;

@@ -28,7 +28,7 @@ const itDryOnly = it.skipIf(isLiveBackend());
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);
 const COMMITMENT_DOMAIN = 'ShieldedAccessControl:commitment';
 const NULLIFIER_DOMAIN = 'ShieldedAccessControl:nullifier';
-const ACCOUNT_DOMAIN = 'AuthPrfAddr:account';
+const ACCOUNT_DOMAIN = 'AuthPrfPseudonym:identifier';
 const ACCOUNT_COMMITMENT_DOMAIN = 'ShieldedAccessControl:account';
 
 const DEFAULT_MT_PATH: MerkleTreePath<Uint8Array> = {
@@ -1529,7 +1529,9 @@ describe('ShieldedAccessControl: abnormal callers', () => {
     right: { bytes: address },
   });
 
-  const callerOf = (account: Caller['account']): Caller => ({ account });
+  const callerOf = (account: Caller['identifier']): Caller => ({
+    identifier: account,
+  });
 
   const BLINDING = Uint8Array.from(Buffer.alloc(32, 'BLINDING'));
   const FRESH_BLINDING = Uint8Array.from(Buffer.alloc(32, 'FRESH_BLINDING'));

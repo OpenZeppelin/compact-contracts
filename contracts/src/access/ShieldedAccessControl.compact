@@ -854,7 +854,7 @@ module ShieldedAccessControl {
    * @returns {IdentifierCommitment} accountCommitment - The computed account commitment.
    */
   circuit _computeAccountCommitment(caller: Caller, blinding: Blinding): IdentifierCommitment {
-    const id = Identifier_unpack(caller.account);
+    const id = Identifier_unpack(caller.identifier);
     assert(id.kind == IdentifierKind.Key, "ShieldedAccessControl: contract caller");
     return computeAccountCommitment(id.bytes, blinding);
   }

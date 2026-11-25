@@ -202,7 +202,7 @@ module AccessControl {
     // An authenticator returns a canonical account,
     // but we route through _checkRole -> hasRole for consistency.
     // The redundant canonicalization is negligible.
-    _checkRole(roleId, caller.account);
+    _checkRole(roleId, caller.identifier);
   }
 
   /**
@@ -317,7 +317,7 @@ module AccessControl {
                    roleId: Bytes<32>,
                    callerConfirmation: Identifier
                    ): [] {
-    assert(callerConfirmation == caller.account,
+    assert(callerConfirmation == caller.identifier,
            "AccessControl: bad confirmation"
            );
 

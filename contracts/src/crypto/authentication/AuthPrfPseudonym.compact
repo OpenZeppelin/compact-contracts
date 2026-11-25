@@ -26,7 +26,7 @@ pragma language_version >= 0.28.0;
  *
  * @dev Notation:
  * - `account = left(PrfPseudonym.derivePseudonym(tag, salt, secretKey))`,
- *   where `tag` is `"AuthPrfAddr:account"` padded to 32 bytes.
+ *   where `tag` is `"AuthPrfPseudonym:identifier"` padded to 32 bytes.
  * - The tag and the `PrfPseudonym` layout are wire format: changing either
  *   orphans every stored account.
  *
@@ -84,13 +84,13 @@ module AuthPrfPseudonym {
    * @param {Bytes<32>} salt - The per-deployment salt.
    * @return {Either<Bytes<32>, ContractAddress>} - The account, a `left`.
    */
-  export pure circuit deriveAccount(
+  export pure circuit deriveIdentifier(
                         secretKey: Bytes<32>,
                         salt: Bytes<32>
                         ): Identifier {
     return left<Bytes<32>, ContractAddress>(
              PrfPseudonym_derivePseudonym<Bytes<32>>(
-               pad(32, "AuthPrfAddr:account"),
+               pad(32, "AuthPrfPseudonym:identifier"),
                salt,
                secretKey
              )
@@ -115,7 +115,7 @@ module AuthPrfPseudonym {
    */
   export circuit authenticate(salt: Bytes<32>): Caller {
     return Caller {
-      account: deriveAccount(wit_AuthPrfPseudonymSK(), salt)
+      identifier: deriveIdentifier(wit_AuthPrfPseudonymSK(), salt)
     };
   }
 

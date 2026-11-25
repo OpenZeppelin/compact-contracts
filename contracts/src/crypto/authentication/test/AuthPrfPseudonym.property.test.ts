@@ -3,9 +3,9 @@
  * salts.
  *
  * The unit and compatibility suites state each claim at fixed points. This
- * states them where nobody chose: `deriveAccount` equals the `persistentHash`
- * reference, `authenticate` returns the account of the witness key, and the
- * key and the salt each move the account.
+ * states them where nobody chose: `deriveIdentifier` equals the
+ * `persistentHash` reference, `authenticate` returns the account of the
+ * witness key, and the key and the salt each move the account.
  *
  * Runs on either backend. `authenticate` is an impure circuit on its mock, so
  * each call is a transaction on live, and the properties run twice there.
@@ -34,7 +34,7 @@ const component = () => fc.constantFrom('secretKey', 'salt');
 const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
 const TAG = new Uint8Array(32);
-TAG.set(new TextEncoder().encode('AuthPrfAddr:account'));
+TAG.set(new TextEncoder().encode('AuthPrfPseudonym:identifier'));
 
 const reference = (sk: Uint8Array, salt: Uint8Array): Uint8Array =>
   persistentHash(new CompactTypeVector(3, new CompactTypeBytes(32)), [
@@ -59,7 +59,7 @@ describe('AuthPrfPseudonym property: layout', () => {
   it('should match the reference for any secret key and salt', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), bytes32(), async (sk, salt) => {
-        expect(await auth.deriveAccount(sk, salt)).toEqual({
+        expect(await auth.deriveIdentifier(sk, salt)).toEqual({
           is_left: true,
           left: reference(sk, salt),
           right: { bytes: new Uint8Array(32) },
@@ -74,8 +74,8 @@ describe('AuthPrfPseudonym property: layout', () => {
       fc.asyncProperty(bytes32(), bytes32(), async (sk, salt) => {
         await auth.updatePrivateState({ secretKey: sk });
 
-        expect((await auth.authenticate(salt)).account).toEqual(
-          await auth.deriveAccount(sk, salt),
+        expect((await auth.authenticate(salt)).identifier).toEqual(
+          await auth.deriveIdentifier(sk, salt),
         );
       }),
       { numRuns: PROPERTY_RUNS },
@@ -106,8 +106,8 @@ describe('AuthPrfPseudonym property: separation', () => {
             salt: moved === 'salt' ? other : salt,
           };
 
-          expect(await auth.deriveAccount(sk, salt)).not.toEqual(
-            await auth.deriveAccount(next.sk, next.salt),
+          expect(await auth.deriveIdentifier(sk, salt)).not.toEqual(
+            await auth.deriveIdentifier(next.sk, next.salt),
           );
         },
       ),

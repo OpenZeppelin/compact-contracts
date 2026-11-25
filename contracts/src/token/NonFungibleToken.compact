@@ -334,8 +334,8 @@ module NonFungibleToken {
                    tokenId: Uint<128>
                    ): [] {
     assertInitialized();
-    assert(!Utils_isTargetZero(caller.account), "NonFungibleToken: invalid caller");
-    const auth = caller.account;
+    assert(!Utils_isTargetZero(caller.identifier), "NonFungibleToken: invalid caller");
+    const auth = caller.identifier;
     _approve(to, tokenId, auth);
   }
 
@@ -381,7 +381,7 @@ module NonFungibleToken {
                    approved: Boolean
                    ): [] {
     assertInitialized();
-    const owner = caller.account;
+    const owner = caller.identifier;
     _setApprovalForAll(owner, operator, approved);
   }
 
@@ -482,8 +482,8 @@ module NonFungibleToken {
                    ): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
-    assert(!Utils_isTargetZero(caller.account), "NonFungibleToken: invalid caller");
-    const auth = caller.account;
+    assert(!Utils_isTargetZero(caller.identifier), "NonFungibleToken: invalid caller");
+    const auth = caller.identifier;
     const previousOwner = _update(to, tokenId, auth);
 
     // The `_isAuthorized` check inside `_update` already implies the token exists, but that

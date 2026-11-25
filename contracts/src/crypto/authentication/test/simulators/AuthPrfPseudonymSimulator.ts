@@ -17,7 +17,7 @@ import {
 export type Identifier = Either<Uint8Array, ContractAddress>;
 
 /** `Caller`: a caller an authenticator produced. */
-export type Caller = { account: Identifier };
+export type Caller = { identifier: Identifier };
 
 /**
  * Type constructor args
@@ -67,11 +67,11 @@ export class AuthPrfPseudonymSimulator extends AuthPrfPseudonymSimulatorBase {
     return this.circuits.impure.authenticateForThisContract();
   }
 
-  /** @description `AuthPrfPseudonym.deriveAccount`. */
-  public deriveAccount(
+  /** @description `AuthPrfPseudonym.deriveIdentifier`. */
+  public deriveIdentifier(
     secretKey: Uint8Array,
     salt: Uint8Array,
   ): Promise<Identifier> {
-    return this.circuits.pure.deriveAccount(secretKey, salt);
+    return this.circuits.pure.deriveIdentifier(secretKey, salt);
   }
 }

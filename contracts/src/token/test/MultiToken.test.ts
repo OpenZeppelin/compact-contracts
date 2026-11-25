@@ -17,7 +17,7 @@ import { MultiTokenSimulator } from './simulators/MultiTokenSimulator.js';
 // Helpers
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
-  const domain = createTestSK('AuthPrfAddr:account');
+  const domain = createTestSK('AuthPrfPseudonym:identifier');
   const salt = createTestSK('MockMultiToken');
   return persistentHash(rt_type, [domain, salt, sk]);
 };
@@ -1621,7 +1621,7 @@ describe('MultiToken: abnormal callers', () => {
     right: { bytes: address },
   });
 
-  const callerOf = (account: Identifier): Caller => ({ account });
+  const callerOf = (account: Identifier): Caller => ({ identifier: account });
 
   const ALICE = userAccount(bytesOf(1));
   const BOB = userAccount(bytesOf(2));

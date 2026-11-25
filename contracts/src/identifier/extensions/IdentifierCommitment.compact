@@ -17,7 +17,7 @@ pragma language_version >= 0.28.0;
  * import "../identifier/extensions/IdentifierCommitment" prefix IdentifierCommitment_;
  *
  * circuit _holder(caller: Caller, blinding: Bytes<32>): IdentifierCommitment {
- *   const id = Identifier_unpack(caller.account);
+ *   const id = Identifier_unpack(caller.identifier);
  *   assert(id.kind == IdentifierKind.Key, "MyModule: contract caller");
  *   return IdentifierCommitment_commit(
  *     pad(32, "MyModule:account"),

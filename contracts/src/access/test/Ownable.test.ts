@@ -14,7 +14,7 @@ import { OwnableSimulator } from './simulators/OwnableSimulator.js';
 // Helpers
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
-  const domain = createTestSK('AuthPrfAddr:account');
+  const domain = createTestSK('AuthPrfPseudonym:identifier');
   const salt = createTestSK('MockOwnable');
   return persistentHash(rt_type, [domain, salt, sk]);
 };
@@ -555,7 +555,7 @@ describe('Ownable', () => {
 });
 
 const callerOf = (publicKey: Uint8Array): Caller => ({
-  account: { is_left: true, left: publicKey, right: { bytes: zeroBytes } },
+  identifier: { is_left: true, left: publicKey, right: { bytes: zeroBytes } },
 });
 
 const callerWith = (
@@ -563,26 +563,26 @@ const callerWith = (
   left: Uint8Array,
   right: Uint8Array,
 ): Caller => ({
-  account: { is_left: isLeft, left, right: { bytes: right } },
+  identifier: { is_left: isLeft, left, right: { bytes: right } },
 });
 
 const OWNER_CALLER = callerOf(new Uint8Array(32).fill(1));
 const NEW_OWNER_CALLER = callerOf(new Uint8Array(32).fill(2));
-const ZERO_CALLER: Caller = { account: ZERO_ACCOUNT };
+const ZERO_CALLER: Caller = { identifier: ZERO_ACCOUNT };
 
 const NOT_OWNER = 'Ownable: caller is not the owner';
 
 const DIRT = new Uint8Array(32).fill(0xff);
 
 const otherZeroCallers = [
-  ['contract-arm zero account', { account: ZERO_CONTRACT }],
+  ['contract-arm zero account', { identifier: ZERO_CONTRACT }],
   ['non-canonical zero account', callerWith(true, zeroBytes, DIRT)],
 ] as const;
 
 const otherShapeCallers = [
   [
     'non-canonical owner account',
-    callerWith(true, OWNER_CALLER.account.left, DIRT),
+    callerWith(true, OWNER_CALLER.identifier.left, DIRT),
   ],
   ['contract', callerWith(false, zeroBytes, new Uint8Array(32).fill(4))],
 ] as const;
@@ -594,7 +594,9 @@ describe('Ownable: the zero account as caller', () => {
   let ownableCaller: OwnableCallerSimulator;
 
   beforeEach(async () => {
-    ownableCaller = await OwnableCallerSimulator.create(OWNER_CALLER.account);
+    ownableCaller = await OwnableCallerSimulator.create(
+      OWNER_CALLER.identifier,
+    );
   });
 
   describe('before ownership is renounced', () => {
@@ -621,7 +623,7 @@ describe('Ownable: the zero account as caller', () => {
     });
 
     it('should store the zero account as owner', async () => {
-      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.account);
+      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.identifier);
     });
 
     it('should reject the zero account in assertOnlyOwner', async () => {
@@ -632,19 +634,22 @@ describe('Ownable: the zero account as caller', () => {
 
     it('should reject the zero account in transferOwnership', async () => {
       await expect(
-        ownableCaller.transferOwnership(ZERO_CALLER, NEW_OWNER_CALLER.account),
+        ownableCaller.transferOwnership(
+          ZERO_CALLER,
+          NEW_OWNER_CALLER.identifier,
+        ),
       ).rejects.toThrow(NOT_OWNER);
-      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.account);
+      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.identifier);
     });
 
     it('should reject the zero account in _unsafeTransferOwnership', async () => {
       await expect(
         ownableCaller._unsafeTransferOwnership(
           ZERO_CALLER,
-          NEW_OWNER_CALLER.account,
+          NEW_OWNER_CALLER.identifier,
         ),
       ).rejects.toThrow(NOT_OWNER);
-      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.account);
+      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.identifier);
     });
 
     it('should reject the zero account in renounceOwnership', async () => {
@@ -668,7 +673,9 @@ describe('Ownable: a caller in another account shape', () => {
   let ownableCaller: OwnableCallerSimulator;
 
   beforeEach(async () => {
-    ownableCaller = await OwnableCallerSimulator.create(OWNER_CALLER.account);
+    ownableCaller = await OwnableCallerSimulator.create(
+      OWNER_CALLER.identifier,
+    );
   });
 
   describe('before ownership is renounced', () => {
@@ -685,9 +692,9 @@ describe('Ownable: a caller in another account shape', () => {
       'should reject the %s in transferOwnership',
       async (_, caller) => {
         await expect(
-          ownableCaller.transferOwnership(caller, NEW_OWNER_CALLER.account),
+          ownableCaller.transferOwnership(caller, NEW_OWNER_CALLER.identifier),
         ).rejects.toThrow(NOT_OWNER);
-        expect(await ownableCaller.owner()).toEqual(OWNER_CALLER.account);
+        expect(await ownableCaller.owner()).toEqual(OWNER_CALLER.identifier);
       },
     );
 
@@ -697,7 +704,7 @@ describe('Ownable: a caller in another account shape', () => {
         await expect(ownableCaller.renounceOwnership(caller)).rejects.toThrow(
           NOT_OWNER,
         );
-        expect(await ownableCaller.owner()).toEqual(OWNER_CALLER.account);
+        expect(await ownableCaller.owner()).toEqual(OWNER_CALLER.identifier);
       },
     );
   });

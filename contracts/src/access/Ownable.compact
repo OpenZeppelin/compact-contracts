@@ -264,7 +264,7 @@ module Ownable {
     assertInitialized();
     if (_owner.is_left) {
       assert(
-        caller.account == _owner && !Utils_isTargetZero(caller.account),
+        caller.identifier == _owner && !Utils_isTargetZero(caller.identifier),
         "Ownable: caller is not the owner"
       );
     } else {

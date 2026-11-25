@@ -26,9 +26,9 @@ export circuit authenticateForThisContract(): Caller {
   return disclose(AuthPrfPseudonym_authenticateForThisContract());
 }
 
-export pure circuit deriveAccount(
+export pure circuit deriveIdentifier(
                       secretKey: Bytes<32>,
                       salt: Bytes<32>
                       ): Either<Bytes<32>, ContractAddress> {
-  return AuthPrfPseudonym_deriveAccount(secretKey, salt);
+  return AuthPrfPseudonym_deriveIdentifier(secretKey, salt);
 }
