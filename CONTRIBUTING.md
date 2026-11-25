@@ -31,7 +31,6 @@ the single source of truth for naming, section ordering, idioms, testing and doc
 The design rationale and constraints live in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 Read both before opening a PR.
 The items below are the hard gates your contribution must clear:
-
 - **Test coverage**: minimum 95% per-file coverage on TypeScript sources (witnesses and simulators),
   checked with `yarn test:coverage`.
   Compact coverage is reported but not gated.
@@ -44,7 +43,6 @@ The items below are the hard gates your contribution must clear:
 ## Commit and PR conventions
 
 The single source of truth for how changes land, and humans and agents follow the same rules:
-
 - **Sign every commit.**
   Configure commit signing before your first contribution;
   unsigned commits will not be merged.
@@ -59,7 +57,7 @@ The single source of truth for how changes land, and humans and agents follow th
   Add one only for a human co-author.
   You are accountable for everything you submit under your own name, whatever tools helped produce it.
 - Keep the summary short and imperative,
-  and explain the *why* in the body when it is not obvious from the diff.
+  and explain the _why_ in the body when it is not obvious from the diff.
 - Link the issue in the PR description:
   `Fixes #123` / `Resolves #123` closes it on merge and belongs only on a PR that resolves it completely;
   for partial work a plain `#123` reference is enough.
@@ -77,7 +75,6 @@ The single source of truth for how changes land, and humans and agents follow th
 AI coding assistants are welcome (see [`AGENTS.md`](AGENTS.md) for the agent setup),
 but review thoroughly every line you submit.
 What does not change is who is answerable for the result:
-
 - **You are responsible for the quality of everything you submit, whatever tools produced it.**
   Read, understand and test the code before opening a PR.
   If you cannot explain why a change is correct, it is not ready.
@@ -141,14 +138,14 @@ We may close low-effort AI output without further explanation.
    ```
 
 5. Go to [OpenZeppelin/compact-contracts](https://github.com/OpenZeppelin/compact-contracts) in your web browser and issue a new pull request.
-   Link the issue in the description as set out in *Commit and PR conventions*,
+   Link the issue in the description as set out in _Commit and PR conventions_,
    and make sure all PR checks pass before requesting a review.
 
 6. Maintainers will review your code and possibly ask for changes before it is pulled into the main repository.
    We'll check that all tests pass, review the coding style, and check for general code correctness.
    If everything is OK, we'll merge your pull request and your code will be part of OpenZeppelin Contracts for Compact.
 
-   *IMPORTANT*: please pay attention to the maintainer's feedback,
+   _IMPORTANT_: please pay attention to the maintainer's feedback,
    since it's a necessary step to keep up with the standards this project attains to.
 
 ## Tests
