@@ -51,8 +51,8 @@ const GOLDEN_SK = ALICE_SK;
 const GOLDEN = {
   derivePk:
     '0x731d9ce6c24e82b028c93ca158f2b0c18127c5793a90912b4e28c393b7da229e',
-  /** `PrfCore`'s pinned `Bytes<32>` digest over the same inputs. */
-  prfCoreDigest:
+  /** `Prf`'s pinned `Bytes<32>` digest over the same inputs. */
+  prfDigest:
     '0x731d9ce6c24e82b028c93ca158f2b0c18127c5793a90912b4e28c393b7da229e',
 } as const;
 
@@ -72,7 +72,7 @@ beforeAll(async () => {
 
 describe('PrfAddr compatibility: layout', () => {
   // The reference hashes a flat `{ domain, salt, sk }`, so equality pins the
-  // field order and that the nesting through `PrfCore` is not hashed.
+  // field order and that the nesting through `Prf` is not hashed.
   it('should match its flat reference', async () => {
     expect(
       await addr.derivePk(GOLDEN_DOMAIN, GOLDEN_SALT, GOLDEN_SK),
@@ -106,8 +106,8 @@ describe('PrfAddr compatibility: layout', () => {
     ).toBe(GOLDEN.derivePk);
   });
 
-  it("should pin the key as PrfCore's pinned digest", () => {
-    expect(GOLDEN.derivePk).toBe(GOLDEN.prfCoreDigest);
+  it("should pin the key as Prf's pinned digest", () => {
+    expect(GOLDEN.derivePk).toBe(GOLDEN.prfDigest);
   });
 });
 

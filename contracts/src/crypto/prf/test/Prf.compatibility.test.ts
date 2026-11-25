@@ -1,11 +1,11 @@
 /**
- * Compatibility claims for the PrfCore module.
+ * Compatibility claims for the Prf module.
  *
  * The preimage `{input, key}` is wire format: every output a caller derives
- * through `PrfCore` moves if it changes, and the other suites compare
- * `PrfCore` only against itself. This suite pins it two ways. Each wrapper
+ * through `Prf` moves if it changes, and the other suites compare
+ * `Prf` only against itself. This suite pins it two ways. Each wrapper
  * must equal a hand-written reference that hashes a flat struct without
- * calling `PrfCore`, and every output must equal a recorded constant.
+ * calling `Prf`, and every output must equal a recorded constant.
  *
  * A FAILURE HERE IS NOT A TEST TO FIX, in order of likelihood:
  *
@@ -23,7 +23,7 @@
 
 import { degradeToTransient } from '@midnight-ntwrk/compact-runtime';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PrfCoreSimulator } from './simulators/PrfCoreSimulator.js';
+import { PrfSimulator } from './simulators/PrfSimulator.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -69,10 +69,10 @@ const hex = (bytes: Uint8Array): string =>
 const fromHex = (value: string): Uint8Array =>
   new Uint8Array(Buffer.from(value.slice(2), 'hex'));
 
-let prf: PrfCoreSimulator;
+let prf: PrfSimulator;
 
 beforeAll(async () => {
-  prf = await PrfCoreSimulator.create();
+  prf = await PrfSimulator.create();
 });
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ beforeAll(async () => {
  * `{ domain, input, key }` under other struct names. Equality pins that
  * neither nesting nor struct names are hashed, which `PrfAddr` relies on.
  */
-describe('PrfCore compatibility: nesting', () => {
+describe('Prf compatibility: nesting', () => {
   it('should hash a nested Bytes<32> input as its flat preimage', async () => {
     expect(
       await prf.evaluateOfBytes(GOLDEN_DOMAIN, GOLDEN_BYTES_INPUT, GOLDEN_KEY),
@@ -146,7 +146,7 @@ describe('PrfCore compatibility: nesting', () => {
 // Golden vectors
 // ---------------------------------------------------------------------------
 
-describe('PrfCore compatibility: golden vectors', () => {
+describe('Prf compatibility: golden vectors', () => {
   it('should reproduce the pinned digest over Bytes<32>', async () => {
     expect(
       hex(

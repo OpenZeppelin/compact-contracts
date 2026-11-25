@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { degradeToTransient } from '@midnight-ntwrk/compact-runtime';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PrfCoreSimulator } from './simulators/PrfCoreSimulator.js';
+import { PrfSimulator } from './simulators/PrfSimulator.js';
 
 /** Deterministic 32 bytes from a label. */
 const bytes32 = (label: string): Uint8Array => {
@@ -21,8 +21,8 @@ const KEY = bytes32('key');
 const FIELD_KEY = 987654321n;
 const ZERO = new Uint8Array(32);
 
-const PRF_CORE_SOURCE = readFileSync(
-  new URL('../PrfCore.compact', import.meta.url),
+const PRF_SOURCE = readFileSync(
+  new URL('../Prf.compact', import.meta.url),
   'utf8',
 );
 
@@ -38,11 +38,11 @@ const codeLines = (source: string): string[] =>
         !line.startsWith('//'),
     );
 
-let prf: PrfCoreSimulator;
+let prf: PrfSimulator;
 
-describe('PrfCore', () => {
+describe('Prf', () => {
   beforeAll(async () => {
-    prf = await PrfCoreSimulator.create();
+    prf = await PrfSimulator.create();
   });
 
   describe('evaluate', () => {
@@ -133,7 +133,7 @@ describe('PrfCore', () => {
 
   describe('purity', () => {
     it('should declare one pure circuit and hold no ledger, witness or assert', () => {
-      const code = codeLines(PRF_CORE_SOURCE);
+      const code = codeLines(PRF_SOURCE);
 
       expect(
         code

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PrfAddrSimulator } from './simulators/PrfAddrSimulator.js';
-import { PrfCoreSimulator } from './simulators/PrfCoreSimulator.js';
+import { PrfSimulator } from './simulators/PrfSimulator.js';
 
 /** Deterministic 32 bytes from a label. */
 const bytes32 = (label: string): Uint8Array => {
@@ -34,12 +34,12 @@ const codeLines = (source: string): string[] =>
     );
 
 let addr: PrfAddrSimulator;
-let prfCore: PrfCoreSimulator;
+let prf: PrfSimulator;
 
 describe('PrfAddr', () => {
   beforeAll(async () => {
     addr = await PrfAddrSimulator.create();
-    prfCore = await PrfCoreSimulator.create();
+    prf = await PrfSimulator.create();
   });
 
   describe('derivePk', () => {
@@ -54,8 +54,8 @@ describe('PrfAddr', () => {
       expect((await addr.derivePk(ZERO, ZERO, ZERO)).length).toBe(32);
     });
 
-    it('should equal PrfCore over { domain, salt }', async () => {
-      const digest = await prfCore.evaluateOfBytes(DOMAIN, SALT, SK);
+    it('should equal Prf over { domain, salt }', async () => {
+      const digest = await prf.evaluateOfBytes(DOMAIN, SALT, SK);
 
       expect(await addr.derivePk(DOMAIN, SALT, SK)).toStrictEqual(digest);
     });
@@ -66,8 +66,8 @@ describe('PrfAddr', () => {
       );
     });
 
-    it("should equal PrfCore's reference digest", async () => {
-      expect(await prfCore.refEvaluateOfBytes(DOMAIN, SALT, SK)).toStrictEqual(
+    it("should equal Prf's reference digest", async () => {
+      expect(await prf.refEvaluateOfBytes(DOMAIN, SALT, SK)).toStrictEqual(
         await addr.refDerivePk(DOMAIN, SALT, SK),
       );
     });

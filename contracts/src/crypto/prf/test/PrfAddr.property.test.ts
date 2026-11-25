@@ -3,7 +3,7 @@
  *
  * The unit and compatibility suites state each claim at fixed points. This
  * states them where nobody chose: `derivePk` equals its flat reference and the
- * `PrfCore` digest over `{ domain, salt }`, a tuple salt hashes as its flat
+ * `Prf` digest over `{ domain, salt }`, a tuple salt hashes as its flat
  * fields, and each of the three inputs alone moves the key.
  *
  * Runs on either backend. Every wrapper is an impure circuit on its mock, so
@@ -14,7 +14,7 @@ import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PrfAddrSimulator } from './simulators/PrfAddrSimulator.js';
-import { PrfCoreSimulator } from './simulators/PrfCoreSimulator.js';
+import { PrfSimulator } from './simulators/PrfSimulator.js';
 
 // ---------------------------------------------------------------------------
 // Generators, each pinned to the circuit's own type
@@ -31,11 +31,11 @@ const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 const PROPERTY_RUNS = isLiveBackend() ? 2 : 100;
 
 let addr: PrfAddrSimulator;
-let prfCore: PrfCoreSimulator;
+let prf: PrfSimulator;
 
 beforeAll(async () => {
   addr = await PrfAddrSimulator.create();
-  prfCore = await PrfCoreSimulator.create();
+  prf = await PrfSimulator.create();
 });
 
 // ---------------------------------------------------------------------------
@@ -54,11 +54,11 @@ describe('PrfAddr property: layout', () => {
     );
   });
 
-  it('should equal the PrfCore digest for any tag, salt and secret', async () => {
+  it('should equal the Prf digest for any tag, salt and secret', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), bytes32(), bytes32(), async (d, s, k) => {
         expect(await addr.derivePk(d, s, k)).toStrictEqual(
-          await prfCore.evaluateOfBytes(d, s, k),
+          await prf.evaluateOfBytes(d, s, k),
         );
       }),
       { numRuns: PROPERTY_RUNS },

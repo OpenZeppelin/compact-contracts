@@ -4,55 +4,54 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
-  Contract as MockPrfCore,
-} from '../../../../../artifacts/crypto/prf/test/mocks/MockPrfCore/contract/index.js';
+  Contract as MockPrf,
+} from '../../../../../artifacts/crypto/prf/test/mocks/MockPrf/contract/index.js';
 
-// The PrfCore module is stateless and declares no witnesses, so the private
+// The Prf module is stateless and declares no witnesses, so the private
 // state and witness set are both empty.
-export type PrfCorePrivateState = Record<string, never>;
-export const PrfCorePrivateState: PrfCorePrivateState = {};
-export const PrfCoreWitnesses = () => ({});
+export type PrfPrivateState = Record<string, never>;
+export const PrfPrivateState: PrfPrivateState = {};
+export const PrfWitnesses = () => ({});
 
 /**
  * Type constructor args
  */
-type PrfCoreArgs = readonly [];
+type PrfArgs = readonly [];
 
-const PrfCoreSimulatorBase = createSimulator<
-  PrfCorePrivateState,
+const PrfSimulatorBase = createSimulator<
+  PrfPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof PrfCoreWitnesses>,
-  MockPrfCore<PrfCorePrivateState>,
-  PrfCoreArgs
+  ReturnType<typeof PrfWitnesses>,
+  MockPrf<PrfPrivateState>,
+  PrfArgs
 >({
-  contractFactory: (witnesses) =>
-    new MockPrfCore<PrfCorePrivateState>(witnesses),
-  defaultPrivateState: () => PrfCorePrivateState,
+  contractFactory: (witnesses) => new MockPrf<PrfPrivateState>(witnesses),
+  defaultPrivateState: () => PrfPrivateState,
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => PrfCoreWitnesses(),
-  artifactName: 'MockPrfCore',
+  witnessesFactory: () => PrfWitnesses(),
+  artifactName: 'MockPrf',
 });
 
 /**
- * PrfCore Simulator
+ * Prf Simulator
  *
  * Each method is a thin pass-through to the mock's matching circuit. The
- * wrappers pass `{ domain, input }` as the `PrfCore.evaluate` input. The `ref*`
- * methods hash a flat `{ domain, input, key }` without going through `PrfCore`.
+ * wrappers pass `{ domain, input }` as the `Prf.evaluate` input. The `ref*`
+ * methods hash a flat `{ domain, input, key }` without going through `Prf`.
  */
-export class PrfCoreSimulator extends PrfCoreSimulatorBase {
+export class PrfSimulator extends PrfSimulatorBase {
   static async create(
     options: SimulatorOptions<
-      PrfCorePrivateState,
-      ReturnType<typeof PrfCoreWitnesses>
+      PrfPrivateState,
+      ReturnType<typeof PrfWitnesses>
     > = {},
-  ): Promise<PrfCoreSimulator> {
+  ): Promise<PrfSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
-    return super.create([], options) as Promise<PrfCoreSimulator>;
+    return super.create([], options) as Promise<PrfSimulator>;
   }
 
-  /** @description `PrfCore.evaluate` over a tagged `Bytes<32>` input. */
+  /** @description `Prf.evaluate` over a tagged `Bytes<32>` input. */
   public evaluateOfBytes(
     domain: Uint8Array,
     input: Uint8Array,
@@ -70,7 +69,7 @@ export class PrfCoreSimulator extends PrfCoreSimulatorBase {
     return this.circuits.impure.evaluateWithFieldKey(domain, input, key);
   }
 
-  /** @description `PrfCore.evaluate` over a tagged `Field` input. */
+  /** @description `Prf.evaluate` over a tagged `Field` input. */
   public evaluateOfField(
     domain: Uint8Array,
     input: bigint,

@@ -17,7 +17,7 @@ ledger _invocations: Counter;
 
 // Flat copies of the hashed `{ { domain, salt }, sk }`, for a `Bytes<32>` and
 // a tuple salt. The `ref*` circuits hash them without calling `PrfAddr` or
-// `PrfCore`, so a spec checks `PrfAddr` against an independent encoding.
+// `Prf`, so a spec checks `PrfAddr` against an independent encoding.
 struct RefPreimage {
   domain: Bytes<32>;
   salt: Bytes<32>;

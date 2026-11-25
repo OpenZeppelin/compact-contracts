@@ -26,7 +26,7 @@ pragma language_version >= 0.28.0;
  * key space. Zerocash hashes the seed first. This layout hashes it last.
  *
  * @dev Layout:
- * `PrfCore.evaluate` over `{domain, salt}` with `sk` as key. The hash covers
+ * `Prf.evaluate` over `{domain, salt}` with `sk` as key. The hash covers
  * `domain`, `salt`, `sk` in that order, and it is wire format: changing it
  * orphans every derived key. A tuple or struct `salt` is hashed field by
  * field, in order. Its type name and nesting are not hashed.
@@ -47,10 +47,10 @@ pragma language_version >= 0.28.0;
 module PrfAddr {
   import CompactStandardLibrary;
 
-  import "./PrfCore" prefix PrfCore_;
+  import "./Prf" prefix Prf_;
 
   /**
-   * @description The `PrfCore.evaluate` input, in wire-format order.
+   * @description The `Prf.evaluate` input, in wire-format order.
    * @type {Bytes<32>} domain - The purpose tag.
    * @type {S} salt - The salt the key is derived under.
    */
@@ -60,7 +60,7 @@ module PrfAddr {
   }
 
   /**
-   * @description `pk = PrfCore.evaluate({domain, salt}, sk)`.
+   * @description `pk = Prf.evaluate({domain, salt}, sk)`.
    *
    * @param {Bytes<32>} domain - The purpose tag.
    * @param {S} salt - The salt the key is derived under.
@@ -68,7 +68,7 @@ module PrfAddr {
    * @return {Bytes<32>} - The public key.
    */
   export pure circuit derivePk<S>(domain: Bytes<32>, salt: S, sk: Bytes<32>): Bytes<32> {
-    return PrfCore_evaluate<Input<S>, Bytes<32>>(
+    return Prf_evaluate<Input<S>, Bytes<32>>(
       Input<S> { domain: domain, salt: salt },
       sk
     );

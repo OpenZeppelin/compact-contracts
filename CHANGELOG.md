@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add `account/Account`: the `Account` type (`Either<Bytes<32>, ContractAddress>`), the `PublicKey` type (`Bytes<32>`) and the `Caller` struct an authenticator produces, with the pure accessors `publicKeyOf` and `contractAddressOf`. Each accessor fails on the other arm. (#1243)
-- Add the `crypto/prf` modules: `PrfCore.evaluate<T, K>(input, key)` hashes an input under a secret key, and `PrfAddr.derivePk<S>(domain, salt, sk)` derives a 32-byte key under a purpose tag and a salt. (#1243)
+- Add the `crypto/prf` modules: `Prf.evaluate<T, K>(input, key)` hashes an input under a secret key, and `PrfAddr.derivePk<S>(domain, salt, sk)` derives a 32-byte key under a purpose tag and a salt. (#1243)
 - Add `crypto/authentication/AuthPrfAddr`. `authenticate(salt)` authenticates by knowledge of a secret key (`wit_AuthPrfAddrSK`) and returns a `Caller`. A pure `deriveAccount` computes the same account off-chain. (#1243)
 - Add `account/extensions/AccountCommitment`: the pure `commit(domain, publicKey, blinding)` returns an `AccountCommitment` (`Bytes<32>`), a hiding commitment to an account's key, `persistentCommit` over `{domain, publicKey}` with `blinding`. (#1243)
 - Add `crypto/randomness/RandBlinding`: `read()` returns the caller's blinding factor (`wit_RandBlindingFactor`) as a `Blinding` (`Bytes<32>`) and rejects zero with `RandBlinding: zero blinding`. (#1243)

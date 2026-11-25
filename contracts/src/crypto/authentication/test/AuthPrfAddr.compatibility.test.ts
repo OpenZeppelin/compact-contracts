@@ -67,7 +67,7 @@ beforeAll(async () => {
 
 describe('AuthPrfAddr compatibility: layout', () => {
   // A flat `[tag, salt, secretKey]`, so equality pins the field order and that
-  // the nesting through `PrfAddr` and `PrfCore` is not hashed.
+  // the nesting through `PrfAddr` and `Prf` is not hashed.
   it('should match a persistentHash over the tag, salt and secret key', async () => {
     const reference = persistentHash(
       new CompactTypeVector(3, new CompactTypeBytes(32)),
