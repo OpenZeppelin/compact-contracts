@@ -10,9 +10,7 @@ pragma language_version >= 0.28.0;
  * represent a set of permissions.
  *
  * This module derives no caller. Every authenticating circuit takes a
- * `Caller`, which the composing contract gets from an authenticator and
- * passes to every module it drives. How the caller is authenticated is the
- * authenticator's concern, see `IAuthenticator`.
+ * `Caller`, see `Caller` in the `Identifier` module.
  *
  * Roles are referred to by their `Bytes<32>` identifier. These should be exposed
  * in the top-level contract and be unique. One way to achieve this is by
@@ -33,7 +31,7 @@ pragma language_version >= 0.28.0;
  *
  * ```compact
  * circuit foo(): [] {
- *  const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *  AccessControl_assertOnlyRole(caller, MY_ROLE);
  *  // ... rest of circuit logic
  * }
@@ -114,9 +112,7 @@ pragma language_version >= 0.28.0;
 module AccessControl {
   import CompactStandardLibrary;
 
-  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
-
-  import { Account } from "../account/Account";
+  import { Caller, Identifier } from "../identifier/Identifier";
 
   import "../utils/Utils" prefix Utils_;
 
@@ -129,7 +125,7 @@ module AccessControl {
    * @type {Map<Bytes<32>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>} _operatorRoles
    */
   export ledger _operatorRoles: Map<Bytes<32>,
-                                    Map<Account, Boolean>>;
+                                    Map<Identifier, Boolean>>;
 
   /**
    * @description Mapping from a role identifier to an admin role identifier.
@@ -160,7 +156,7 @@ module AccessControl {
    * @return {Boolean} - Whether the account has the specified role.
     */
   export circuit hasRole(roleId: Bytes<32>,
-                         account: Account
+                         account: Identifier
                          ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     return _hasRole(roleId, canonAcct);
@@ -176,7 +172,7 @@ module AccessControl {
    * @return {Boolean} - Whether the account has the specified role.
    */
   circuit _hasRole(roleId: Bytes<32>,
-                         account: Account
+                         account: Identifier
                          ): Boolean {
     if (_operatorRoles.member(disclose(roleId)) &&
         _operatorRoles.lookup(roleId).member(disclose(account))) {
@@ -206,7 +202,7 @@ module AccessControl {
     // An authenticator returns a canonical account,
     // but we route through _checkRole -> hasRole for consistency.
     // The redundant canonicalization is negligible.
-    _checkRole(roleId, caller.account);
+    _checkRole(roleId, caller.identifier);
   }
 
   /**
@@ -224,7 +220,7 @@ module AccessControl {
    */
   export circuit _checkRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): [] {
     assert(hasRole(roleId, account), "AccessControl: unauthorized account");
   }
@@ -250,11 +246,12 @@ module AccessControl {
   /**
    * @description Grants `roleId` to `account`.
    *
-   * @constraints k=10, rows=741
+   * @constraints k=10, rows=755
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
+   * - `account` is not the zero account.
    * - `caller` must have `roleId`'s admin role.
    *
    * @param {Caller} caller - The authenticated caller.
@@ -265,7 +262,7 @@ module AccessControl {
   export circuit grantRole(
                    caller: Caller,
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): [] {
     assertOnlyRole(caller, getRoleAdmin(roleId));
     _grantRole(roleId, account);
@@ -288,7 +285,7 @@ module AccessControl {
   export circuit revokeRole(
                    caller: Caller,
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): [] {
     assertOnlyRole(caller, getRoleAdmin(roleId));
     _revokeRole(roleId, account);
@@ -318,9 +315,9 @@ module AccessControl {
   export circuit renounceRole(
                    caller: Caller,
                    roleId: Bytes<32>,
-                   callerConfirmation: Account
+                   callerConfirmation: Identifier
                    ): [] {
-    assert(callerConfirmation == caller.account,
+    assert(callerConfirmation == caller.identifier,
            "AccessControl: bad confirmation"
            );
 
@@ -344,11 +341,12 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction.
    *
-   * @constraints k=9, rows=450
+   * @constraints k=9, rows=464
    *
    * Requirements:
    *
    * - `account` must not be a ContractAddress.
+   * - `account` is not the zero account.
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
@@ -356,7 +354,7 @@ module AccessControl {
    */
   export circuit _grantRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): Boolean {
     const isContractAddr = !account.is_left;
     assert(!isContractAddr, "AccessControl: unsafe role approval");
@@ -367,10 +365,14 @@ module AccessControl {
    * @description Attempts to grant `roleId` to `account` and returns a boolean indicating if `roleId` was granted.
    * Internal circuit without access restriction. It does NOT check if the role is granted to a ContractAddress.
    *
-   * @constraints k=9, rows=449
+   * @constraints k=9, rows=463
    *
    * @notice External smart contracts cannot call the access control contract at this time, so granting a role to a ContractAddress may
    * render a circuit permanently inaccessible.
+   *
+   * Requirements:
+   *
+   * - `account` is not the zero account.
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
@@ -378,9 +380,10 @@ module AccessControl {
    */
   export circuit _unsafeGrantRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
+    assert(!Utils_isTargetZero(canonAcct), "AccessControl: invalid account");
     if (_hasRole(roleId, canonAcct)) {
       return false;
     }
@@ -388,7 +391,7 @@ module AccessControl {
     if (!_operatorRoles.member(disclose(roleId))) {
       _operatorRoles.insert(
         disclose(roleId),
-        default<Map<Account, Boolean>>
+        default<Map<Identifier, Boolean>>
         );
     }
 
@@ -408,7 +411,7 @@ module AccessControl {
    */
   export circuit _revokeRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 

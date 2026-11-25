@@ -21,7 +21,15 @@ export interface IShieldedAccessControlWitnesses<L, P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfPseudonymSK(context: WitnessContext<L, P>): [P, Uint8Array];
+
+  /**
+   * Returns the user's blinding factor from the private state.
+   * The same blinding is used across all roles within a contract instance.
+   * @param context - The witness context containing the private state.
+   * @returns A tuple of the private state and the blinding factor as a Uint8Array.
+   */
+  wit_RandBlindingFactor(context: WitnessContext<L, P>): [P, Uint8Array];
 
   /**
    * Returns a Merkle tree path for a given role commitment.
@@ -36,13 +44,23 @@ export interface IShieldedAccessControlWitnesses<L, P> {
 }
 
 /**
+ * @description The blinding factor `withSecretKey` and the simulator's default
+ * private state use, so a spec can precompute account commitments from a
+ * secret key alone.
+ */
+export const TEST_BLINDING = Uint8Array.from(Buffer.alloc(32, 'TEST_BLINDING'));
+
+/**
  * @description Represents the private state of a Shielded AccessControl contract.
- * Contains a single secret key used to derive the user's account identifier.
- * The same key is used across all roles within a contract instance.
+ * Contains the secret key behind the user's account and the blinding factor of
+ * the user's account commitment. Both are used across all roles within a
+ * contract instance.
  */
 export type ShieldedAccessControlPrivateState = {
-  /** @description A 32-byte secret key used to derive the shielded account identifier. */
+  /** @description A 32-byte secret key used to derive the user's account. */
   secretKey: Uint8Array;
+  /** @description A 32-byte blinding factor that hides the user's account in their account commitment. */
+  blinding: Uint8Array;
 };
 
 /**
@@ -50,11 +68,13 @@ export type ShieldedAccessControlPrivateState = {
  */
 export const ShieldedAccessControlPrivateState = {
   /**
-   * @description Generates a new private state with a cryptographically random secret key.
+   * @description Generates a new private state with a cryptographically random
+   * secret key and blinding factor.
    * @returns A fresh ShieldedAccessControlPrivateState instance.
    */
   generate: (): ShieldedAccessControlPrivateState => ({
     secretKey: new Uint8Array(getRandomValues(Buffer.alloc(32))),
+    blinding: new Uint8Array(getRandomValues(Buffer.alloc(32))),
   }),
 
   /**
@@ -62,6 +82,7 @@ export const ShieldedAccessControlPrivateState = {
    * Useful for deterministic key generation in testing or advanced use cases.
    *
    * @param sk - The 32-byte secret key to use.
+   * @param blinding - The 32-byte blinding factor to use. Defaults to `TEST_BLINDING`.
    * @returns A fresh ShieldedAccessControlPrivateState instance with the provided key.
    *
    * @example
@@ -70,8 +91,12 @@ export const ShieldedAccessControlPrivateState = {
    * const privateState = ShieldedAccessControlPrivateState.withSecretKey(deterministicKey);
    * ```
    */
-  withSecretKey: (sk: Uint8Array): ShieldedAccessControlPrivateState => ({
+  withSecretKey: (
+    sk: Uint8Array,
+    blinding: Uint8Array = TEST_BLINDING,
+  ): ShieldedAccessControlPrivateState => ({
     secretKey: sk,
+    blinding,
   }),
 
   /**
@@ -109,10 +134,16 @@ export const ShieldedAccessControlPrivateState = {
 export const ShieldedAccessControlWitnesses = <
   L,
 >(): IShieldedAccessControlWitnesses<L, ShieldedAccessControlPrivateState> => ({
-  wit_AuthPrfAddrSK(
+  wit_AuthPrfPseudonymSK(
     context: WitnessContext<L, ShieldedAccessControlPrivateState>,
   ): [ShieldedAccessControlPrivateState, Uint8Array] {
     return [context.privateState, context.privateState.secretKey];
+  },
+
+  wit_RandBlindingFactor(
+    context: WitnessContext<L, ShieldedAccessControlPrivateState>,
+  ): [ShieldedAccessControlPrivateState, Uint8Array] {
+    return [context.privateState, context.privateState.blinding];
   },
 
   wit_getRoleCommitmentPath(

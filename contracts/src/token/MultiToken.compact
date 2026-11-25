@@ -11,9 +11,7 @@ pragma language_version >= 0.28.0;
  * the ERC1155 standard and not necessarily a compliant implementation.
  *
  * This module derives no caller. Each circuit that acts for the caller takes a
- * `Caller`, which the composing contract gets from an authenticator and
- * passes to every module it drives. How the caller is authenticated is the
- * authenticator's concern, see `IAuthenticator`.
+ * `Caller`, see `Caller` in the `Identifier` module.
  *
  * @notice One notable difference regarding this implementation and the EIP1155 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
@@ -110,9 +108,7 @@ pragma language_version >= 0.28.0;
 module MultiToken {
   import CompactStandardLibrary;
 
-  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
-
-  import { Account } from "../account/Account";
+  import { Caller, Identifier } from "../identifier/Identifier";
 
   import "../utils/Utils" prefix Utils_;
 
@@ -132,7 +128,7 @@ module MultiToken {
    * @type {Map<Uint<128>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _balances
    */
   export ledger _balances: Map<Uint<128>,
-                               Map<Account, Uint<128>>>;
+                               Map<Identifier, Uint<128>>>;
 
   /**
    * @description Mapping from account to operator approvals.
@@ -142,8 +138,8 @@ module MultiToken {
    * @type {Map<account, Map<operator, approved>>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>}
    */
-  export ledger _operatorApprovals: Map<Account,
-                                        Map<Account, Boolean>>;
+  export ledger _operatorApprovals: Map<Identifier,
+                                        Map<Identifier, Boolean>>;
 
   /**
    * @description Base URI for computing token URIs.
@@ -231,7 +227,7 @@ module MultiToken {
    * @return {Uint<128>} - The quantity of `id` tokens that `account` owns.
    */
   export circuit balanceOf(
-                   account: Account,
+                   account: Identifier,
                    id: Uint<128>
                    ): Uint<128> {
     assertInitialized();
@@ -262,11 +258,11 @@ module MultiToken {
    */
   export circuit setApprovalForAll(
                    caller: Caller,
-                   operator: Account,
+                   operator: Identifier,
                    approved: Boolean
                    ): [] {
     assertInitialized();
-    const callerAccount = caller.account;
+    const callerAccount = caller.identifier;
     _setApprovalForAll(callerAccount, operator, approved);
   }
 
@@ -284,8 +280,8 @@ module MultiToken {
    * @return {Boolean} - Whether or not `operator` has permission to handle `account`'s assets.
    */
   export circuit isApprovedForAll(
-                   account: Account,
-                   operator: Account
+                   account: Identifier,
+                   operator: Identifier
                    ): Boolean {
     assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
@@ -327,8 +323,8 @@ module MultiToken {
    */
   export circuit transferFrom(
                    caller: Caller,
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
@@ -363,8 +359,8 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
@@ -390,8 +386,8 @@ module MultiToken {
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
    * @return {[]} - Empty tuple.
    */
-  circuit _update(fromAddress: Account,
-                  to: Account,
+  circuit _update(fromAddress: Identifier,
+                  to: Identifier,
                   id: Uint<128>,
                   value: Uint<128>
                   ): [] {
@@ -416,7 +412,7 @@ module MultiToken {
       if (!_balances.member(disclose(id))) {
         _balances.insert(
           disclose(id),
-          default<Map<Account, Uint<128>>>
+          default<Map<Identifier, Uint<128>>>
           );
         _balances.lookup(id).insert(disclose(canonTo), disclose(value as Uint<128>));
       } else {
@@ -456,14 +452,14 @@ module MultiToken {
    */
   export circuit _unsafeTransferFrom(
                    caller: Caller,
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
 
-    const callerAccount = caller.account;
+    const callerAccount = caller.identifier;
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     if (disclose(canonFrom) != disclose(callerAccount)) {
       assert(isApprovedForAll(canonFrom, callerAccount), "MultiToken: unauthorized operator");
@@ -498,8 +494,8 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeTransfer(
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
@@ -558,7 +554,7 @@ module MultiToken {
    * @param {Uint<128>} value - The quantity of `id` tokens that are minted to `to`.
    * @return {[]} - Empty tuple.
    */
-  export circuit _mint(to: Account,
+  export circuit _mint(to: Identifier,
                        id: Uint<128>,
                        value: Uint<128>
                        ): [] {
@@ -588,7 +584,7 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(
-                   to: Account,
+                   to: Identifier,
                    id: Uint<128>,
                    value: Uint<128>
                    ): [] {
@@ -613,7 +609,7 @@ module MultiToken {
    * @param {Uint<128>} value - The quantity of `id` tokens that will be destroyed from `fromAddress`.
    * @return {[]} - Empty tuple.
    */
-  export circuit _burn(fromAddress: Account,
+  export circuit _burn(fromAddress: Identifier,
                        id: Uint<128>,
                        value: Uint<128>
                        ): [] {
@@ -644,8 +640,8 @@ module MultiToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _setApprovalForAll(
-                   owner: Account,
-                   operator: Account,
+                   owner: Identifier,
+                   operator: Identifier,
                    approved: Boolean
                    ): [] {
     assertInitialized();
@@ -658,7 +654,7 @@ module MultiToken {
     if (!_operatorApprovals.member(disclose(canonOwner))) {
       _operatorApprovals.insert(
         disclose(canonOwner),
-        default<Map<Account, Boolean>>
+        default<Map<Identifier, Boolean>>
         );
     }
 

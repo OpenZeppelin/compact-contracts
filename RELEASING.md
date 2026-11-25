@@ -20,7 +20,7 @@ There is no long-lived per-version branch: a version bump is just a PR into
 
 ## How it works
 
-1. Run **Prepare release** (`prepare-release.yml`) via *Actions → Run workflow*:
+1. Run **Prepare release** (`prepare-release.yml`) via _Actions → Run workflow_:
    pick the branch, type the exact target version. It opens a `chore/bump-<version>`
    PR into that branch. The same commit rolls `## Unreleased` in `CHANGELOG.md`
    into `## <version> (<date>)`. The workflow fails if `## Unreleased` has no
@@ -56,9 +56,11 @@ alpha counter.
 ## Common flows
 
 **Scheduled alpha (from `main`)**
+
 - Prepare release on `main`, version `X.Y.0-alpha.N` → merge → publishes `beta`.
 
 **Audit starts (cut the release line)**
+
 - `git branch release/X.Y.x <audit-sha> && git push origin release/X.Y.x`
   (creating the branch cuts nothing — its version is already tagged).
 - Prepare release on `release/X.Y.x`, version `X.Y.0-rc.1` (tick
@@ -66,6 +68,7 @@ alpha counter.
 - rc fixes later: repeat with `X.Y.0-rc.2`, etc.
 
 **Audit clears (stable + next alpha, same day)**
+
 - Merge audit fixes into `release/X.Y.x`.
 - Prepare release on `release/X.Y.x`, version `X.Y.0` (tick
   `allow_empty_changelog` if `## Unreleased` is empty) → merge → publishes `latest`.

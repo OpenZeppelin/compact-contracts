@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract takes the caller as a circuit argument, so anyone can act as
+// any account, and it exposes internal circuits. DO NOT deploy or use this
+// contract in any production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Caller } from "../../../identifier/Identifier";
+
+import "../../../crypto/ElGamal" prefix ElGamal_;
+import "../../ConfidentialFungibleToken" prefix CFT_;
+
+export { Caller, CFT_EscrowEntry, ContractAddress, ElGamal_Ciphertext, Either };
+
+constructor(name_: Opaque<"string">, symbol_: Opaque<"string">, decimals_: Uint<8>) {
+  CFT_initialize(name_, symbol_, decimals_);
+}
+
+export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return CFT_balanceOf(account);
+}
+
+export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
+  return CFT_pendingOf(account);
+}
+
+export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): CFT_EscrowEntry {
+  return CFT_allowance(owner, spender);
+}
+
+export circuit isRegistered(account: Bytes<32>): Boolean {
+  return CFT_isRegistered(account);
+}
+
+export circuit registerWithKey(caller: Caller, pk: JubjubPoint): Bytes<32> {
+  return CFT_registerWithKey(caller, pk);
+}
+
+export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
+  return CFT__mint(account, value);
+}
+
+export circuit _burn(caller: Caller, value: Uint<128>): Bytes<32> {
+  return CFT__burn(caller, value);
+}
+
+export circuit transfer(caller: Caller, to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT_transfer(caller, to, value);
+}
+
+export circuit _move(caller: Caller, to: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT__move(caller, to, value);
+}
+
+export circuit sweep(caller: Caller): Bytes<32> {
+  return CFT_sweep(caller);
+}
+
+export circuit approve(caller: Caller, spender: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT_approve(caller, spender, value);
+}
+
+export circuit transferFrom(
+  caller: Caller,
+  fromAddress: Bytes<32>,
+  to: Bytes<32>,
+  value: Uint<128>
+): Bytes<32> {
+  return CFT_transferFrom(caller, fromAddress, to, value);
+}
+
+export circuit _burnFrom(caller: Caller, fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
+  return CFT__burnFrom(caller, fromAddress, value);
+}
+
+export circuit clearMemos(caller: Caller, expectedEpoch: Uint<64>): [] {
+  return CFT_clearMemos(caller, expectedEpoch);
+}

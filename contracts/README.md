@@ -36,6 +36,7 @@ Each module's `test/mocks/` directory (and each preset's `presets/test/mocks/`) 
 **These contracts exist solely to expose internal state and circuits for testing purposes. They must never be used in production.**
 
 Mock contracts typically:
+
 - Expose internal or protected circuits publicly for direct testing
 - Skip access control or safety checks to isolate specific behaviors
 - Introduce additional state that makes testing easier but is unsafe in deployment

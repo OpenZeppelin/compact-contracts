@@ -9,7 +9,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import { Caller } from "../../../crypto/authentication/interfaces/IAuthenticator";
+import { Caller } from "../../../identifier/Identifier";
 
 import "../../Ownable" prefix Ownable_;
 

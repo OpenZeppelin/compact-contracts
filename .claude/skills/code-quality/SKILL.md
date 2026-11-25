@@ -1,4 +1,5 @@
 ---
+
 name: code-quality
 description: Review or improve changed code, documentation and configuration against this repository's written conventions and design constraints. Use when asked for a code-quality, style, conventions or consistency review.
 ---

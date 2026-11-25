@@ -25,7 +25,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import "../../../src/crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../../src/crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
 import "../../../src/token/ConfidentialFungibleToken" prefix Token_;
 import "../../../src/token/extensions/ConfidentialFungibleTokenPublicSupply" prefix Supply_;
 import "../../../src/crypto/ElGamal" prefix ElGamal_;
@@ -89,20 +89,20 @@ export circuit isRegistered(account: Bytes<32>): Boolean {
 
 export circuit registerWithKey(pk: JubjubPoint): Bytes<32> {
   return Token_registerWithKey(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     pk
   );
 }
 
 export circuit sweep(): Bytes<32> {
   return Token_sweep(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply"))
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply"))
   );
 }
 
 export circuit clearMemos(expectedEpoch: Uint<64>): [] {
   return Token_clearMemos(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     expectedEpoch
   );
 }
@@ -111,7 +111,7 @@ export circuit clearMemos(expectedEpoch: Uint<64>): [] {
 
 export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
   return Token_transfer(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     to,
     value
   );
@@ -119,7 +119,7 @@ export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
 
 export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
   return Token__move(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     to,
     value
   );
@@ -127,7 +127,7 @@ export circuit _move(to: Bytes<32>, value: Uint<128>): Bytes<32> {
 
 export circuit approve(spender: Bytes<32>, value: Uint<128>): Bytes<32> {
   return Token_approve(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     spender,
     value
   );
@@ -139,7 +139,7 @@ export circuit transferFrom(
     value: Uint<128>
 ): Bytes<32> {
   return Token_transferFrom(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     fromAddress,
     to,
     value
@@ -155,7 +155,7 @@ export circuit mint(account: Bytes<32>, value: Uint<128>): [] {
 
 export circuit burn(value: Uint<128>): Bytes<32> {
   const accountId = Token__burn(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     value
   );
   Supply__subSupply(value);
@@ -164,7 +164,7 @@ export circuit burn(value: Uint<128>): Bytes<32> {
 
 export circuit burnFrom(fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
   const spenderId = Token__burnFrom(
-    AuthPrfAddr_authenticate(pad(32, "ComposedCFTPublicSupply")),
+    AuthPrfPseudonym_authenticate(pad(32, "ComposedCFTPublicSupply")),
     fromAddress,
     value
   );

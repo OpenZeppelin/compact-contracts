@@ -9,8 +9,15 @@ import {
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Ledger } from '../../../artifacts/access/test/mocks/MockShieldedAccessControl/contract/index.js';
+import {
+  type Caller,
+  ShieldedAccessControlCallerSimulator,
+} from './simulators/ShieldedAccessControlCallerSimulator.js';
 import { ShieldedAccessControlSimulator } from './simulators/ShieldedAccessControlSimulator.js';
-import { ShieldedAccessControlPrivateState } from './witnesses/ShieldedAccessControlWitnesses.js';
+import {
+  ShieldedAccessControlPrivateState,
+  TEST_BLINDING,
+} from './witnesses/ShieldedAccessControlWitnesses.js';
 
 /**
  * Witnesses bind at deploy on a live node, so a spec that swaps one mid-test
@@ -21,7 +28,8 @@ const itDryOnly = it.skipIf(isLiveBackend());
 const INSTANCE_SALT = new Uint8Array(32).fill(48473095);
 const COMMITMENT_DOMAIN = 'ShieldedAccessControl:commitment';
 const NULLIFIER_DOMAIN = 'ShieldedAccessControl:nullifier';
-const ACCOUNT_DOMAIN = 'AuthPrfAddr:account';
+const ACCOUNT_DOMAIN = 'AuthPrfPseudonym:identifier';
+const ACCOUNT_COMMITMENT_DOMAIN = 'ShieldedAccessControl:account';
 
 const DEFAULT_MT_PATH: MerkleTreePath<Uint8Array> = {
   leaf: new Uint8Array(32),
@@ -45,7 +53,7 @@ const encodePadded32 = (value: string): Uint8Array => {
   return out;
 };
 
-const buildAccountIdHash = (
+const buildAccount = (
   sk: Uint8Array,
   salt: Uint8Array = INSTANCE_SALT,
 ): Uint8Array => {
@@ -53,6 +61,23 @@ const buildAccountIdHash = (
 
   const bDomain = encodePadded32(ACCOUNT_DOMAIN);
   return persistentHash(rt_type, [bDomain, salt, sk]);
+};
+
+const buildAccountCommitment = (
+  account: Uint8Array,
+  blinding: Uint8Array = TEST_BLINDING,
+): Uint8Array => {
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+
+  const bDomain = encodePadded32(ACCOUNT_COMMITMENT_DOMAIN);
+  return persistentHash(rt_type, [blinding, bDomain, account]);
+};
+
+const buildAccountIdHash = (
+  sk: Uint8Array,
+  salt: Uint8Array = INSTANCE_SALT,
+): Uint8Array => {
+  return buildAccountCommitment(buildAccount(sk, salt));
 };
 
 const buildRoleCommitmentHash = (
@@ -72,7 +97,7 @@ const buildRoleCommitmentHash = (
 
 const buildNullifierHash = (commitment: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(2, new CompactTypeBytes(32));
-  const bDomain = new TextEncoder().encode(NULLIFIER_DOMAIN);
+  const bDomain = encodePadded32(NULLIFIER_DOMAIN);
 
   const nullifier = persistentHash(rt_type, [commitment, bDomain]);
   return nullifier;
@@ -86,6 +111,11 @@ const OPERATOR_3_SK = Buffer.alloc(32, 'OPERATOR_3_SECRET_KEY');
 const UNAUTHORIZED_SK = Buffer.alloc(32, 'UNAUTHORIZED_SECRET_KEY');
 const BAD_SK = Buffer.alloc(32, 'BAD_SECRET_KEY');
 
+// Blindings
+const WRONG_BLINDING = Uint8Array.from(Buffer.alloc(32, 'WRONG_BLINDING'));
+const NEW_BLINDING = Uint8Array.from(Buffer.alloc(32, 'NEW_BLINDING'));
+const ZERO_BLINDING = new Uint8Array(32);
+
 // Roles
 const ROLE_ADMIN = Buffer.from(convertBigintToBytes(32, 0n, ''));
 const ROLE_OP1 = Buffer.from(convertBigintToBytes(32, 1n, ''));
@@ -94,6 +124,8 @@ const ROLE_OP3 = Buffer.from(convertBigintToBytes(32, 3n, ''));
 const ROLE_NONEXISTENT = Buffer.from(convertBigintToBytes(32, 555n, ''));
 
 // Derived ids
+const ADMIN_ACCOUNT = buildAccount(ADMIN_SK);
+const OP1_ACCOUNT = buildAccount(OPERATOR_1_SK);
 const ADMIN_ACCOUNT_ID = buildAccountIdHash(ADMIN_SK);
 const OP1_ACCOUNT_ID = buildAccountIdHash(OPERATOR_1_SK);
 const OP2_ACCOUNT_ID = buildAccountIdHash(OPERATOR_2_SK);
@@ -250,6 +282,38 @@ describe('ShieldedAccessControl', () => {
       });
     });
 
+    describe('computeAccountCommitment', () => {
+      it('should match pre-computed account commitment', async () => {
+        expect(
+          await contract.computeAccountCommitment(ADMIN_ACCOUNT, TEST_BLINDING),
+        ).toEqual(ADMIN_ACCOUNT_ID);
+      });
+
+      it('should differ with another blinding', async () => {
+        expect(
+          await contract.computeAccountCommitment(ADMIN_ACCOUNT, NEW_BLINDING),
+        ).not.toEqual(ADMIN_ACCOUNT_ID);
+      });
+
+      it('should differ with another account', async () => {
+        expect(
+          await contract.computeAccountCommitment(OP1_ACCOUNT, TEST_BLINDING),
+        ).not.toEqual(ADMIN_ACCOUNT_ID);
+      });
+
+      it('should fail with a zero blinding', async () => {
+        await expect(
+          contract.computeAccountCommitment(ADMIN_ACCOUNT, ZERO_BLINDING),
+        ).rejects.toThrow('ShieldedAccessControl: zero blinding');
+      });
+
+      it('should fail with a zero account', async () => {
+        await expect(
+          contract.computeAccountCommitment(new Uint8Array(32), TEST_BLINDING),
+        ).rejects.toThrow('ShieldedAccessControl: zero account');
+      });
+    });
+
     describe('assertOnlyRole', () => {
       beforeEach(async () => {
         await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
@@ -270,7 +334,7 @@ describe('ShieldedAccessControl', () => {
             });
 
             await expect(contract.assertOnlyRole(ROLE_ADMIN)).rejects.toThrow(
-              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountCommitment pairing',
             );
           },
         );
@@ -279,6 +343,20 @@ describe('ShieldedAccessControl', () => {
           await contract.privateState.injectSecretKey(UNAUTHORIZED_SK);
           await expect(contract.assertOnlyRole(ROLE_ADMIN)).rejects.toThrow(
             'ShieldedAccessControl: unauthorized account',
+          );
+        });
+
+        it('when caller has wrong blinding', async () => {
+          await contract.privateState.injectBlinding(WRONG_BLINDING);
+          await expect(contract.assertOnlyRole(ROLE_ADMIN)).rejects.toThrow(
+            'ShieldedAccessControl: unauthorized account',
+          );
+        });
+
+        it('when caller has zero blinding', async () => {
+          await contract.privateState.injectBlinding(ZERO_BLINDING);
+          await expect(contract.assertOnlyRole(ROLE_ADMIN)).rejects.toThrow(
+            'RandBlinding: zero blinding',
           );
         });
 
@@ -354,7 +432,7 @@ describe('ShieldedAccessControl', () => {
           });
 
           await expect(contract.canProveRole(ROLE_ADMIN)).rejects.toThrow(
-            'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+            'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountCommitment pairing',
           );
         },
       );
@@ -418,6 +496,11 @@ describe('ShieldedAccessControl', () => {
           expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
         });
 
+        it('when caller has wrong blinding', async () => {
+          await contract.privateState.injectBlinding(WRONG_BLINDING);
+          expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
+        });
+
         it('when role is revoked', async () => {
           await contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
           expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
@@ -474,6 +557,13 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
         });
 
+        it('when admin provides wrong blinding', async () => {
+          await contract.privateState.injectBlinding(WRONG_BLINDING);
+          await expect(
+            contract.grantRole(ROLE_OP1, OP1_ACCOUNT_ID),
+          ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
+        });
+
         itDryOnly('when admin provides invalid witness path', async () => {
           contract.overrideWitness(
             'wit_getRoleCommitmentPath',
@@ -508,7 +598,7 @@ describe('ShieldedAccessControl', () => {
             await expect(
               contract.grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
             ).rejects.toThrow(
-              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountCommitment pairing',
             );
           },
         );
@@ -780,6 +870,13 @@ describe('ShieldedAccessControl', () => {
           ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
         });
 
+        it('when admin provides wrong blinding', async () => {
+          await contract.privateState.injectBlinding(WRONG_BLINDING);
+          await expect(
+            contract.revokeRole(ROLE_OP1, OP1_ACCOUNT_ID),
+          ).rejects.toThrow('ShieldedAccessControl: unauthorized account');
+        });
+
         itDryOnly('when admin provides invalid witness path', async () => {
           contract.overrideWitness(
             'wit_getRoleCommitmentPath',
@@ -805,7 +902,7 @@ describe('ShieldedAccessControl', () => {
             await expect(
               contract.revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
             ).rejects.toThrow(
-              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountId pairing',
+              'ShieldedAccessControl: Path must contain leaf matching computed role commitment for the provided role, accountCommitment pairing',
             );
           },
         );
@@ -971,6 +1068,13 @@ describe('ShieldedAccessControl', () => {
 
       it('should fail when caller has wrong secret key', async () => {
         await contract.privateState.injectSecretKey(UNAUTHORIZED_SK);
+        await expect(
+          contract.renounceRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow('ShieldedAccessControl: bad confirmation');
+      });
+
+      it('should fail when caller has wrong blinding', async () => {
+        await contract.privateState.injectBlinding(WRONG_BLINDING);
         await expect(
           contract.renounceRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
         ).rejects.toThrow('ShieldedAccessControl: bad confirmation');
@@ -1197,6 +1301,53 @@ describe('ShieldedAccessControl', () => {
       });
     });
 
+    describe('same key under a new blinding', () => {
+      const NEW_ADMIN_ACCOUNT_COMMITMENT = buildAccountCommitment(
+        ADMIN_ACCOUNT,
+        NEW_BLINDING,
+      );
+
+      beforeEach(async () => {
+        await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+        await contract._revokeRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
+      });
+
+      it('should give another account commitment', () => {
+        expect(NEW_ADMIN_ACCOUNT_COMMITMENT).not.toEqual(ADMIN_ACCOUNT_ID);
+      });
+
+      it('should keep the revoked pairing revoked', async () => {
+        await contract._grantRole(ROLE_ADMIN, NEW_ADMIN_ACCOUNT_COMMITMENT);
+
+        await expect(
+          contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID),
+        ).rejects.toThrow('ShieldedAccessControl: role is already revoked');
+        expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
+      });
+
+      it('should pass once re-granted under the new account commitment', async () => {
+        await contract._grantRole(ROLE_ADMIN, NEW_ADMIN_ACCOUNT_COMMITMENT);
+        await contract.privateState.injectBlinding(NEW_BLINDING);
+
+        await contract.assertOnlyRole(ROLE_ADMIN);
+        expect(await contract.privateState.getCurrentSecretKey()).toEqual(
+          ADMIN_SK,
+        );
+      });
+
+      it('should prove roles held under the old commitment only with the old blinding', async () => {
+        await contract._grantRole(ROLE_OP1, ADMIN_ACCOUNT_ID);
+        await contract._grantRole(ROLE_ADMIN, NEW_ADMIN_ACCOUNT_COMMITMENT);
+
+        expect(await contract.canProveRole(ROLE_OP1)).toBe(true);
+        expect(await contract.canProveRole(ROLE_ADMIN)).toBe(false);
+
+        await contract.privateState.injectBlinding(NEW_BLINDING);
+        expect(await contract.canProveRole(ROLE_OP1)).toBe(false);
+        expect(await contract.canProveRole(ROLE_ADMIN)).toBe(true);
+      });
+    });
+
     describe('cross-contract isolation', () => {
       it('should not validate a role granted on a different contract instance', async () => {
         await contract._grantRole(ROLE_ADMIN, ADMIN_ACCOUNT_ID);
@@ -1240,6 +1391,29 @@ describe('ShieldedAccessControl', () => {
         );
 
         expect(commitmentA).not.toEqual(commitmentB);
+      });
+
+      it('should give the same account commitment but different role commitments for one account and blinding across instances', async () => {
+        const contractB = await ShieldedAccessControlSimulator.create(
+          new Uint8Array(32).fill(99),
+          true,
+        );
+
+        const accountCommitmentA = await contract.computeAccountCommitment(
+          ADMIN_ACCOUNT,
+          TEST_BLINDING,
+        );
+        const accountCommitmentB = await contractB.computeAccountCommitment(
+          ADMIN_ACCOUNT,
+          TEST_BLINDING,
+        );
+        expect(accountCommitmentA).toEqual(accountCommitmentB);
+
+        expect(
+          await contract.computeRoleCommitment(ROLE_ADMIN, accountCommitmentA),
+        ).not.toEqual(
+          await contractB.computeRoleCommitment(ROLE_ADMIN, accountCommitmentB),
+        );
       });
     });
   });
@@ -1328,6 +1502,335 @@ describe('ShieldedAccessControl', () => {
 
         expect(witnessPath.leaf).toEqual(findPath?.leaf);
       });
+    });
+  });
+});
+
+// The base mock authenticates through `AuthPrfPseudonym` and reads the blinding
+// through `RandBlinding`, which yield only a canonical, non-zero key
+// identifier and a non-zero blinding. This mock takes both as arguments, so a
+// spec can act as any account under any blinding.
+describe('ShieldedAccessControl: abnormal callers', () => {
+  const zeroBytes = new Uint8Array(32);
+  const DIRT = new Uint8Array(32).fill(0xff);
+
+  const keyAccount = (key: Uint8Array, right: Uint8Array = zeroBytes) => ({
+    is_left: true,
+    left: key,
+    right: { bytes: right },
+  });
+
+  const contractAccount = (
+    address: Uint8Array,
+    left: Uint8Array = zeroBytes,
+  ) => ({
+    is_left: false,
+    left,
+    right: { bytes: address },
+  });
+
+  const callerOf = (account: Caller['identifier']): Caller => ({
+    identifier: account,
+  });
+
+  const BLINDING = Uint8Array.from(Buffer.alloc(32, 'BLINDING'));
+  const FRESH_BLINDING = Uint8Array.from(Buffer.alloc(32, 'FRESH_BLINDING'));
+
+  const ADMIN_KEY = new Uint8Array(32).fill(1);
+  const OPERATOR_KEY = new Uint8Array(32).fill(2);
+  const OTHER_KEY = new Uint8Array(32).fill(3);
+
+  const ADMIN_CALLER = callerOf(keyAccount(ADMIN_KEY));
+  const OPERATOR_CALLER = callerOf(keyAccount(OPERATOR_KEY));
+
+  const OPERATOR_COMMITMENT = buildAccountCommitment(OPERATOR_KEY, BLINDING);
+  const OTHER_COMMITMENT = buildAccountCommitment(OTHER_KEY, BLINDING);
+
+  const ROLE = new Uint8Array(32).fill(0xaa);
+
+  const ZERO_ACCOUNT_ERROR = 'ShieldedAccessControl: zero account';
+  const ZERO_BLINDING_ERROR = 'ShieldedAccessControl: zero blinding';
+
+  let shieldedAccessControlCaller: ShieldedAccessControlCallerSimulator;
+
+  beforeEach(async () => {
+    shieldedAccessControlCaller =
+      await ShieldedAccessControlCallerSimulator.create(INSTANCE_SALT);
+    await shieldedAccessControlCaller._grantRole(
+      ROLE_ADMIN,
+      buildAccountCommitment(ADMIN_KEY, BLINDING),
+    );
+    await shieldedAccessControlCaller._grantRole(ROLE, OPERATOR_COMMITMENT);
+  });
+
+  describe('when the blinding is zero', () => {
+    it('should reject the holder in assertOnlyRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.assertOnlyRole(
+          OPERATOR_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+    });
+
+    it('should reject the holder in canProveRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+    });
+
+    it('should reject the admin in grantRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.grantRole(
+          ADMIN_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+          OTHER_COMMITMENT,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          callerOf(keyAccount(OTHER_KEY)),
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(false);
+    });
+
+    it('should reject the admin in revokeRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.revokeRole(
+          ADMIN_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+          OPERATOR_COMMITMENT,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should reject the holder in renounceRole', async () => {
+      await expect(
+        shieldedAccessControlCaller.renounceRole(
+          OPERATOR_CALLER,
+          ZERO_BLINDING,
+          ROLE,
+          OPERATOR_COMMITMENT,
+        ),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should reject the holder even when its zero-blinding commitment was granted', async () => {
+      const holder = callerOf(keyAccount(OTHER_KEY));
+      await shieldedAccessControlCaller._grantRole(
+        ROLE,
+        buildAccountCommitment(OTHER_KEY, ZERO_BLINDING),
+      );
+
+      await expect(
+        shieldedAccessControlCaller.assertOnlyRole(holder, ZERO_BLINDING, ROLE),
+      ).rejects.toThrow(ZERO_BLINDING_ERROR);
+    });
+  });
+
+  describe.each([
+    ['zero account', keyAccount(zeroBytes)],
+    ['non-canonical zero account', keyAccount(zeroBytes, DIRT)],
+  ])('when the caller is the %s', (_, account) => {
+    const caller = callerOf(account);
+
+    describe.each([
+      ['a fresh blinding', FRESH_BLINDING],
+      ["a holder's blinding", BLINDING],
+      ['a zero blinding', ZERO_BLINDING],
+    ])('with %s', (_, blinding) => {
+      it.each([
+        [
+          'assertOnlyRole',
+          () =>
+            shieldedAccessControlCaller.assertOnlyRole(caller, blinding, ROLE),
+        ],
+        [
+          'canProveRole',
+          () =>
+            shieldedAccessControlCaller.canProveRole(caller, blinding, ROLE),
+        ],
+        [
+          'grantRole',
+          () =>
+            shieldedAccessControlCaller.grantRole(
+              caller,
+              blinding,
+              ROLE,
+              OTHER_COMMITMENT,
+            ),
+        ],
+        [
+          'renounceRole',
+          () =>
+            shieldedAccessControlCaller.renounceRole(
+              caller,
+              blinding,
+              ROLE,
+              buildAccountCommitment(zeroBytes, blinding),
+            ),
+        ],
+        [
+          'revokeRole',
+          () =>
+            shieldedAccessControlCaller.revokeRole(
+              caller,
+              blinding,
+              ROLE,
+              OPERATOR_COMMITMENT,
+            ),
+        ],
+      ])('should reject it in %s', async (_, call) => {
+        await expect(call()).rejects.toThrow(ZERO_ACCOUNT_ERROR);
+      });
+    });
+
+    it('should reject it even when a commitment over the zero key was granted', async () => {
+      await shieldedAccessControlCaller._grantRole(
+        ROLE,
+        buildAccountCommitment(zeroBytes, BLINDING),
+      );
+
+      await expect(
+        shieldedAccessControlCaller.assertOnlyRole(caller, BLINDING, ROLE),
+      ).rejects.toThrow(ZERO_ACCOUNT_ERROR);
+      await expect(
+        shieldedAccessControlCaller.canProveRole(caller, BLINDING, ROLE),
+      ).rejects.toThrow(ZERO_ACCOUNT_ERROR);
+    });
+  });
+
+  describe.each([
+    ['contract', contractAccount(new Uint8Array(32).fill(4))],
+    ['contract-arm zero account', contractAccount(zeroBytes)],
+    [
+      "contract carrying a holder's key in its inactive arm",
+      contractAccount(new Uint8Array(32).fill(4), OPERATOR_KEY),
+    ],
+  ])('when the caller is a %s', (_, account) => {
+    const caller = callerOf(account);
+
+    it.each([
+      [
+        'assertOnlyRole',
+        () =>
+          shieldedAccessControlCaller.assertOnlyRole(caller, BLINDING, ROLE),
+      ],
+      [
+        'canProveRole',
+        () => shieldedAccessControlCaller.canProveRole(caller, BLINDING, ROLE),
+      ],
+      [
+        'grantRole',
+        () =>
+          shieldedAccessControlCaller.grantRole(
+            caller,
+            BLINDING,
+            ROLE,
+            OTHER_COMMITMENT,
+          ),
+      ],
+      [
+        'renounceRole',
+        () =>
+          shieldedAccessControlCaller.renounceRole(
+            caller,
+            BLINDING,
+            ROLE,
+            OPERATOR_COMMITMENT,
+          ),
+      ],
+      [
+        'revokeRole',
+        () =>
+          shieldedAccessControlCaller.revokeRole(
+            caller,
+            BLINDING,
+            ROLE,
+            OPERATOR_COMMITMENT,
+          ),
+      ],
+    ])('should reject it in %s', async (_, call) => {
+      await expect(call()).rejects.toThrow(
+        'ShieldedAccessControl: contract caller',
+      );
+    });
+  });
+
+  describe('when the caller account is not canonical', () => {
+    const operator = callerOf(keyAccount(OPERATOR_KEY, DIRT));
+
+    it('should pass assertOnlyRole as its key', async () => {
+      await shieldedAccessControlCaller.assertOnlyRole(
+        operator,
+        BLINDING,
+        ROLE,
+      );
+    });
+
+    it('should return true from canProveRole as its key', async () => {
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          operator,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should pass grantRole as its key', async () => {
+      await shieldedAccessControlCaller.grantRole(
+        callerOf(keyAccount(ADMIN_KEY, DIRT)),
+        BLINDING,
+        ROLE,
+        OTHER_COMMITMENT,
+      );
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          callerOf(keyAccount(OTHER_KEY)),
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(true);
+    });
+
+    it('should renounce the role of its key', async () => {
+      await shieldedAccessControlCaller.renounceRole(
+        operator,
+        BLINDING,
+        ROLE,
+        OPERATOR_COMMITMENT,
+      );
+      expect(
+        await shieldedAccessControlCaller.canProveRole(
+          OPERATOR_CALLER,
+          BLINDING,
+          ROLE,
+        ),
+      ).toBe(false);
     });
   });
 });

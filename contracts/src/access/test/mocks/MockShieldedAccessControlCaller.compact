@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract takes the caller and the blinding as circuit arguments, so
+// anyone can act as any account. DO NOT deploy or use this contract in any
+// production application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Caller } from "../../../identifier/Identifier";
+import { IdentifierCommitment } from "../../../identifier/extensions/IdentifierCommitment";
+import { Blinding } from "../../../crypto/randomness/RandBlinding";
+
+import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
+
+export { Caller,
+         ContractAddress,
+         Either,
+         MerkleTreePath,
+         ShieldedAccessControl__operatorRoles };
+
+constructor(instanceSalt: Bytes<32>) {
+  ShieldedAccessControl_initialize(instanceSalt);
+}
+
+export circuit assertOnlyRole(
+                 caller: Caller,
+                 blinding: Blinding,
+                 role: ShieldedAccessControl_RoleIdentifier
+                 ): [] {
+  return ShieldedAccessControl_assertOnlyRole(caller, blinding, role);
+}
+
+export circuit canProveRole(
+                 caller: Caller,
+                 blinding: Blinding,
+                 role: ShieldedAccessControl_RoleIdentifier
+                 ): Boolean {
+  return ShieldedAccessControl_canProveRole(caller, blinding, role);
+}
+
+export circuit grantRole(
+                 caller: Caller,
+                 blinding: Blinding,
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountCommitment: IdentifierCommitment
+                 ): [] {
+  return ShieldedAccessControl_grantRole(caller, blinding, role, accountCommitment);
+}
+
+export circuit renounceRole(
+                 caller: Caller,
+                 blinding: Blinding,
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountCommitmentConfirmation: IdentifierCommitment
+                 ): [] {
+  return ShieldedAccessControl_renounceRole(
+           caller,
+           blinding,
+           role,
+           accountCommitmentConfirmation
+         );
+}
+
+export circuit revokeRole(
+                 caller: Caller,
+                 blinding: Blinding,
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountCommitment: IdentifierCommitment
+                 ): [] {
+  return ShieldedAccessControl_revokeRole(caller, blinding, role, accountCommitment);
+}
+
+export circuit _grantRole(
+                 role: ShieldedAccessControl_RoleIdentifier,
+                 accountCommitment: IdentifierCommitment
+                 ): [] {
+  return ShieldedAccessControl__grantRole(role, accountCommitment);
+}

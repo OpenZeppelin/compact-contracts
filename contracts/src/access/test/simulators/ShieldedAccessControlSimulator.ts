@@ -13,6 +13,7 @@ import {
 import {
   ShieldedAccessControlPrivateState,
   ShieldedAccessControlWitnesses,
+  TEST_BLINDING,
 } from '../witnesses/ShieldedAccessControlWitnesses.js';
 
 type ShieldedAccessControlLedger = ReturnType<typeof ledger>;
@@ -34,7 +35,10 @@ const ShieldedAccessControlSimulatorBase = createSimulator<
 >({
   contractFactory: (witnesses) =>
     new MockShieldedAccessControl<ShieldedAccessControlPrivateState>(witnesses),
-  defaultPrivateState: () => ShieldedAccessControlPrivateState.generate(),
+  defaultPrivateState: () => ({
+    ...ShieldedAccessControlPrivateState.generate(),
+    blinding: TEST_BLINDING,
+  }),
   contractArgs: (instanceSalt, isInit) => {
     return [instanceSalt, isInit];
   },
@@ -117,6 +121,13 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
     return this.circuits.pure.computeNullifier(roleCommitment);
   }
 
+  public computeAccountCommitment(
+    account: Uint8Array,
+    blinding: Uint8Array,
+  ): Promise<Uint8Array> {
+    return this.circuits.pure.computeAccountCommitment(account, blinding);
+  }
+
   public readonly privateState = {
     /**
      * @description Replaces the secret key in the private state. Used in tests to
@@ -129,6 +140,17 @@ export class ShieldedAccessControlSimulator extends ShieldedAccessControlSimulat
       newSK: Buffer<ArrayBufferLike>,
     ): Promise<ShieldedAccessControlPrivateState> =>
       this.updatePrivateState({ secretKey: newSK }),
+
+    /**
+     * @description Replaces the blinding factor in the private state. Used in tests
+     * to simulate a holder drawing a new blinding or supplying a wrong one.
+     * @param newBlinding - The new blinding factor to set.
+     * @returns The updated private state.
+     */
+    injectBlinding: (
+      newBlinding: Uint8Array,
+    ): Promise<ShieldedAccessControlPrivateState> =>
+      this.updatePrivateState({ blinding: newBlinding }),
 
     /**
      * @description Returns the current secret key from the private state.

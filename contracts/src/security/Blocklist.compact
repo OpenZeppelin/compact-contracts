@@ -5,8 +5,9 @@ pragma language_version >= 0.28.0;
 
 /**
  * @module Blocklist
- * @description A minimal, reusable deny-list keyed by an account: a key account
- * or a contract account. It answers a single question: is this account blocked?
+ * @description A minimal, reusable deny-list keyed by an account: a key
+ * identifier or a contract identifier. It answers a single question: is this
+ * account blocked?
  *
  * This module is a pure membership MECHANISM, not a policy. It holds no notion
  * of "when" the list is enforced and no access control. The mutators (`_block`,
@@ -31,7 +32,7 @@ pragma language_version >= 0.28.0;
 module Blocklist {
   import CompactStandardLibrary;
 
-  import { Account } from "../account/Account";
+  import { Identifier } from "../identifier/Identifier";
 
   import "../utils/Utils" prefix Utils_;
 
@@ -43,7 +44,7 @@ module Blocklist {
    * @description Blocked accounts. Absent means not blocked.
    * @type {Set<Either<Bytes<32>, ContractAddress>>} _blocked
    */
-  export ledger _blocked: Set<Account>;
+  export ledger _blocked: Set<Identifier>;
 
   // ---------------------------------------------------------------------------
   // Views
@@ -57,7 +58,7 @@ module Blocklist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
    * @return {Boolean} - True if `account` is a member of the blocklist.
    */
-  export circuit isBlocked(account: Account): Boolean {
+  export circuit isBlocked(account: Identifier): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     return _blocked.member(disclose(canonAcct));
   }
@@ -79,7 +80,7 @@ module Blocklist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account that must not be blocked.
    * @return {[]} - Empty tuple.
    */
-  export circuit assertNotBlocked(account: Account): [] {
+  export circuit assertNotBlocked(account: Identifier): [] {
     assert(!isBlocked(account), "Blocklist: account blocked");
   }
 
@@ -95,7 +96,7 @@ module Blocklist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to block.
    * @return {[]} - Empty tuple.
    */
-  export circuit _block(account: Account): [] {
+  export circuit _block(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     _blocked.insert(disclose(canonAcct));
   }
@@ -108,7 +109,7 @@ module Blocklist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to unblock.
    * @return {[]} - Empty tuple.
    */
-  export circuit _unblock(account: Account): [] {
+  export circuit _unblock(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     _blocked.remove(disclose(canonAcct));
   }

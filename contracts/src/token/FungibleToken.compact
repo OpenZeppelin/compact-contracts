@@ -8,9 +8,7 @@ pragma language_version >= 0.28.0;
  * @description An unshielded FungibleToken library.
  *
  * This module derives no caller. Each circuit that acts for the caller takes a
- * `Caller`, which the composing contract gets from an authenticator and
- * passes to every module it drives. How the caller is authenticated is the
- * authenticator's concern, see `IAuthenticator`.
+ * `Caller`, see `Caller` in the `Identifier` module.
  *
  * @notice One notable difference regarding this implementation and the EIP20 spec
  * consists of the token size. Uint<128> is used as the token size because Uint<256>
@@ -70,9 +68,7 @@ pragma language_version >= 0.28.0;
 module FungibleToken {
   import CompactStandardLibrary;
 
-  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
-
-  import { Account } from "../account/Account";
+  import { Caller, Identifier } from "../identifier/Identifier";
 
   import "../utils/Utils" prefix Utils_;
 
@@ -90,7 +86,7 @@ module FungibleToken {
    * @type {Map<account, balance>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Uint<128>>} _balances
    */
-  export ledger _balances: Map<Account, Uint<128>>;
+  export ledger _balances: Map<Identifier, Uint<128>>;
 
   /**
    * @description Mapping from owner accounts to spender accounts and their allowances.
@@ -100,8 +96,8 @@ module FungibleToken {
    * @type {Map<account, Map<spender, allowance>>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _allowances
    */
-  export ledger _allowances: Map<Account,
-                                 Map<Account, Uint<128>>>;
+  export ledger _allowances: Map<Identifier,
+                                 Map<Identifier, Uint<128>>>;
 
   /**
    * @description Total tokens in circulation. `_update` raises it on a mint and
@@ -250,7 +246,7 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account id or contract address to query.
    * @return {Uint<128>} - The account's token balance.
    */
-  export circuit balanceOf(account: Account): Uint<128> {
+  export circuit balanceOf(account: Identifier): Uint<128> {
     assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 
@@ -284,7 +280,7 @@ module FungibleToken {
    */
   export circuit transfer(
                    caller: Caller,
-                   to: Account,
+                   to: Identifier,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
@@ -317,11 +313,11 @@ module FungibleToken {
    */
   export circuit _unsafeTransfer(
                    caller: Caller,
-                   to: Account,
+                   to: Identifier,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
-    const owner = caller.account;
+    const owner = caller.identifier;
     _unsafeUncheckedTransfer(owner, to, value);
     return true;
   }
@@ -343,8 +339,8 @@ module FungibleToken {
    * @return {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
    */
   export circuit allowance(
-                   owner: Account,
-                   spender: Account
+                   owner: Identifier,
+                   spender: Identifier
                    ): Uint<128> {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
@@ -373,12 +369,12 @@ module FungibleToken {
    * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
    */
   export circuit approve(caller: Caller,
-                         spender: Account,
+                         spender: Identifier,
                          value: Uint<128>
                          ): Boolean {
     assertInitialized();
 
-    const owner = caller.account;
+    const owner = caller.identifier;
     _approve(owner, spender, value);
     return true;
   }
@@ -410,8 +406,8 @@ module FungibleToken {
    */
   export circuit transferFrom(
                    caller: Caller,
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
@@ -446,13 +442,13 @@ module FungibleToken {
    */
   export circuit _unsafeTransferFrom(
                    caller: Caller,
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    value: Uint<128>
                    ): Boolean {
     assertInitialized();
 
-    const spender = caller.account;
+    const spender = caller.identifier;
     _spendAllowance(fromAddress, spender, value);
     _unsafeUncheckedTransfer(fromAddress, to, value);
     return true;
@@ -483,8 +479,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _transfer(
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -515,8 +511,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeUncheckedTransfer(
-                   fromAddress: Account,
-                   to: Account,
+                   fromAddress: Identifier,
+                   to: Identifier,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -542,8 +538,8 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens moved from `fromAddress` to `to`.
    * @return {[]} - Empty tuple.
    */
-  circuit _update(fromAddress: Account,
-                  to: Account,
+  circuit _update(fromAddress: Identifier,
+                  to: Identifier,
                   value: Uint<128>
                   ): [] {
     assertInitialized();
@@ -591,7 +587,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens minted.
    * @return {[]} - Empty tuple.
    */
-  export circuit _mint(account: Account, value: Uint<128>): [] {
+  export circuit _mint(account: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const isContractAddr = !account.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
@@ -618,7 +614,7 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _unsafeMint(
-                   account: Account,
+                   account: Identifier,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -642,7 +638,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens to burn.
    * @return {[]} - Empty tuple.
    */
-  export circuit _burn(account: Account, value: Uint<128>): [] {
+  export circuit _burn(account: Identifier, value: Uint<128>): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(account), "FungibleToken: invalid sender");
     _update(account, Utils_zeroAccount(), value);
@@ -667,8 +663,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _approve(
-                   owner: Account,
-                   spender: Account,
+                   owner: Identifier,
+                   spender: Identifier,
                    value: Uint<128>
                    ): [] {
     assertInitialized();
@@ -682,7 +678,7 @@ module FungibleToken {
       // If owner doesn't exist, create and insert a new sub-map directly
       _allowances.insert(
         disclose(canonOwner),
-        default<Map<Account, Uint<128>>>
+        default<Map<Identifier, Uint<128>>>
         );
     }
     _allowances.lookup(canonOwner).insert(disclose(canonSpender), disclose(value));
@@ -705,8 +701,8 @@ module FungibleToken {
    * @return {[]} - Empty tuple.
    */
   export circuit _spendAllowance(
-                   owner: Account,
-                   spender: Account,
+                   owner: Identifier,
+                   spender: Identifier,
                    value: Uint<128>
                    ): [] {
     assertInitialized();

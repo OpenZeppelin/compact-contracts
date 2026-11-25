@@ -25,25 +25,6 @@ In some cases unit tests may be insufficient and complementary techniques should
 
 TypeScript code should be written in a consistent format enforced by the project's chosen formatting tool, [biomejs](https://biomejs.dev/).
 
-Compact imports are written in four groups, in this order, with one blank line between groups:
-
-1. The standard library.
-2. Interfaces.
-3. Named imports: `import { A, b } from "...";`. A named import takes no prefix.
-4. Module imports: `import "..." prefix M_;`. An import with a prefix names nothing.
-
-```compact
-import CompactStandardLibrary;
-
-import { Caller } from "./interfaces/IAuthenticator";
-
-import { Account, PublicKey } from "../../account/Account";
-
-import "../prf/PrfAddr" prefix PrfAddr_;
-```
-
-A file that predates this order is brought in line when it is next changed.
-
 ## Documentation
 
 The online version of the Compact contracts documentation is maintained at [OpenZeppelin/docs](https://github.com/OpenZeppelin/docs).
@@ -81,9 +62,9 @@ Some other examples of automation are:
 
 Pull requests are squash-merged to keep the `main` branch history clean. The title of the pull request becomes the commit message, so it must follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `type(scope): summary`, e.g. `fix(token): reject zero-amount transfers`.
 
-1) Keep the summary short and imperative: "add feature X" and not "adds feature X" or "added feature X".
-2) Do not end with a period.
-3) Use the scope to name the module or area the change touches.
+1. Keep the summary short and imperative: "add feature X" and not "adds feature X" or "added feature X".
+2. Do not end with a period.
+3. Use the scope to name the module or area the change touches.
 
 Work in progress pull requests should be submitted as Drafts and should not be prefixed with "WIP:".
 

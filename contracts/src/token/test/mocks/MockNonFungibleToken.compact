@@ -9,7 +9,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
 import "../../NonFungibleToken" prefix NonFungibleToken_;
 
 export { ContractAddress, Either, Maybe };
@@ -55,7 +55,7 @@ export circuit approve(
   tokenId: Uint<128>
 ): [] {
   return NonFungibleToken_approve(
-    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockNonFungibleToken")),
     to,
     tokenId
   );
@@ -70,7 +70,7 @@ export circuit setApprovalForAll(
   approved: Boolean
 ): [] {
   return NonFungibleToken_setApprovalForAll(
-    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockNonFungibleToken")),
     operator,
     approved
   );
@@ -89,7 +89,7 @@ export circuit transferFrom(
   tokenId: Uint<128>
 ): [] {
   return NonFungibleToken_transferFrom(
-    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockNonFungibleToken")),
     fromAddress,
     to,
     tokenId
@@ -178,7 +178,7 @@ export circuit _unsafeTransferFrom(
   tokenId: Uint<128>
 ): [] {
   return NonFungibleToken__unsafeTransferFrom(
-    AuthPrfAddr_authenticate(pad(32, "MockNonFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockNonFungibleToken")),
     fromAddress,
     to,
     tokenId

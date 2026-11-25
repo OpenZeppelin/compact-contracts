@@ -42,8 +42,11 @@ artifact         = "integration/{name}"
 [contracts."src/access/test/mocks/*"]
 artifact = "access/test/mocks/{name}"
 
-[contracts."src/account/test/mocks/*"]
-artifact = "account/test/mocks/{name}"
+[contracts."src/identifier/test/mocks/*"]
+artifact = "identifier/test/mocks/{name}"
+
+[contracts."src/identifier/extensions/test/mocks/*"]
+artifact = "identifier/extensions/test/mocks/{name}"
 
 [contracts."src/archive/test/mocks/*"]
 artifact = "archive/test/mocks/{name}"

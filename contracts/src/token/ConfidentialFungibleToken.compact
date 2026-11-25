@@ -9,7 +9,7 @@ pragma language_version >= 0.28.0;
  *
  * Balances are stored as ElGamal ciphertexts on Jubjub. Account identity is
  * the `Caller` the composing contract passes in as
- * `caller`; the account id is `caller.account.left`. Encryption uses this
+ * `caller`; the account id is `caller.identifier.left`. Encryption uses this
  * module's witness `wit_ConfidentialTokenEK` to derive an ElGamal keypair
  * `(ek, pk)` via `ElGamal_derivePk`, where
  * `pk = g^degradeToTransient(persistentHash([ElGamal domain tag, EK]))`.
@@ -25,7 +25,7 @@ pragma language_version >= 0.28.0;
  * published identifier revealing the encryption key. The domain separation is
  * what makes that safe. Do not remove it. See `ElGamal.secretToScalar` and
  * the authenticator's account derivation, for example
- * `AuthPrfAddr.deriveAccount`.
+ * `AuthPrfPseudonym.deriveIdentifier`.
  *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
@@ -66,10 +66,10 @@ pragma language_version >= 0.28.0;
  *    Seed freshness @warning below.
  *
  * `caller` is an argument. The composing contract gets it from an
- * authenticator, see `IAuthenticator`. This module acts on
- * `caller.account.left` and rejects a contract caller. Registration records
- * `pk` under that id. Every other circuit taking `caller` also proves the EK
- * registered for it.
+ * authenticator, see `Caller` in the `Identifier` module. This module acts on
+ * `caller.identifier.left` and rejects a contract caller. Registration
+ * rejects a zero caller and records `pk` under that id. Every other circuit
+ * taking `caller` also proves the EK registered for it.
  *
  * @warning Seed freshness. Seed freshness is load-bearing for confidentiality
  * on EVERY path. The seed-to-randomness expansion is deterministic and public,
@@ -176,7 +176,7 @@ pragma language_version >= 0.28.0;
  *      know the remainder folded back into their balance.
  *
  * @dev Hash function discipline. Every hash is built on `persistentHash` (no
- * direct use of `transientHash`). The account id (`caller.account.left`,
+ * direct use of `transientHash`). The account id (`caller.identifier.left`,
  * from the contract's authenticator) is used as a raw map key.
  * Deriving Jubjub scalars (pk derivation, the decryption check, and per-credit
  * randomness) applies `degradeToTransient` to a `persistentHash` output so the
@@ -201,13 +201,13 @@ pragma language_version >= 0.28.0;
  * about compliance policy (freeze, KYC, pause); a composing contract layers
  * that on top. Every gated value reaches this module as an argument, so the
  * wrapper and this module see the same value. For the caller, the composing
- * contract authenticates once with its authenticator (see `IAuthenticator`) and
- * passes the same `Caller` to this module and to any gate
- * (allowlist, blocklist):
+ * contract authenticates with its authenticator (see `Caller` in the
+ * `Identifier` module) and passes the same `Caller` to this module and to any
+ * gate (allowlist, blocklist):
  *
  * ```compact
  * export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
- *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *   // A gate takes this same `caller`.
  *   return ConfidentialFungibleToken_transfer(caller, to, value);
  * }
@@ -217,7 +217,7 @@ pragma language_version >= 0.28.0;
  * `registerWithKey`,
  * `_burn`, `transfer`, `_move`, `approve`, `transferFrom`, `sweep`,
  * `_burnFrom` and `clearMemos`. All but `clearMemos` RETURN the caller's
- * `accountId`, which equals `caller.account.left`.
+ * `accountId`, which equals `caller.identifier.left`.
  * An assert failing anywhere in
  * a Compact circuit invalidates the whole transaction, so a gate placed after
  * the call prevents the operation too.
@@ -284,8 +284,9 @@ pragma language_version >= 0.28.0;
  *
  * EOA-only. Contract-to-contract (c2c) is out of scope. Accounts here are
  * externally-owned: identity is a key-controlled account, the `left` of
- * `caller.account` (see `Account`), and spending requires the holder to prove a
- * balance plaintext under a secret encryption key (`EK`) supplied via witness.
+ * `caller.identifier` (see `Identifier`), and spending requires the holder to
+ * prove a balance plaintext under a secret encryption key (`EK`) supplied via
+ * witness.
  * A contract has no private state, so it cannot custody such a key; it could
  * be blindly credited (the homomorphic add needs no key) but could never
  * spend, decrypt its balance, or scan memos.
@@ -308,11 +309,11 @@ pragma language_version >= 0.28.0;
 module ConfidentialFungibleToken {
   import CompactStandardLibrary;
 
-  import { Caller } from "../crypto/authentication/interfaces/IAuthenticator";
+  import { Caller, IdentifierKind } from "../identifier/Identifier";
 
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;
-  import "../account/Account" prefix Account_;
+  import "../identifier/Identifier" prefix Identifier_;
 
   // ---------------------------------------------------------------------------
   // Types
@@ -703,12 +704,13 @@ module ConfidentialFungibleToken {
    * the returned value (e.g. assert it is KYC-approved) to restrict who may
    * register. See the module header note on caller-identity gating.
    *
-   * @constraints k=13, rows=5771
+   * @constraints k=13, rows=5784
    *
    * Requirements:
    *
    * - `pk` is the key derived from the caller's EK.
    * - Contract is initialized.
+   * - `caller` is not the zero account.
    * - The caller is not already registered.
    *
    * @param {Caller} caller - The authenticated caller.
@@ -732,6 +734,7 @@ module ConfidentialFungibleToken {
    * Requirements:
    *
    * - Contract is initialized.
+   * - `caller` is not the zero account.
    * - The caller is not already registered.
    *
    * @param {Caller} caller - The authenticated caller.
@@ -743,7 +746,8 @@ module ConfidentialFungibleToken {
             pk: JubjubPoint
             ): Bytes<32> {
     assertInitialized();
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
+    assert(accountId != default<Bytes<32>>, "ConfidentialFungibleToken: invalid caller");
     assert(!_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: already registered");
 
@@ -830,7 +834,7 @@ module ConfidentialFungibleToken {
     assertInitialized();
     _assertValueInBound(value);
 
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
     assert(_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: sender not registered");
 
@@ -959,7 +963,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @constraints k=14, rows=12017
+   * @constraints k=14, rows=12022
    *
    * Requirements:
    *
@@ -987,7 +991,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @constraints k=16, rows=36253
+   * @constraints k=16, rows=36258
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating:
    * the account `_debit` drew from.
@@ -1027,7 +1031,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @constraints k=16, rows=36245
+   * @constraints k=16, rows=36250
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -1073,7 +1077,7 @@ module ConfidentialFungibleToken {
    * force a victim's spendable ciphertext to change, which is what would
    * otherwise invalidate the victim's in-flight spend proofs (a liveness grief).
    *
-   * @constraints k=13, rows=5518
+   * @constraints k=13, rows=5523
    *
    * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
    * pending to Enc(0). No plaintext is needed; the wallet already learned the
@@ -1090,7 +1094,7 @@ module ConfidentialFungibleToken {
    */
   export circuit sweep(caller: Caller): Bytes<32> {
     assertInitialized();
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
     _assertOwnsEncryptionKey(accountId);
     const newSpendable = ElGamal_add(
       _balances.lookup(disclose(accountId)),
@@ -1107,7 +1111,7 @@ module ConfidentialFungibleToken {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @constraints k=16, rows=36600
+   * @constraints k=16, rows=36605
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
@@ -1140,7 +1144,7 @@ module ConfidentialFungibleToken {
     assert(spender != default<Bytes<32>>,
            "ConfidentialFungibleToken: invalid spender");
 
-    const ownerId = Account_publicKeyOf(caller.account);
+    const ownerId = _callerId(caller);
     assert(ownerId != spender, "ConfidentialFungibleToken: self-approval");
     assert(_encryptionKeys.member(disclose(spender)),
            "ConfidentialFungibleToken: spender not registered");
@@ -1196,7 +1200,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @constraints k=16, rows=60734
+   * @constraints k=16, rows=60739
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1245,7 +1249,7 @@ module ConfidentialFungibleToken {
    * therefore reads its memo list and its epoch together, folds the memos into
    * its cache, and passes that epoch back here.
    *
-   * @constraints k=13, rows=4824
+   * @constraints k=13, rows=4829
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -1275,7 +1279,7 @@ module ConfidentialFungibleToken {
                    expectedEpoch: Uint<64>
                    ): [] {
     assertInitialized();
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
     _assertOwnsEncryptionKey(accountId);
 
     // Both reads are unconditional, so both are pinned in the transcript and a
@@ -1303,6 +1307,23 @@ module ConfidentialFungibleToken {
   circuit _assertValueInBound(value: Uint<128>): [] {
     assert(value <= MAX_TRANSFER_VALUE(),
            "ConfidentialFungibleToken: value exceeds bound");
+  }
+
+  /**
+   * @description The 32-byte id of a key caller. The token is key-only: a
+   * contract cannot hold the encryption key a balance needs.
+   *
+   * Requirements:
+   *
+   * - `caller` is not a contract.
+   *
+   * @param {Caller} caller - The authenticated caller.
+   * @return {Bytes<32>} - The bytes of the caller's key identifier.
+   */
+  circuit _callerId(caller: Caller): Bytes<32> {
+    const id = Identifier_unpack(caller.identifier);
+    assert(id.kind == IdentifierKind.Key, "ConfidentialFungibleToken: contract caller");
+    return id.bytes;
   }
 
   /**
@@ -1363,7 +1384,7 @@ module ConfidentialFungibleToken {
     assertInitialized();
     _assertValueInBound(value);
 
-    const spenderId = Account_publicKeyOf(caller.account);
+    const spenderId = _callerId(caller);
     assert(_escrow.member(disclose(fromAddress)) &&
            _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
            "ConfidentialFungibleToken: no escrow");
@@ -1431,7 +1452,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @constraints k=16, rows=36486
+   * @constraints k=16, rows=36491
    *
    * Requirements:
    *

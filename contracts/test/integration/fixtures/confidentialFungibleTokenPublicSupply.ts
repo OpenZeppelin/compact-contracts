@@ -210,7 +210,7 @@ export class ConfidentialFungibleTokenPublicSupplySimulator extends Base {
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
   const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
   return persistentHash(rt_type, [
-    padTag('AuthPrfAddr:account'),
+    padTag('AuthPrfPseudonym:identifier'),
     padTag('ComposedCFTPublicSupply'),
     sk,
   ]);

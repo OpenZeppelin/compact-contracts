@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract takes the caller as a circuit argument, so anyone can act as
+// any account. DO NOT deploy or use this contract in any production
+// application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Caller } from "../../../identifier/Identifier";
+
+import "../../AccessControl" prefix AccessControl_;
+
+export { Caller, ContractAddress, Either };
+
+export circuit hasRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): Boolean {
+  return AccessControl_hasRole(roleId, account);
+}
+
+export circuit assertOnlyRole(caller: Caller, roleId: Bytes<32>): [] {
+  return AccessControl_assertOnlyRole(caller, roleId);
+}
+
+export circuit grantRole(caller: Caller, roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): [] {
+  return AccessControl_grantRole(caller, roleId, account);
+}
+
+export circuit revokeRole(caller: Caller, roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): [] {
+  return AccessControl_revokeRole(caller, roleId, account);
+}
+
+export circuit renounceRole(
+                 caller: Caller,
+                 roleId: Bytes<32>,
+                 callerConfirmation: Either<Bytes<32>, ContractAddress>
+                 ): [] {
+  return AccessControl_renounceRole(caller, roleId, callerConfirmation);
+}
+
+export circuit _grantRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): Boolean {
+  return AccessControl__grantRole(roleId, account);
+}
+
+export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Either<Bytes<32>, ContractAddress>): Boolean {
+  return AccessControl__unsafeGrantRole(roleId, account);
+}

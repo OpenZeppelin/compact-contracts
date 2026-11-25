@@ -7,7 +7,6 @@ This project is built on the Midnight Network.
 
 **A library for secure smart contract development** written in Compact for [Midnight](https://midnight.network/).
 
-
 > ## ⚠️ WARNING! ⚠️
 >
 > Pre-release versions (`-alpha`, `-rc`) contain experimental, unaudited code.
@@ -69,8 +68,8 @@ import CompactStandardLibrary;
 
 import "./node_modules/@openzeppelin/compact-contracts/access/Ownable"
   prefix Ownable_;
-import "./node_modules/@openzeppelin/compact-contracts/crypto/authentication/AuthPrfAddr"
-  prefix AuthPrfAddr_;
+import "./node_modules/@openzeppelin/compact-contracts/crypto/authentication/AuthPrfPseudonym"
+  prefix AuthPrfPseudonym_;
 import "./node_modules/@openzeppelin/compact-contracts/security/Pausable"
   prefix Pausable_;
 import "./node_modules/@openzeppelin/compact-contracts/token/FungibleToken"
@@ -128,7 +127,7 @@ export circuit transfer(
   value: Uint<128>,
 ): Boolean {
   Pausable_assertNotPaused();
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return FungibleToken_transfer(caller, to, value);
 }
 
@@ -138,13 +137,13 @@ export circuit transferFrom(
   value: Uint<128>
 ): Boolean {
   Pausable_assertNotPaused();
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return FungibleToken_transferFrom(caller, fromAddress, to, value);
 }
 
 export circuit approve(spender: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
   Pausable_assertNotPaused();
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return FungibleToken_approve(caller, spender, value);
 }
 
@@ -155,25 +154,25 @@ export circuit owner(): Either<Bytes<32>, ContractAddress> {
 }
 
 export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return Ownable_transferOwnership(caller, newOwner);
 }
 
 export circuit renounceOwnership(): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return Ownable_renounceOwnership(caller);
 }
 
 /** IPausable */
 
 export circuit pause(): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   Ownable_assertOnlyOwner(caller);
   Pausable__pause();
 }
 
 export circuit unpause(): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   Ownable_assertOnlyOwner(caller);
   Pausable__unpause();
 }
@@ -208,8 +207,9 @@ Every `@constraints` annotation in the library is a ZKIR v3 measurement.
 Key generation for a circuit that produces Jubjub points without taking a Jubjub
 scalar or point as an input still fails upstream; see [Known issues](CHANGELOG.md#known-issues).
 
-`@constraints` on a circuit that takes a `Caller` excludes authentication. A
-deployed circuit pays the authenticator's `authenticate` line once, on top.
+`@constraints` on a circuit that takes a `Caller` excludes authentication, and
+on one that takes a `Blinding` the blinding read. A deployed circuit adds the
+cost of each `authenticate` and `RandBlinding.read` call it makes.
 
 ## Development
 
