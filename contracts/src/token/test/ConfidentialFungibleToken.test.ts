@@ -1756,12 +1756,15 @@ describe('ConfidentialFungibleToken: receive-path smoke', () => {
 describe.skipIf(isLiveBackend())(
   'ConfidentialFungibleToken: abnormal callers',
   () => {
-    type Account = Either<Uint8Array, ContractAddress>;
+    type Identifier = Either<Uint8Array, ContractAddress>;
 
     const zeroBytes = utils.zeroUint8Array();
     const bytesOf = (byte: number) => new Uint8Array(32).fill(byte);
 
-    const userAccount = (key: Uint8Array, inactive = zeroBytes): Account => ({
+    const userAccount = (
+      key: Uint8Array,
+      inactive = zeroBytes,
+    ): Identifier => ({
       is_left: true,
       left: key,
       right: { bytes: inactive },
@@ -1770,13 +1773,13 @@ describe.skipIf(isLiveBackend())(
     const contractAccount = (
       address: Uint8Array,
       inactive = zeroBytes,
-    ): Account => ({
+    ): Identifier => ({
       is_left: false,
       left: inactive,
       right: { bytes: address },
     });
 
-    const callerOf = (account: Account): Caller => ({ account });
+    const callerOf = (account: Identifier): Caller => ({ account });
 
     const ALICE_ID = bytesOf(1);
     const BOB_ID = bytesOf(2);
@@ -1800,7 +1803,7 @@ describe.skipIf(isLiveBackend())(
     const CALLER_MOCK_DECIMALS = 18n;
     const AMOUNT = 100n;
 
-    const CONTRACT_ACCOUNT = 'Account: contract account';
+    const CONTRACT_ACCOUNT = 'Identifier: contract identifier';
     const INVALID_CALLER = 'ConfidentialFungibleToken: invalid caller';
     const SENDER_NOT_REGISTERED =
       'ConfidentialFungibleToken: sender not registered';
@@ -1810,14 +1813,18 @@ describe.skipIf(isLiveBackend())(
 
     let callerCft: ConfidentialFungibleTokenCallerSimulator;
 
-    const register = async (account: Account, ek: Uint8Array) => {
+    const register = async (account: Identifier, ek: Uint8Array) => {
       await callerCft.privateState.switchEncryptionKey(ek);
       return callerCft.register(callerOf(account));
     };
 
     // Mints `amount` to `account`, sweeps it into spendable and caches it.
     // Leaves `ek` active.
-    const fund = async (account: Account, ek: Uint8Array, amount: bigint) => {
+    const fund = async (
+      account: Identifier,
+      ek: Uint8Array,
+      amount: bigint,
+    ) => {
       await callerCft.privateState.switchEncryptionKey(ek);
       await callerCft._mint(account.left, amount);
       await callerCft.sweep(callerOf(account));
@@ -1865,7 +1872,7 @@ describe.skipIf(isLiveBackend())(
     });
 
     describe.each([
-      ['a contract account', CONTRACT],
+      ['a contract identifier', CONTRACT],
       ['the contract-arm zero account', CONTRACT_ARM_ZERO],
     ])('when the caller is %s', (_, account) => {
       const caller = callerOf(account);

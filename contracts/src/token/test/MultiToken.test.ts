@@ -1602,11 +1602,11 @@ describe('MultiToken', () => {
 // zero account. This mock takes the caller as an argument, so a spec can act
 // as any account shape.
 describe('MultiToken: abnormal callers', () => {
-  type Account = Either<Uint8Array, ContractAddress>;
+  type Identifier = Either<Uint8Array, ContractAddress>;
 
   const bytesOf = (byte: number) => new Uint8Array(32).fill(byte);
 
-  const userAccount = (key: Uint8Array, inactive = zeroBytes): Account => ({
+  const userAccount = (key: Uint8Array, inactive = zeroBytes): Identifier => ({
     is_left: true,
     left: key,
     right: { bytes: inactive },
@@ -1615,13 +1615,13 @@ describe('MultiToken: abnormal callers', () => {
   const contractAccount = (
     address: Uint8Array,
     inactive = zeroBytes,
-  ): Account => ({
+  ): Identifier => ({
     is_left: false,
     left: inactive,
     right: { bytes: address },
   });
 
-  const callerOf = (account: Account): Caller => ({ account });
+  const callerOf = (account: Identifier): Caller => ({ account });
 
   const ALICE = userAccount(bytesOf(1));
   const BOB = userAccount(bytesOf(2));
@@ -1639,7 +1639,7 @@ describe('MultiToken: abnormal callers', () => {
 
   // `_unsafeTransferFrom` compares the caller's account as a whole with the
   // canonical `fromAddress`, so a non-zero inactive arm never matches it.
-  const ZERO_CALLERS: [string, Account, string][] = [
+  const ZERO_CALLERS: [string, Identifier, string][] = [
     ['the zero account', ZERO_ACCOUNT, INVALID_SENDER],
     ['the contract-arm zero account', ZERO_CONTRACT, INVALID_SENDER],
     ['a non-canonical zero account', NON_CANONICAL_ZERO, UNAUTHORIZED_OPERATOR],
@@ -1738,7 +1738,7 @@ describe('MultiToken: abnormal callers', () => {
     });
   });
 
-  describe('when the caller is a contract account', () => {
+  describe('when the caller is a contract identifier', () => {
     beforeEach(async () => {
       await callerToken._unsafeMint(CONTRACT, TOKEN_ID, 50n);
     });

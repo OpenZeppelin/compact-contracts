@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AllowlistSimulator } from './simulators/AllowlistSimulator.js';
 
-// Deterministic key account seeded from a label.
+// Deterministic key identifier seeded from a label.
 const account = (label: string) => {
   const a = new Uint8Array(32);
   a.set(new TextEncoder().encode(label).slice(0, 32));
   return { is_left: true, left: a, right: { bytes: new Uint8Array(32) } };
 };
 
-// Contract account over the same 32 bytes as `account(label)`.
+// Contract identifier over the same 32 bytes as `account(label)`.
 const contract = (label: string) => ({
   is_left: false,
   left: new Uint8Array(32),
@@ -117,8 +117,8 @@ describe('Allowlist', () => {
     });
   });
 
-  describe('contract accounts', () => {
-    it('adds and removes a contract account', async () => {
+  describe('contract identifiers', () => {
+    it('adds and removes a contract identifier', async () => {
       await allowlist.allow(ALICE_CONTRACT);
       expect(await allowlist.isAllowed(ALICE_CONTRACT)).toBe(true);
 
@@ -126,7 +126,7 @@ describe('Allowlist', () => {
       expect(await allowlist.isAllowed(ALICE_CONTRACT)).toBe(false);
     });
 
-    it('treats a key account and a contract account with the same bytes as two entries', async () => {
+    it('treats a key identifier and a contract identifier with the same bytes as two entries', async () => {
       await allowlist.allow(ALICE);
       expect(await allowlist.isAllowed(ALICE_CONTRACT)).toBe(false);
 
@@ -138,7 +138,7 @@ describe('Allowlist', () => {
   });
 
   describe('inactive arm', () => {
-    // The same key account with data left in its contract arm.
+    // The same key identifier with data left in its contract arm.
     const ALICE_PADDED = { ...ALICE, right: { bytes: BOB.left } };
 
     it('reads an account by its active arm only', async () => {

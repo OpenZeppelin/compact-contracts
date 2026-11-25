@@ -123,7 +123,7 @@ export class AccessControlCallerSimulator extends AccessControlCallerSimulatorBa
   }
 
   /**
-   * @description Grants `roleId` to a key account, without access control.
+   * @description Grants `roleId` to a key identifier, without access control.
    * @param roleId - The role identifier.
    * @param account - The grantee.
    * @returns Whether `roleId` was granted.

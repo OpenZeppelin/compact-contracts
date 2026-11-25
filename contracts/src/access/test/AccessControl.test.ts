@@ -933,8 +933,8 @@ describe('AccessControl', () => {
 });
 
 // The base mock authenticates through `AuthPrfAddr`, which yields only
-// canonical, non-zero key accounts. This mock takes the caller as an argument,
-// so a spec can act as any account.
+// canonical, non-zero key identifiers. This mock takes the caller as an
+// argument, so a spec can act as any account.
 describe('AccessControl: abnormal callers', () => {
   const DIRT = new Uint8Array(32).fill(0xff);
 

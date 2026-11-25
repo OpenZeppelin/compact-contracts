@@ -10,7 +10,7 @@ pragma language_version >= 0.28.0;
  * represent a set of permissions.
  *
  * This module derives no caller. Every authenticating circuit takes a
- * `Caller`, see `Caller` in the `Account` module.
+ * `Caller`, see `Caller` in the `Identifier` module.
  *
  * Roles are referred to by their `Bytes<32>` identifier. These should be exposed
  * in the top-level contract and be unique. One way to achieve this is by
@@ -112,7 +112,7 @@ pragma language_version >= 0.28.0;
 module AccessControl {
   import CompactStandardLibrary;
 
-  import { Account, Caller } from "../account/Account";
+  import { Caller, Identifier } from "../identifier/Identifier";
 
   import "../utils/Utils" prefix Utils_;
 
@@ -125,7 +125,7 @@ module AccessControl {
    * @type {Map<Bytes<32>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>} _operatorRoles
    */
   export ledger _operatorRoles: Map<Bytes<32>,
-                                    Map<Account, Boolean>>;
+                                    Map<Identifier, Boolean>>;
 
   /**
    * @description Mapping from a role identifier to an admin role identifier.
@@ -156,7 +156,7 @@ module AccessControl {
    * @return {Boolean} - Whether the account has the specified role.
     */
   export circuit hasRole(roleId: Bytes<32>,
-                         account: Account
+                         account: Identifier
                          ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     return _hasRole(roleId, canonAcct);
@@ -172,7 +172,7 @@ module AccessControl {
    * @return {Boolean} - Whether the account has the specified role.
    */
   circuit _hasRole(roleId: Bytes<32>,
-                         account: Account
+                         account: Identifier
                          ): Boolean {
     if (_operatorRoles.member(disclose(roleId)) &&
         _operatorRoles.lookup(roleId).member(disclose(account))) {
@@ -220,7 +220,7 @@ module AccessControl {
    */
   export circuit _checkRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): [] {
     assert(hasRole(roleId, account), "AccessControl: unauthorized account");
   }
@@ -262,7 +262,7 @@ module AccessControl {
   export circuit grantRole(
                    caller: Caller,
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): [] {
     assertOnlyRole(caller, getRoleAdmin(roleId));
     _grantRole(roleId, account);
@@ -285,7 +285,7 @@ module AccessControl {
   export circuit revokeRole(
                    caller: Caller,
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): [] {
     assertOnlyRole(caller, getRoleAdmin(roleId));
     _revokeRole(roleId, account);
@@ -315,7 +315,7 @@ module AccessControl {
   export circuit renounceRole(
                    caller: Caller,
                    roleId: Bytes<32>,
-                   callerConfirmation: Account
+                   callerConfirmation: Identifier
                    ): [] {
     assert(callerConfirmation == caller.account,
            "AccessControl: bad confirmation"
@@ -354,7 +354,7 @@ module AccessControl {
    */
   export circuit _grantRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): Boolean {
     const isContractAddr = !account.is_left;
     assert(!isContractAddr, "AccessControl: unsafe role approval");
@@ -380,7 +380,7 @@ module AccessControl {
    */
   export circuit _unsafeGrantRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     assert(!Utils_isTargetZero(canonAcct), "AccessControl: invalid account");
@@ -391,7 +391,7 @@ module AccessControl {
     if (!_operatorRoles.member(disclose(roleId))) {
       _operatorRoles.insert(
         disclose(roleId),
-        default<Map<Account, Boolean>>
+        default<Map<Identifier, Boolean>>
         );
     }
 
@@ -411,7 +411,7 @@ module AccessControl {
    */
   export circuit _revokeRole(
                    roleId: Bytes<32>,
-                   account: Account
+                   account: Identifier
                    ): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 

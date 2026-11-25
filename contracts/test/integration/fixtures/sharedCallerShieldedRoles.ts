@@ -37,7 +37,7 @@ type SharedCallerShieldedRolesArgs = readonly [
   admin: Uint8Array,
 ];
 
-type Account = Either<Uint8Array, ContractAddress>;
+type Identifier = Either<Uint8Array, ContractAddress>;
 
 const Base = createSimulator<
   ShieldedAccessControlPrivateState,
@@ -89,11 +89,11 @@ export class SharedCallerShieldedRolesSimulator extends Base {
     return this.circuits.impure.grantRole(role, accountCommitment);
   }
 
-  public mint(to: Account, value: bigint): Promise<[]> {
+  public mint(to: Identifier, value: bigint): Promise<[]> {
     return this.circuits.impure.mint(to, value);
   }
 
-  public transfer(to: Account, value: bigint): Promise<boolean> {
+  public transfer(to: Identifier, value: bigint): Promise<boolean> {
     return this.circuits.impure.transfer(to, value);
   }
 }
@@ -190,7 +190,7 @@ export const makeUser = (label: string) => {
   const secretKey = padTag(`${label}_SK`);
   const blinding = padTag(`${label}_BLINDING`);
   const accountId = buildAccountId(secretKey);
-  const account: Account = {
+  const account: Identifier = {
     is_left: true,
     left: accountId,
     right: { bytes: new Uint8Array(32) },

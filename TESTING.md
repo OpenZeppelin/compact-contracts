@@ -51,7 +51,7 @@ either way.
 ### Targets and filters
 
 Every `contracts/src/<category>` with tests is a live category; today that is `access`,
-`account`, `crypto`, `math`, `multisig`, `security`, `token` and `utils`. A category that must
+`crypto`, `identifier`, `math`, `multisig`, `security`, `token` and `utils`. A category that must
 not run live is an explicit opt-out in `EXCLUDED_CATEGORIES` in
 [`scripts/live/targets.ts`](scripts/live/targets.ts) (only the legacy `archive` today).
 

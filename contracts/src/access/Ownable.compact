@@ -11,7 +11,7 @@ pragma language_version >= 0.28.0;
  * This approach is perfectly reasonable for contracts that have a single administrative user.
  *
  * This module derives no caller. Every authenticating circuit takes a
- * `Caller`, see `Caller` in the `Account` module.
+ * `Caller`, see `Caller` in the `Identifier` module.
  *
  * The initial owner must be set by using the `initialize` circuit during construction.
  * This can later be changed with `transferOwnership`.
@@ -74,7 +74,7 @@ pragma language_version >= 0.28.0;
 module Ownable {
   import CompactStandardLibrary;
 
-  import { Account, Caller } from "../account/Account";
+  import { Caller, Identifier } from "../identifier/Identifier";
 
   import "../utils/Utils" prefix Utils_;
 
@@ -92,7 +92,7 @@ module Ownable {
    * value means ownership has been renounced.
    * @type {Either<Bytes<32>, ContractAddress>} _owner
    */
-  export ledger _owner: Account;
+  export ledger _owner: Identifier;
 
   /**
    * @description Initializes the contract by setting the `initialOwner`.
@@ -109,7 +109,7 @@ module Ownable {
    * @param {Either<Bytes<32>, ContractAddress>} initialOwner - The initial owner of the contract.
    * @returns {[]} Empty tuple.
    */
-  export circuit initialize(initialOwner: Account): [] {
+  export circuit initialize(initialOwner: Identifier): [] {
     assertNotInitialized();
     _isInitialized = true;
     assert(!Utils_isTargetZero(initialOwner), "Ownable: invalid initial owner");
@@ -153,7 +153,7 @@ module Ownable {
    *
    * @returns {Either<Bytes<32>, ContractAddress>} - The contract owner.
    */
-  export circuit owner(): Account {
+  export circuit owner(): Identifier {
     assertInitialized();
     return _owner;
   }
@@ -180,7 +180,7 @@ module Ownable {
    */
   export circuit transferOwnership(
                    caller: Caller,
-                   newOwner: Account
+                   newOwner: Identifier
                    ): [] {
     assertInitialized();
     const isContractAddr = !newOwner.is_left;
@@ -210,7 +210,7 @@ module Ownable {
    */
   export circuit _unsafeTransferOwnership(
                    caller: Caller,
-                   newOwner: Account
+                   newOwner: Identifier
                    ): [] {
     assertInitialized();
     assertOnlyOwner(caller);
@@ -290,7 +290,7 @@ module Ownable {
    * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit _transferOwnership(newOwner: Account): [] {
+  export circuit _transferOwnership(newOwner: Identifier): [] {
     assertInitialized();
     const isContractAddr = !newOwner.is_left;
     assert(!isContractAddr, "Ownable: unsafe ownership transfer");
@@ -315,7 +315,7 @@ module Ownable {
    * @returns {[]} Empty tuple.
    */
   export circuit _unsafeUncheckedTransferOwnership(
-                   newOwner: Account
+                   newOwner: Identifier
                    ): [] {
     assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(newOwner);

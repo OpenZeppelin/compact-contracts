@@ -66,7 +66,7 @@ pragma language_version >= 0.28.0;
  *    Seed freshness @warning below.
  *
  * `caller` is an argument. The composing contract gets it from an
- * authenticator, see `Caller` in the `Account` module. This module acts on
+ * authenticator, see `Caller` in the `Identifier` module. This module acts on
  * `caller.account.left` and rejects a contract caller. Registration rejects a
  * zero caller and records `pk` under that id. Every other circuit taking
  * `caller` also proves the EK registered for it.
@@ -202,7 +202,7 @@ pragma language_version >= 0.28.0;
  * that on top. Every gated value reaches this module as an argument, so the
  * wrapper and this module see the same value. For the caller, the composing
  * contract authenticates with its authenticator (see `Caller` in the
- * `Account` module) and passes the same `Caller` to this module and to any
+ * `Identifier` module) and passes the same `Caller` to this module and to any
  * gate (allowlist, blocklist):
  *
  * ```compact
@@ -284,8 +284,9 @@ pragma language_version >= 0.28.0;
  *
  * EOA-only. Contract-to-contract (c2c) is out of scope. Accounts here are
  * externally-owned: identity is a key-controlled account, the `left` of
- * `caller.account` (see `Account`), and spending requires the holder to prove a
- * balance plaintext under a secret encryption key (`EK`) supplied via witness.
+ * `caller.account` (see `Identifier`), and spending requires the holder to
+ * prove a balance plaintext under a secret encryption key (`EK`) supplied via
+ * witness.
  * A contract has no private state, so it cannot custody such a key; it could
  * be blindly credited (the homomorphic add needs no key) but could never
  * spend, decrypt its balance, or scan memos.
@@ -308,11 +309,11 @@ pragma language_version >= 0.28.0;
 module ConfidentialFungibleToken {
   import CompactStandardLibrary;
 
-  import { Caller } from "../account/Account";
+  import { Caller } from "../identifier/Identifier";
 
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;
-  import "../account/Account" prefix Account_;
+  import "../identifier/Identifier" prefix Identifier_;
 
   // ---------------------------------------------------------------------------
   // Types
@@ -745,7 +746,7 @@ module ConfidentialFungibleToken {
             pk: JubjubPoint
             ): Bytes<32> {
     assertInitialized();
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = Identifier_publicKeyOf(caller.account);
     assert(accountId != default<Bytes<32>>, "ConfidentialFungibleToken: invalid caller");
     assert(!_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: already registered");
@@ -833,7 +834,7 @@ module ConfidentialFungibleToken {
     assertInitialized();
     _assertValueInBound(value);
 
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = Identifier_publicKeyOf(caller.account);
     assert(_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: sender not registered");
 
@@ -1093,7 +1094,7 @@ module ConfidentialFungibleToken {
    */
   export circuit sweep(caller: Caller): Bytes<32> {
     assertInitialized();
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = Identifier_publicKeyOf(caller.account);
     _assertOwnsEncryptionKey(accountId);
     const newSpendable = ElGamal_add(
       _balances.lookup(disclose(accountId)),
@@ -1143,7 +1144,7 @@ module ConfidentialFungibleToken {
     assert(spender != default<Bytes<32>>,
            "ConfidentialFungibleToken: invalid spender");
 
-    const ownerId = Account_publicKeyOf(caller.account);
+    const ownerId = Identifier_publicKeyOf(caller.account);
     assert(ownerId != spender, "ConfidentialFungibleToken: self-approval");
     assert(_encryptionKeys.member(disclose(spender)),
            "ConfidentialFungibleToken: spender not registered");
@@ -1278,7 +1279,7 @@ module ConfidentialFungibleToken {
                    expectedEpoch: Uint<64>
                    ): [] {
     assertInitialized();
-    const accountId = Account_publicKeyOf(caller.account);
+    const accountId = Identifier_publicKeyOf(caller.account);
     _assertOwnsEncryptionKey(accountId);
 
     // Both reads are unconditional, so both are pinned in the transcript and a
@@ -1366,7 +1367,7 @@ module ConfidentialFungibleToken {
     assertInitialized();
     _assertValueInBound(value);
 
-    const spenderId = Account_publicKeyOf(caller.account);
+    const spenderId = Identifier_publicKeyOf(caller.account);
     assert(_escrow.member(disclose(fromAddress)) &&
            _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
            "ConfidentialFungibleToken: no escrow");

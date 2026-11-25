@@ -13,8 +13,8 @@ import {
 } from '#test-utils/compiler/contractInfo.js';
 import { pureCircuits } from '../../../../artifacts/crypto/authentication/test/mocks/MockAuthPrfAddr/contract/index.js';
 import {
-  type Account,
   AuthPrfAddrSimulator,
+  type Identifier,
 } from './simulators/AuthPrfAddrSimulator.js';
 import { AuthPrfAddrPrivateState } from './witnesses/AuthPrfAddrWitnesses.js';
 
@@ -40,7 +40,7 @@ const AUTH_SOURCE = readFileSync(
 );
 
 /** `left(persistentHash([tag, salt, sk]))`, the account `deriveAccount` returns. */
-const buildAccount = (sk: Uint8Array, salt: Uint8Array): Account => ({
+const buildAccount = (sk: Uint8Array, salt: Uint8Array): Identifier => ({
   is_left: true,
   left: persistentHash(new CompactTypeVector(3, new CompactTypeBytes(32)), [
     TAG,

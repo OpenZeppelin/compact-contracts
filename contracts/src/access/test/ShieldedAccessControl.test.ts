@@ -1507,9 +1507,9 @@ describe('ShieldedAccessControl', () => {
 });
 
 // The base mock authenticates through `AuthPrfAddr` and reads the blinding
-// through `RandBlinding`, which yield only a canonical, non-zero key account
-// and a non-zero blinding. This mock takes both as arguments, so a spec can
-// act as any account under any blinding.
+// through `RandBlinding`, which yield only a canonical, non-zero key
+// identifier and a non-zero blinding. This mock takes both as arguments, so a
+// spec can act as any account under any blinding.
 describe('ShieldedAccessControl: abnormal callers', () => {
   const zeroBytes = new Uint8Array(32);
   const DIRT = new Uint8Array(32).fill(0xff);
@@ -1772,7 +1772,7 @@ describe('ShieldedAccessControl: abnormal callers', () => {
           ),
       ],
     ])('should reject it in %s', async (_, call) => {
-      await expect(call()).rejects.toThrow('Account: contract account');
+      await expect(call()).rejects.toThrow('Identifier: contract identifier');
     });
   });
 

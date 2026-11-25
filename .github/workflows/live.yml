@@ -119,7 +119,7 @@ jobs:
       # one line here per pair below.
       targets: ${{ steps.plan.outputs.targets }}
       legs-access: ${{ steps.plan.outputs.legs-access }}
-      legs-account: ${{ steps.plan.outputs.legs-account }}
+      legs-identifier: ${{ steps.plan.outputs.legs-identifier }}
       legs-crypto: ${{ steps.plan.outputs.legs-crypto }}
       legs-math: ${{ steps.plan.outputs.legs-math }}
       legs-multisig: ${{ steps.plan.outputs.legs-multisig }}
@@ -172,7 +172,7 @@ jobs:
           TARGET: ${{ inputs.target }}
           LABEL: ${{ github.event.label.name }}
           FILTER: ${{ inputs.filter }}
-          KNOWN_TARGETS: access account crypto math multisig security token utils integration
+          KNOWN_TARGETS: access crypto identifier math multisig security token utils integration
           LIVE_REPORTS_DIR: ${{ runner.temp }}/live-history
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts matrix
 
@@ -218,26 +218,26 @@ jobs:
       name: ${{ matrix.name }}
       test-filter: ${{ matrix.testFilter }}
 
-  compile-account:
-    name: compile-account
+  compile-identifier:
+    name: compile-identifier
     needs: plan
-    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'account') }}
+    if: ${{ contains(fromJSON(needs.plan.outputs.targets), 'identifier') }}
     uses: ./.github/workflows/live-compile.yml
     with:
-      target: account
+      target: identifier
 
-  live-account:
+  live-identifier:
     # The matrix value is in the name on purpose: a caller job with a fixed name
     # renders every leg identically, so the spec under test has to appear here.
-    name: live-account · ${{ matrix.name }}
-    needs: [plan, compile-account]
+    name: live-identifier · ${{ matrix.name }}
+    needs: [plan, compile-identifier]
     # The empty-legs guard is belt and braces: this target's compile is
     # already skipped when the run's scope drops it, and an empty `include` is
     # a hard matrix error rather than an empty job list.
     if: >-
       ${{ !cancelled()
-      && needs.compile-account.result == 'success'
-      && needs.plan.outputs.legs-account != '[]' }}
+      && needs.compile-identifier.result == 'success'
+      && needs.plan.outputs.legs-identifier != '[]' }}
     strategy:
       fail-fast: false # one spec file failing should not cancel the others
       # Sum of the per-target caps bounds the fan-out; Actions has no global
@@ -246,10 +246,10 @@ jobs:
       # `include` rather than an axis product: the legs are the (file, name)
       # pairs the plan job resolved for this target.
       matrix:
-        include: ${{ fromJSON(needs.plan.outputs.legs-account) }}
+        include: ${{ fromJSON(needs.plan.outputs.legs-identifier) }}
     uses: ./.github/workflows/live-suite.yml
     with:
-      target: account
+      target: identifier
       file: ${{ matrix.file }}
       name: ${{ matrix.name }}
       test-filter: ${{ matrix.testFilter }}
@@ -514,7 +514,7 @@ jobs:
     needs:
       - plan
       - compile-access
-      - compile-account
+      - compile-identifier
       - compile-crypto
       - compile-math
       - compile-multisig
@@ -523,7 +523,7 @@ jobs:
       - compile-utils
       - compile-integration
       - live-access
-      - live-account
+      - live-identifier
       - live-crypto
       - live-math
       - live-multisig
@@ -565,9 +565,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SUITE_RESULT: "${{ needs.live-access.result }} ${{ needs.live-account.result }} ${{ needs.live-crypto.result }} ${{ needs.live-math.result }} ${{ needs.live-multisig.result }} ${{ needs.live-security.result }} ${{ needs.live-token.result }} ${{ needs.live-utils.result }} ${{ needs.live-integration.result }}"
+          SUITE_RESULT: "${{ needs.live-access.result }} ${{ needs.live-identifier.result }} ${{ needs.live-crypto.result }} ${{ needs.live-math.result }} ${{ needs.live-multisig.result }} ${{ needs.live-security.result }} ${{ needs.live-token.result }} ${{ needs.live-utils.result }} ${{ needs.live-integration.result }}"
           PLAN_RESULT: ${{ needs.plan.result }}
-          COMPILE_RESULT: "${{ needs.compile-access.result }} ${{ needs.compile-account.result }} ${{ needs.compile-crypto.result }} ${{ needs.compile-math.result }} ${{ needs.compile-multisig.result }} ${{ needs.compile-security.result }} ${{ needs.compile-token.result }} ${{ needs.compile-utils.result }} ${{ needs.compile-integration.result }}"
+          COMPILE_RESULT: "${{ needs.compile-access.result }} ${{ needs.compile-identifier.result }} ${{ needs.compile-crypto.result }} ${{ needs.compile-math.result }} ${{ needs.compile-multisig.result }} ${{ needs.compile-security.result }} ${{ needs.compile-token.result }} ${{ needs.compile-utils.result }} ${{ needs.compile-integration.result }}"
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/live-ci.ts nightly
 

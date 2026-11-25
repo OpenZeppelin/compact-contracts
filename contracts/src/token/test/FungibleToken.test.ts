@@ -1286,11 +1286,11 @@ describe('FungibleToken', () => {
 // zero account. This mock takes the caller as an argument, so a spec can act
 // as any account shape.
 describe('FungibleToken: abnormal callers', () => {
-  type Account = Either<Uint8Array, ContractAddress>;
+  type Identifier = Either<Uint8Array, ContractAddress>;
 
   const bytesOf = (byte: number) => new Uint8Array(32).fill(byte);
 
-  const userAccount = (key: Uint8Array, inactive = zeroBytes): Account => ({
+  const userAccount = (key: Uint8Array, inactive = zeroBytes): Identifier => ({
     is_left: true,
     left: key,
     right: { bytes: inactive },
@@ -1299,13 +1299,13 @@ describe('FungibleToken: abnormal callers', () => {
   const contractAccount = (
     address: Uint8Array,
     inactive = zeroBytes,
-  ): Account => ({
+  ): Identifier => ({
     is_left: false,
     left: inactive,
     right: { bytes: address },
   });
 
-  const callerOf = (account: Account): Caller => ({ account });
+  const callerOf = (account: Identifier): Caller => ({ account });
 
   const ALICE = userAccount(bytesOf(1));
   const BOB = userAccount(bytesOf(2));
@@ -1316,7 +1316,7 @@ describe('FungibleToken: abnormal callers', () => {
   const NON_CANONICAL_ALICE = userAccount(bytesOf(1), bytesOf(9));
   const NON_CANONICAL_BOB = userAccount(bytesOf(2), bytesOf(9));
 
-  const ZERO_CALLERS: [string, Account][] = [
+  const ZERO_CALLERS: [string, Identifier][] = [
     ['the zero account', ZERO_ACCOUNT],
     ['the contract-arm zero account', ZERO_CONTRACT],
     ['a non-canonical zero account', NON_CANONICAL_ZERO],
@@ -1464,7 +1464,7 @@ describe('FungibleToken: abnormal callers', () => {
     });
   });
 
-  describe('when the caller is a contract account', () => {
+  describe('when the caller is a contract identifier', () => {
     beforeEach(async () => {
       await callerToken._unsafeMint(CONTRACT, 50n);
     });

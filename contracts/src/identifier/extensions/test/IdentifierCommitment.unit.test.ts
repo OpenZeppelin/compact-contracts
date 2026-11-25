@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { AccountCommitmentSimulator } from './simulators/AccountCommitmentSimulator.js';
+import { IdentifierCommitmentSimulator } from './simulators/IdentifierCommitmentSimulator.js';
 
 /** Deterministic 32 bytes from a label; also Compact's `pad(32, label)`. */
 const bytes32 = (label: string): Uint8Array => {
@@ -17,7 +17,7 @@ const BLINDING = bytes32('blinding');
 const OTHER_BLINDING = bytes32('other blinding');
 
 const ACCOUNT_COMMITMENT_SOURCE = readFileSync(
-  new URL('../AccountCommitment.compact', import.meta.url),
+  new URL('../IdentifierCommitment.compact', import.meta.url),
   'utf8',
 );
 
@@ -33,11 +33,11 @@ const codeLines = (source: string): string[] =>
         !line.startsWith('//'),
     );
 
-let accountCommitment: AccountCommitmentSimulator;
+let accountCommitment: IdentifierCommitmentSimulator;
 
-describe('AccountCommitment', () => {
+describe('IdentifierCommitment', () => {
   beforeAll(async () => {
-    accountCommitment = await AccountCommitmentSimulator.create();
+    accountCommitment = await IdentifierCommitmentSimulator.create();
   });
 
   describe('commit', () => {

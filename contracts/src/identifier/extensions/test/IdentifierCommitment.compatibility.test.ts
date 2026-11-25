@@ -1,5 +1,5 @@
 /**
- * Compatibility claims for the AccountCommitment module.
+ * Compatibility claims for the IdentifierCommitment module.
  *
  * The committed value `{ domain, publicKey }` and the blinding are wire
  * format: every account commitment a module stores stops matching if they
@@ -23,7 +23,7 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { AccountCommitmentSimulator } from './simulators/AccountCommitmentSimulator.js';
+import { IdentifierCommitmentSimulator } from './simulators/IdentifierCommitmentSimulator.js';
 
 /** Deterministic 32 bytes from a label; also Compact's `pad(32, label)`. */
 const bytes32 = (label: string): Uint8Array => {
@@ -56,13 +56,13 @@ const referenceCommit = (
     publicKey,
   ]);
 
-let accountCommitment: AccountCommitmentSimulator;
+let accountCommitment: IdentifierCommitmentSimulator;
 
 beforeAll(async () => {
-  accountCommitment = await AccountCommitmentSimulator.create();
+  accountCommitment = await IdentifierCommitmentSimulator.create();
 });
 
-describe('AccountCommitment compatibility', () => {
+describe('IdentifierCommitment compatibility', () => {
   it('should hash the blinding, the domain, then the key', async () => {
     expect(
       await accountCommitment.commit(

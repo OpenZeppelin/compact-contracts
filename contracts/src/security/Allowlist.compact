@@ -6,8 +6,8 @@ pragma language_version >= 0.28.0;
 /**
  * @module Allowlist
  * @description A minimal, reusable permit-list keyed by an account: a key
- * account or a contract account. It answers a single question: is this account
- * a member?
+ * identifier or a contract identifier. It answers a single question: is this
+ * account a member?
  *
  * This module is a pure membership MECHANISM, not a policy. It holds no notion
  * of "when" the list is enforced and no access control. The mutators (`_allow`,
@@ -34,7 +34,7 @@ pragma language_version >= 0.28.0;
 module Allowlist {
   import CompactStandardLibrary;
 
-  import { Account } from "../account/Account";
+  import { Identifier } from "../identifier/Identifier";
 
   import "../utils/Utils" prefix Utils_;
 
@@ -46,7 +46,7 @@ module Allowlist {
    * @description Approved accounts. Absent means not allowed.
    * @type {Set<Either<Bytes<32>, ContractAddress>>} _allowed
    */
-  export ledger _allowed: Set<Account>;
+  export ledger _allowed: Set<Identifier>;
 
   // ---------------------------------------------------------------------------
   // Views
@@ -60,7 +60,7 @@ module Allowlist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
    * @return {Boolean} - True if `account` is a member of the allowlist.
    */
-  export circuit isAllowed(account: Account): Boolean {
+  export circuit isAllowed(account: Identifier): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     return _allowed.member(disclose(canonAcct));
   }
@@ -82,7 +82,7 @@ module Allowlist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account that must be allowed.
    * @return {[]} - Empty tuple.
    */
-  export circuit assertAllowed(account: Account): [] {
+  export circuit assertAllowed(account: Identifier): [] {
     assert(isAllowed(account), "Allowlist: account not allowed");
   }
 
@@ -102,7 +102,7 @@ module Allowlist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to allow.
    * @return {[]} - Empty tuple.
    */
-  export circuit _allow(account: Account): [] {
+  export circuit _allow(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     assert(!Utils_isTargetZero(canonAcct), "Allowlist: invalid account");
     _allowed.insert(disclose(canonAcct));
@@ -116,7 +116,7 @@ module Allowlist {
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to disallow.
    * @return {[]} - Empty tuple.
    */
-  export circuit _disallow(account: Account): [] {
+  export circuit _disallow(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     _allowed.remove(disclose(canonAcct));
   }

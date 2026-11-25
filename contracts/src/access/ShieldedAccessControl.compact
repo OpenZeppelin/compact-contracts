@@ -19,7 +19,7 @@ pragma language_version >= 0.28.0;
  *
  * roleNullifier  := SHA256( roleCommitment ‖ nullifierDomain )
  *
- * account          := the `left` of the caller's account (see `Account`)
+ * account          := the `left` of the caller's account (see `Identifier`)
  * accountDomain    := pad(32, "ShieldedAccessControl:account")
  * commitmentDomain := pad(32, "ShieldedAccessControl:commitment")
  * nullifierDomain  := pad(32, "ShieldedAccessControl:nullifier")
@@ -32,7 +32,7 @@ pragma language_version >= 0.28.0;
  *     so the account itself may be public. The holder computes it off-chain with {computeAccountCommitment}
  *     and gives it to the admin. It does not bind the contract instance: the same account and blinding
  *     in two instances give both admins the same value. This module derives no caller. Every
- *     authenticating circuit takes a `Caller`, see `Caller` in the `Account` module.
+ *     authenticating circuit takes a `Caller`, see `Caller` in the `Identifier` module.
  *     The caller must be a key caller: a contract caller is rejected. A zero account and a zero
  *     blinding are rejected. One `accountCommitment` can hold several roles within the same contract
  *     instance.
@@ -65,13 +65,13 @@ pragma language_version >= 0.28.0;
  * ```compact
  * import CompactStandardLibrary;
  *
- * import { AccountCommitment } from "./node_modules/@openzeppelin/compact-contracts/src/account/extensions/AccountCommitment";
+ * import { IdentifierCommitment } from "./node_modules/@openzeppelin/compact-contracts/src/identifier/extensions/IdentifierCommitment";
  *
  * import "./node_modules/@openzeppelin/compact-contracts/src/access/ShieldedAccessControl" prefix ShieldedAccessControl_;
  *
  * export sealed ledger MY_ROLE: Bytes<32>;
  *
- * constructor(instanceSalt: Bytes<32>, defaultAdmin: AccountCommitment) {
+ * constructor(instanceSalt: Bytes<32>, defaultAdmin: IdentifierCommitment) {
  *  MY_ROLE = persistentHash<Bytes<32>>(pad(32, "MY_ROLE"));
  *  ShieldedAccessControl_initialize(instanceSalt);
  *  ShieldedAccessControl__grantRole(ShieldedAccessControl_DEFAULT_ADMIN_ROLE(), defaultAdmin);
@@ -178,12 +178,12 @@ pragma language_version >= 0.28.0;
 module ShieldedAccessControl {
   import CompactStandardLibrary;
 
-  import { Caller } from "../account/Account";
-  import { AccountCommitment } from "../account/extensions/AccountCommitment";
+  import { Caller } from "../identifier/Identifier";
+  import { IdentifierCommitment } from "../identifier/extensions/IdentifierCommitment";
   import { Blinding } from "../crypto/randomness/RandBlinding";
 
-  import "../account/Account" prefix Account_;
-  import "../account/extensions/AccountCommitment" prefix AccountCommitment_;
+  import "../identifier/Identifier" prefix Identifier_;
+  import "../identifier/extensions/IdentifierCommitment" prefix IdentifierCommitment_;
   import "../utils/Utils" prefix Utils_;
 
   export enum UpdateType {
@@ -455,7 +455,7 @@ module ShieldedAccessControl {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitment - The holder's account commitment, computed off-chain by the
+   * @param {IdentifierCommitment} accountCommitment - The holder's account commitment, computed off-chain by the
    * grantee with {computeAccountCommitment}.
    *
    * @return {[]} - Empty tuple.
@@ -464,7 +464,7 @@ module ShieldedAccessControl {
                    caller: Caller,
                    blinding: Blinding,
                    role: RoleIdentifier,
-                   accountCommitment: AccountCommitment
+                   accountCommitment: IdentifierCommitment
                    ): [] {
     // Initialization check performed in assertOnlyRole
     assertOnlyRole(caller, blinding, getRoleAdmin(role));
@@ -498,11 +498,11 @@ module ShieldedAccessControl {
    * - A nullifier for the respective role commitment.
    *
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitment - The account commitment.
+   * @param {IdentifierCommitment} accountCommitment - The account commitment.
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit _grantRole(role: RoleIdentifier, accountCommitment: AccountCommitment): [] {
+  export circuit _grantRole(role: RoleIdentifier, accountCommitment: IdentifierCommitment): [] {
     assertInitialized();
     _updateRole(role, accountCommitment, UpdateType.Grant);
   }
@@ -537,7 +537,7 @@ module ShieldedAccessControl {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitmentConfirmation - The caller's account commitment, must match the one computed from `caller` and `blinding`.
+   * @param {IdentifierCommitment} accountCommitmentConfirmation - The caller's account commitment, must match the one computed from `caller` and `blinding`.
    *
    * @return {[]} - Empty tuple.
    */
@@ -545,7 +545,7 @@ module ShieldedAccessControl {
                    caller: Caller,
                    blinding: Blinding,
                    role: RoleIdentifier,
-                   accountCommitmentConfirmation: AccountCommitment
+                   accountCommitmentConfirmation: IdentifierCommitment
                    ): [] {
     assertInitialized();
 
@@ -583,7 +583,7 @@ module ShieldedAccessControl {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitment - The holder's account commitment, computed off-chain by the
+   * @param {IdentifierCommitment} accountCommitment - The holder's account commitment, computed off-chain by the
    * grantee with {computeAccountCommitment}.
    *
    * @return {[]} - Empty tuple.
@@ -592,7 +592,7 @@ module ShieldedAccessControl {
                    caller: Caller,
                    blinding: Blinding,
                    role: RoleIdentifier,
-                   accountCommitment: AccountCommitment
+                   accountCommitment: IdentifierCommitment
                    ): [] {
     // Initialization check performed in assertOnlyRole
     assertOnlyRole(caller, blinding, getRoleAdmin(role));
@@ -622,11 +622,11 @@ module ShieldedAccessControl {
    * - A nullifier for the respective role commitment.
    *
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitment - The account commitment.
+   * @param {IdentifierCommitment} accountCommitment - The account commitment.
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit _revokeRole(role: RoleIdentifier, accountCommitment: AccountCommitment): [] {
+  export circuit _revokeRole(role: RoleIdentifier, accountCommitment: IdentifierCommitment): [] {
     assertInitialized();
     _updateRole(role, accountCommitment, UpdateType.Revoke);
   }
@@ -649,14 +649,14 @@ module ShieldedAccessControl {
    * correlate grant and revocation transactions for the same `(role, accountCommitment)` pairing.
    *
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitment - The account commitment.
+   * @param {IdentifierCommitment} accountCommitment - The account commitment.
    * @param {UpdateType} updateType - Whether to grant or revoke.
    *
    * @return {[]} - Empty tuple.
    */
   circuit _updateRole(
             role: RoleIdentifier,
-            accountCommitment: AccountCommitment,
+            accountCommitment: IdentifierCommitment,
             updateType: UpdateType
             ): [] {
     const roleCommitment = computeRoleCommitment(role, accountCommitment);
@@ -746,11 +746,11 @@ module ShieldedAccessControl {
    * under the same role instance across time.
    *
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitment - The account commitment.
+   * @param {IdentifierCommitment} accountCommitment - The account commitment.
    *
    * @return {Boolean} isValidRole - A boolean indicating whether `accountCommitment` has a valid role
    */
-  circuit _validateRole(role: RoleIdentifier, accountCommitment: AccountCommitment): Boolean {
+  circuit _validateRole(role: RoleIdentifier, accountCommitment: IdentifierCommitment): Boolean {
     const roleCommitment = computeRoleCommitment(role, accountCommitment);
     const roleCommitmentPath = wit_getRoleCommitmentPath(roleCommitment);
     const isValidPath =
@@ -794,13 +794,13 @@ module ShieldedAccessControl {
    * @constraints k=13, rows=5866
    *
    * @param {RoleIdentifier} role - The role identifier.
-   * @param {AccountCommitment} accountCommitment - The account commitment.
+   * @param {IdentifierCommitment} accountCommitment - The account commitment.
    *
    * @returns {RoleCommitment} The commitment derived from `accountCommitment` and `role`.
    */
   export circuit computeRoleCommitment(
                    role: RoleIdentifier,
-                   accountCommitment: AccountCommitment,
+                   accountCommitment: IdentifierCommitment,
                    ): RoleCommitment {
 
     return persistentHash<Vector<4, Bytes<32>>>(
@@ -851,10 +851,10 @@ module ShieldedAccessControl {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    *
-   * @returns {AccountCommitment} accountCommitment - The computed account commitment.
+   * @returns {IdentifierCommitment} accountCommitment - The computed account commitment.
    */
-  circuit _computeAccountCommitment(caller: Caller, blinding: Blinding): AccountCommitment {
-    return computeAccountCommitment(Account_publicKeyOf(caller.account), blinding);
+  circuit _computeAccountCommitment(caller: Caller, blinding: Blinding): IdentifierCommitment {
+    return computeAccountCommitment(Identifier_publicKeyOf(caller.account), blinding);
   }
 
   /**
@@ -876,15 +876,15 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} account - The `left` of the holder's account.
    * @param {Bytes<32>} blinding - The holder's blinding factor.
    *
-   * @returns {AccountCommitment} accountCommitment - The computed account commitment.
+   * @returns {IdentifierCommitment} accountCommitment - The computed account commitment.
    */
   export pure circuit computeAccountCommitment(
                         account: Bytes<32>,
                         blinding: Blinding
-                        ): AccountCommitment {
+                        ): IdentifierCommitment {
     assert(account != default<Bytes<32>>, "ShieldedAccessControl: zero account");
     assert(blinding as Bytes<32> != default<Bytes<32>>, "ShieldedAccessControl: zero blinding");
-    return AccountCommitment_commit(
+    return IdentifierCommitment_commit(
              pad(32, "ShieldedAccessControl:account"),
              account,
              blinding as Bytes<32>

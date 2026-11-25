@@ -9,8 +9,8 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import { Caller } from "../../../account/Account";
-import { AccountCommitment } from "../../../account/extensions/AccountCommitment";
+import { Caller } from "../../../identifier/Identifier";
+import { IdentifierCommitment } from "../../../identifier/extensions/IdentifierCommitment";
 import { Blinding } from "../../../crypto/randomness/RandBlinding";
 
 import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
@@ -45,7 +45,7 @@ export circuit grantRole(
                  caller: Caller,
                  blinding: Blinding,
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): [] {
   return ShieldedAccessControl_grantRole(caller, blinding, role, accountCommitment);
 }
@@ -54,7 +54,7 @@ export circuit renounceRole(
                  caller: Caller,
                  blinding: Blinding,
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitmentConfirmation: AccountCommitment
+                 accountCommitmentConfirmation: IdentifierCommitment
                  ): [] {
   return ShieldedAccessControl_renounceRole(
            caller,
@@ -68,14 +68,14 @@ export circuit revokeRole(
                  caller: Caller,
                  blinding: Blinding,
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): [] {
   return ShieldedAccessControl_revokeRole(caller, blinding, role, accountCommitment);
 }
 
 export circuit _grantRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): [] {
   return ShieldedAccessControl__grantRole(role, accountCommitment);
 }

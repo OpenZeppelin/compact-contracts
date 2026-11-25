@@ -9,7 +9,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import { AccountCommitment } from "../../../account/extensions/AccountCommitment";
+import { IdentifierCommitment } from "../../../identifier/extensions/IdentifierCommitment";
 
 import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
 import "../../../crypto/randomness/RandBlinding" prefix RandBlinding_;
@@ -55,7 +55,7 @@ export circuit canProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean
 
 export circuit grantRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): [] {
   ShieldedAccessControl_grantRole(
     AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
@@ -67,14 +67,14 @@ export circuit grantRole(
 
 export circuit _grantRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): [] {
   return ShieldedAccessControl__grantRole(role, accountCommitment);
 }
 
 export circuit renounceRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitmentConfirmation: AccountCommitment
+                 accountCommitmentConfirmation: IdentifierCommitment
                  ): [] {
   ShieldedAccessControl_renounceRole(
     AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
@@ -86,7 +86,7 @@ export circuit renounceRole(
 
 export circuit revokeRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): [] {
   ShieldedAccessControl_revokeRole(
     AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
@@ -98,7 +98,7 @@ export circuit revokeRole(
 
 export circuit _revokeRole(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): [] {
   return ShieldedAccessControl__revokeRole(role, accountCommitment);
 }
@@ -118,7 +118,7 @@ export circuit _setRoleAdmin(
 
 export circuit computeRoleCommitment(
                  role: ShieldedAccessControl_RoleIdentifier,
-                 accountCommitment: AccountCommitment
+                 accountCommitment: IdentifierCommitment
                  ): ShieldedAccessControl_RoleCommitment {
 
   return ShieldedAccessControl_computeRoleCommitment(role, accountCommitment);
@@ -133,6 +133,6 @@ export pure circuit computeNullifier(
 export pure circuit computeAccountCommitment(
                       account: Bytes<32>,
                       blinding: RandBlinding_Blinding
-                      ): AccountCommitment {
+                      ): IdentifierCommitment {
   return ShieldedAccessControl_computeAccountCommitment(account, blinding);
 }

@@ -13,11 +13,11 @@ import {
   AuthPrfAddrWitnesses,
 } from '../witnesses/AuthPrfAddrWitnesses.js';
 
-/** `Account`: a `left` public key or a `right` contract address. */
-export type Account = Either<Uint8Array, ContractAddress>;
+/** `Identifier`: a `left` public key or a `right` contract address. */
+export type Identifier = Either<Uint8Array, ContractAddress>;
 
 /** `Caller`: a caller an authenticator produced. */
-export type Caller = { account: Account };
+export type Caller = { account: Identifier };
 
 /**
  * Type constructor args
@@ -71,7 +71,7 @@ export class AuthPrfAddrSimulator extends AuthPrfAddrSimulatorBase {
   public deriveAccount(
     secretKey: Uint8Array,
     salt: Uint8Array,
-  ): Promise<Account> {
+  ): Promise<Identifier> {
     return this.circuits.pure.deriveAccount(secretKey, salt);
   }
 }

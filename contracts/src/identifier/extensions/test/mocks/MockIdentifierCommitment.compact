@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
-// Exposes the AccountCommitment module's circuit so it can be driven from
+// Exposes the IdentifierCommitment module's circuit so it can be driven from
 // off-chain tests. DO NOT deploy or use this contract in any production
 // application.
 
@@ -9,9 +9,9 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import { AccountCommitment } from "../../AccountCommitment";
+import { IdentifierCommitment } from "../../IdentifierCommitment";
 
-import "../../AccountCommitment" prefix AccountCommitment_;
+import "../../IdentifierCommitment" prefix IdentifierCommitment_;
 
 // Keeps the circuit impure. Without a ledger write the compiler promotes it
 // to pure, and the artifact ships without ZKIR or proving keys, leaving the
@@ -22,7 +22,7 @@ export circuit commit(
                  domain: Bytes<32>,
                  publicKey: Bytes<32>,
                  blinding: Bytes<32>
-                 ): AccountCommitment {
+                 ): IdentifierCommitment {
   _invocations.increment(1);
-  return AccountCommitment_commit(domain, publicKey, blinding);
+  return IdentifierCommitment_commit(domain, publicKey, blinding);
 }

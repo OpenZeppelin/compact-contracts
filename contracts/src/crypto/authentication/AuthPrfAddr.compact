@@ -32,7 +32,7 @@ pragma language_version >= 0.28.0;
  *
  * @warning Produce the caller here:
  * A deployed contract never takes the caller as a parameter of an exported
- * circuit. See the warning on `Caller` in the `Account` module.
+ * circuit. See the warning on `Caller` in the `Identifier` module.
  *
  * @notice Scope:
  * - `authenticate` replaces the witness that identified the caller. A module
@@ -58,7 +58,7 @@ pragma language_version >= 0.28.0;
 module AuthPrfAddr {
   import CompactStandardLibrary;
 
-  import { Account, Caller, PublicKey } from "../../account/Account";
+  import { Caller, Identifier } from "../../identifier/Identifier";
 
   import "../prf/PrfAddr" prefix PrfAddr_;
 
@@ -87,8 +87,8 @@ module AuthPrfAddr {
   export pure circuit deriveAccount(
                         secretKey: Bytes<32>,
                         salt: Bytes<32>
-                        ): Account {
-    return left<PublicKey, ContractAddress>(
+                        ): Identifier {
+    return left<Bytes<32>, ContractAddress>(
              PrfAddr_derivePk<Bytes<32>>(pad(32, "AuthPrfAddr:account"), salt, secretKey)
            );
   }

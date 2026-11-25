@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (account/extensions/AccountCommitment.compact)
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (identifier/extensions/IdentifierCommitment.compact)
 
 pragma language_version >= 0.28.0;
 
 /**
- * @module AccountCommitment
+ * @module IdentifierCommitment
  * @description A hiding commitment to an account's key. A module that must
  * not reveal who holds a right stores this value in place of the account.
  * The holder later recomputes it from their account and blinding.
  *
  * ```compact
- * import { AccountCommitment } from "../account/extensions/AccountCommitment";
+ * import { IdentifierCommitment } from "../identifier/extensions/IdentifierCommitment";
  *
- * import "../account/Account" prefix Account_;
- * import "../account/extensions/AccountCommitment" prefix AccountCommitment_;
+ * import "../identifier/Identifier" prefix Identifier_;
+ * import "../identifier/extensions/IdentifierCommitment" prefix IdentifierCommitment_;
  *
- * circuit _holder(caller: Caller, blinding: Bytes<32>): AccountCommitment {
- *   return AccountCommitment_commit(
+ * circuit _holder(caller: Caller, blinding: Bytes<32>): IdentifierCommitment {
+ *   return IdentifierCommitment_commit(
  *     pad(32, "MyModule:account"),
- *     Account_publicKeyOf(caller.account),
+ *     Identifier_publicKeyOf(caller.account),
  *     blinding
  *   );
  * }
@@ -41,14 +41,14 @@ pragma language_version >= 0.28.0;
  *
  * @dev No ledger state, no witnesses, no asserts.
  */
-module AccountCommitment {
+module IdentifierCommitment {
   import CompactStandardLibrary;
 
   /**
    * @description A commitment to an account's key, typed apart from the key
    * and from other 32-byte values.
    */
-  export new type AccountCommitment = Bytes<32>;
+  export new type IdentifierCommitment = Bytes<32>;
 
   /**
    * @description The committed value, in wire-format order.
@@ -66,7 +66,7 @@ module AccountCommitment {
    *
    * @param {Bytes<32>} domain - The calling module's tag.
    * @param {Bytes<32>} publicKey - The account's key, the `left` of an
-   * `Account`.
+   * `Identifier`.
    * @param {Bytes<32>} blinding - The blinding factor.
    * @return {Bytes<32>} - The account commitment.
    */
@@ -74,10 +74,10 @@ module AccountCommitment {
                         domain: Bytes<32>,
                         publicKey: Bytes<32>,
                         blinding: Bytes<32>
-                        ): AccountCommitment {
+                        ): IdentifierCommitment {
     return persistentCommit<Preimage>(
              Preimage { domain: domain, publicKey: publicKey },
              blinding
-           ) as AccountCommitment;
+           ) as IdentifierCommitment;
   }
 }

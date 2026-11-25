@@ -14,7 +14,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import { AccountCommitment } from "../../../src/account/extensions/AccountCommitment";
+import { IdentifierCommitment } from "../../../src/identifier/extensions/IdentifierCommitment";
 
 import "../../../src/crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
 import "../../../src/crypto/randomness/RandBlinding" prefix RandBlinding_;
@@ -39,7 +39,7 @@ constructor(
   decimals_: Uint<8>,
   callerSalt: Bytes<32>,
   instanceSalt: Bytes<32>,
-  admin: AccountCommitment
+  admin: IdentifierCommitment
 ) {
   _callerSalt = disclose(callerSalt);
   MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
@@ -50,7 +50,7 @@ constructor(
 
 export circuit grantRole(
   role: ShieldedAccessControl_RoleIdentifier,
-  accountCommitment: AccountCommitment
+  accountCommitment: IdentifierCommitment
 ): [] {
   const caller = AuthPrfAddr_authenticate(_callerSalt);
   ShieldedAccessControl_grantRole(caller, RandBlinding_read(), role, accountCommitment);
