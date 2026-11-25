@@ -17,7 +17,6 @@ Flaky tests are not acceptable.
 The test suite should run automatically for every change in the repository, and in pull requests tests must pass before merging.
 
 In some cases unit tests may be insufficient and complementary techniques should be used:
-
 1. Property-based tests (aka. fuzzing) for math-heavy code.
 2. Formal verification for state machines.
 
@@ -54,17 +53,15 @@ Automation should be used as much as possible to reduce the possibility of human
 Automations that make use of sensitive credentials must use secure secret management, and must be strengthened against attacks such as [those on GitHub Actions workflows](https://github.com/nikitastupin/pwnhub).
 
 Some other examples of automation are:
-
 - Looking for common security vulnerabilities or errors in our code (eg. reentrancy analysis).
 - Keeping dependencies up to date and monitoring for vulnerable dependencies.
 
 ## Pull requests
 
 Pull requests are squash-merged to keep the `main` branch history clean. The title of the pull request becomes the commit message, so it must follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `type(scope): summary`, e.g. `fix(token): reject zero-amount transfers`.
-
-1) Keep the summary short and imperative: "add feature X" and not "adds feature X" or "added feature X".
-2) Do not end with a period.
-3) Use the scope to name the module or area the change touches.
+1. Keep the summary short and imperative: "add feature X" and not "adds feature X" or "added feature X".
+2. Do not end with a period.
+3. Use the scope to name the module or area the change touches.
 
 Work in progress pull requests should be submitted as Drafts and should not be prefixed with "WIP:".
 

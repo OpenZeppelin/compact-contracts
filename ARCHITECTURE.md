@@ -12,7 +12,6 @@ under the npm `latest` tag; `main` is the alpha line under `beta` ([`RELEASING.m
 Audit boundaries are the exact commits and scopes in [`audits/README.md`](audits/README.md). An
 audit of a release does not cover later changes on `main`. Module headers are the reference; the
 [docs](https://docs.openzeppelin.com/contracts-compact) cover some modules. The design preserves:
-
 1. **Composable building blocks.** Modules and presets are imported; `examples/` holds deployables.
 2. **No trusted witnesses.** Authorization and integrity hold in-circuit for any witness value.
 3. **Explicit disclosure.** Shielded modules list what they reveal; public state is flagged as such.
@@ -22,18 +21,18 @@ audit of a release does not cover later changes on `main`. Module headers are th
 The library lives in the [`contracts/`](contracts/) package, whose [README](contracts/README.md)
 covers each domain's internal layout and the mocks warning. Dependencies are the `import` lines.
 
-| Path | Responsibility and dependencies |
-| --- | --- |
-| `contracts/src/access` | Ownership and role-based access control, transparent and shielded. Imports `utils`. |
-| `contracts/src/crypto` | ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712. No ledger state and no witnesses, so an importer inherits no witness interface it does not need. Imports nothing outside `crypto`. |
-| `contracts/src/math` | Wrapping arithmetic on `Uint<N>` at any width: pure circuits, no ledger state, no witnesses. Imports nothing. |
-| `contracts/src/multisig` | Signer registry, threshold approvals, proposals, treasuries, forwarders, presets. Imports `utils` and `crypto/Ecdsa`; the presets add `crypto/Eip712` and `utils/EvmAbi`. `presets/NativeShieldedTokenIssuer` is the only multisig file that imports `token`. |
-| `contracts/src/security` | Initialization, pausing, allowlists and blocklists. Imports only the standard library. |
-| `contracts/src/token` | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`. `ConfidentialFungibleToken` imports `crypto/ElGamal` and `crypto/EcdhMask`; `extensions/ConfidentialNoteFungibleTokenDelivery` imports `crypto/Ecdh`, `crypto/EcdhMask` and `math/UintN`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
-| `contracts/src/utils` | Shared helpers and EVM ABI word encoding. Imports only the standard library. |
-| `contracts/src/archive` | Legacy code, excluded from the build and the tests. |
-| `contracts/test-utils` | Live harness, test fixtures and the concurrency replay harness. |
-| `contracts/test/integration` | Contracts composed from several modules, for cross-module behaviour. |
+| Path                         | Responsibility and dependencies                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `contracts/src/access`       | Ownership and role-based access control, transparent and shielded. Imports `utils`.                                                                                                                                                                                                                                                                       |
+| `contracts/src/crypto`       | ElGamal and ECDH over Jubjub, secp256k1 ECDSA, EIP-712. No ledger state and no witnesses, so an importer inherits no witness interface it does not need. Imports nothing outside `crypto`.                                                                                                                                                                |
+| `contracts/src/math`         | Wrapping arithmetic on `Uint<N>` at any width: pure circuits, no ledger state, no witnesses. Imports nothing.                                                                                                                                                                                                                                             |
+| `contracts/src/multisig`     | Signer registry, threshold approvals, proposals, treasuries, forwarders, presets. Imports `utils` and `crypto/Ecdsa`; the presets add `crypto/Eip712` and `utils/EvmAbi`; `presets/NativeShieldedTokenIssuer` is the only multisig file that imports `token`.                                                                                             |
+| `contracts/src/security`     | Initialization, pausing, allowlists and blocklists. Imports only the standard library.                                                                                                                                                                                                                                                                    |
+| `contracts/src/token`        | Transparent, confidential and native shielded tokens, extensions, a preset. Imports `utils`; `ConfidentialFungibleToken` imports `crypto/ElGamal` and `crypto/EcdhMask`; `extensions/ConfidentialNoteFungibleTokenDelivery` imports `crypto/Ecdh`, `crypto/EcdhMask` and `math/UintN`; `presets/ZOwnableNativeShieldedToken` imports `access/ZOwnablePK`. |
+| `contracts/src/utils`        | Shared helpers and EVM ABI word encoding. Imports only the standard library.                                                                                                                                                                                                                                                                              |
+| `contracts/src/archive`      | Legacy code, excluded from the build and the tests.                                                                                                                                                                                                                                                                                                       |
+| `contracts/test-utils`       | Live harness, test fixtures and the concurrency replay harness.                                                                                                                                                                                                                                                                                           |
+| `contracts/test/integration` | Contracts composed from several modules, for cross-module behaviour.                                                                                                                                                                                                                                                                                      |
 
 The published package holds only the `.compact` sources, `package.json` and the README, without
 `archive/` or `Mock*` contracts (the `build` script in

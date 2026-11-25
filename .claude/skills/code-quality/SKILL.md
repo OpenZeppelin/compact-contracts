@@ -1,4 +1,5 @@
 ---
+
 name: code-quality
 description: Review or improve changed code, documentation and configuration against this repository's written conventions and design constraints. Use when asked for a code-quality, style, conventions or consistency review.
 ---
@@ -7,7 +8,6 @@ description: Review or improve changed code, documentation and configuration aga
 
 Review the requested files against the repository's own sources of truth. Run repository commands
 from the repository root.
-
 1. Identify the files in scope from the user's path or request. With no path, compare the current
    branch with the base branch of its pull request, if there is one, and include staged, unstaged
    and untracked changes. For a stacked pull request, use its immediate parent branch rather than
