@@ -17,6 +17,12 @@ export type Identifier = {
   right: ContractAddress;
 };
 
+/** `IdentifierKind` as the runtime passes it. */
+export const IdentifierKind = { Key: 0, Contract: 1 } as const;
+
+/** `UnpackedIdentifier` as the runtime passes it. */
+export type UnpackedIdentifier = { kind: number; bytes: Uint8Array };
+
 // The Identifier module is stateless and declares no witnesses, so the private
 // state and witness set are both empty.
 export type IdentifierPrivateState = Record<string, never>;
@@ -60,8 +66,8 @@ export class IdentifierSimulator extends IdentifierSimulatorBase {
     return super.create([], options) as Promise<IdentifierSimulator>;
   }
 
-  /** @description `Identifier.publicKeyOf`. */
-  public publicKeyOf(account: Identifier): Promise<Uint8Array> {
-    return this.circuits.impure.publicKeyOf(account);
+  /** @description `Identifier.unpack`. */
+  public unpack(account: Identifier): Promise<UnpackedIdentifier> {
+    return this.circuits.impure.unpack(account);
   }
 }

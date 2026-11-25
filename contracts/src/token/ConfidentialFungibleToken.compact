@@ -309,7 +309,7 @@ pragma language_version >= 0.28.0;
 module ConfidentialFungibleToken {
   import CompactStandardLibrary;
 
-  import { Caller } from "../identifier/Identifier";
+  import { Caller, IdentifierKind } from "../identifier/Identifier";
 
   import "../crypto/ElGamal" prefix ElGamal_;
   import "../crypto/EcdhMask" prefix EcdhMask_;
@@ -704,7 +704,7 @@ module ConfidentialFungibleToken {
    * the returned value (e.g. assert it is KYC-approved) to restrict who may
    * register. See the module header note on caller-identity gating.
    *
-   * @constraints k=13, rows=5779
+   * @constraints k=13, rows=5784
    *
    * Requirements:
    *
@@ -746,7 +746,7 @@ module ConfidentialFungibleToken {
             pk: JubjubPoint
             ): Bytes<32> {
     assertInitialized();
-    const accountId = Identifier_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
     assert(accountId != default<Bytes<32>>, "ConfidentialFungibleToken: invalid caller");
     assert(!_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: already registered");
@@ -834,7 +834,7 @@ module ConfidentialFungibleToken {
     assertInitialized();
     _assertValueInBound(value);
 
-    const accountId = Identifier_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
     assert(_encryptionKeys.member(disclose(accountId)),
            "ConfidentialFungibleToken: sender not registered");
 
@@ -963,7 +963,7 @@ module ConfidentialFungibleToken {
    * `extensions/ConfidentialFungibleTokenPublicSupply`) if the deployment tracks
    * `totalSupply`.
    *
-   * @constraints k=14, rows=12017
+   * @constraints k=14, rows=12022
    *
    * Requirements:
    *
@@ -991,7 +991,7 @@ module ConfidentialFungibleToken {
    * credits `to`, and pushes an encrypted memo to `to`. The amount is hidden;
    * the (sender, recipient) pair is public.
    *
-   * @constraints k=16, rows=36253
+   * @constraints k=16, rows=36258
    *
    * @notice Returns the caller's (sender's) `accountId` for caller-side gating:
    * the account `_debit` drew from.
@@ -1031,7 +1031,7 @@ module ConfidentialFungibleToken {
    * operations (`mint`/`burn`) live in a separate layer outside this conserving
    * surface, and only they may break conservation.
    *
-   * @constraints k=16, rows=36245
+   * @constraints k=16, rows=36250
    *
    * @notice Like `transfer`, the credit lands in the recipient's pending pool
    * (see the dual-balance note); the caller sweeps their own incoming value.
@@ -1077,7 +1077,7 @@ module ConfidentialFungibleToken {
    * force a victim's spendable ciphertext to change, which is what would
    * otherwise invalidate the victim's in-flight spend proofs (a liveness grief).
    *
-   * @constraints k=13, rows=5518
+   * @constraints k=13, rows=5523
    *
    * @notice Purely homomorphic: adds the two ciphertexts (same key) and resets
    * pending to Enc(0). No plaintext is needed; the wallet already learned the
@@ -1094,7 +1094,7 @@ module ConfidentialFungibleToken {
    */
   export circuit sweep(caller: Caller): Bytes<32> {
     assertInitialized();
-    const accountId = Identifier_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
     _assertOwnsEncryptionKey(accountId);
     const newSpendable = ElGamal_add(
       _balances.lookup(disclose(accountId)),
@@ -1111,7 +1111,7 @@ module ConfidentialFungibleToken {
    * refunds any prior escrow, so allowances replace rather than stack. The cap
    * is not public.
    *
-   * @constraints k=16, rows=36600
+   * @constraints k=16, rows=36605
    *
    * @notice Returns the caller's (approver's) `accountId` for caller-side gating.
    *
@@ -1144,7 +1144,7 @@ module ConfidentialFungibleToken {
     assert(spender != default<Bytes<32>>,
            "ConfidentialFungibleToken: invalid spender");
 
-    const ownerId = Identifier_publicKeyOf(caller.account);
+    const ownerId = _callerId(caller);
     assert(ownerId != spender, "ConfidentialFungibleToken: self-approval");
     assert(_encryptionKeys.member(disclose(spender)),
            "ConfidentialFungibleToken: spender not registered");
@@ -1200,7 +1200,7 @@ module ConfidentialFungibleToken {
    * caller via `approve`) and credits it to `to`, reducing both escrow copies by
    * `value`. The amount is hidden.
    *
-   * @constraints k=16, rows=60734
+   * @constraints k=16, rows=60739
    *
    * @notice Returns the caller's (spender's) `accountId` for caller-side gating.
    *
@@ -1249,7 +1249,7 @@ module ConfidentialFungibleToken {
    * therefore reads its memo list and its epoch together, folds the memos into
    * its cache, and passes that epoch back here.
    *
-   * @constraints k=13, rows=4824
+   * @constraints k=13, rows=4829
    *
    * @warning Clearing memos is destructive and can permanently lock funds. The
    * on-chain balance ciphertext is not directly decryptable (discrete-log
@@ -1279,7 +1279,7 @@ module ConfidentialFungibleToken {
                    expectedEpoch: Uint<64>
                    ): [] {
     assertInitialized();
-    const accountId = Identifier_publicKeyOf(caller.account);
+    const accountId = _callerId(caller);
     _assertOwnsEncryptionKey(accountId);
 
     // Both reads are unconditional, so both are pinned in the transcript and a
@@ -1307,6 +1307,23 @@ module ConfidentialFungibleToken {
   circuit _assertValueInBound(value: Uint<128>): [] {
     assert(value <= MAX_TRANSFER_VALUE(),
            "ConfidentialFungibleToken: value exceeds bound");
+  }
+
+  /**
+   * @description The 32-byte id of a key caller. The token is key-only: a
+   * contract cannot hold the encryption key a balance needs.
+   *
+   * Requirements:
+   *
+   * - `caller` is not a contract.
+   *
+   * @param {Caller} caller - The authenticated caller.
+   * @return {Bytes<32>} - The bytes of the caller's key identifier.
+   */
+  circuit _callerId(caller: Caller): Bytes<32> {
+    const id = Identifier_unpack(caller.account);
+    assert(id.kind == IdentifierKind.Key, "ConfidentialFungibleToken: contract caller");
+    return id.bytes;
   }
 
   /**
@@ -1367,7 +1384,7 @@ module ConfidentialFungibleToken {
     assertInitialized();
     _assertValueInBound(value);
 
-    const spenderId = Identifier_publicKeyOf(caller.account);
+    const spenderId = _callerId(caller);
     assert(_escrow.member(disclose(fromAddress)) &&
            _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
            "ConfidentialFungibleToken: no escrow");
@@ -1435,7 +1452,7 @@ module ConfidentialFungibleToken {
    * recipient credit. The building block for a composing contract's
    * `burnFrom`; it performs no supply accounting (see `_burn`).
    *
-   * @constraints k=16, rows=36486
+   * @constraints k=16, rows=36491
    *
    * Requirements:
    *

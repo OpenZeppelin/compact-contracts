@@ -8,7 +8,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import { Identifier } from "../../Identifier";
+import { Identifier, UnpackedIdentifier } from "../../Identifier";
 
 import "../../Identifier" prefix Identifier_;
 
@@ -17,7 +17,7 @@ import "../../Identifier" prefix Identifier_;
 // the code evaluated but never proven.
 ledger _invocations: Counter;
 
-export circuit publicKeyOf(account: Identifier): Bytes<32> {
+export circuit unpack(account: Identifier): UnpackedIdentifier {
   _invocations.increment(1);
-  return Identifier_publicKeyOf(account);
+  return Identifier_unpack(account);
 }

@@ -178,7 +178,7 @@ pragma language_version >= 0.28.0;
 module ShieldedAccessControl {
   import CompactStandardLibrary;
 
-  import { Caller } from "../identifier/Identifier";
+  import { Caller, IdentifierKind } from "../identifier/Identifier";
   import { IdentifierCommitment } from "../identifier/extensions/IdentifierCommitment";
   import { Blinding } from "../crypto/randomness/RandBlinding";
 
@@ -327,7 +327,7 @@ module ShieldedAccessControl {
   /**
    * @description Reverts if `caller` cannot provide a valid proof of ownership for `role`.
    *
-   * @constraints k=14, rows=16070
+   * @constraints k=14, rows=16075
    *
    * Requirements:
    *
@@ -363,7 +363,7 @@ module ShieldedAccessControl {
    * caller if the proving environment supplies an invalid Merkle path. This circuit will never return true for an
    * unauthorized caller.
    *
-   * @constraints k=14, rows=16090
+   * @constraints k=14, rows=16095
    *
    * Requirements:
    *
@@ -434,7 +434,7 @@ module ShieldedAccessControl {
    * pairing is a no-op. Once revoked, a role cannot be re-granted to the same `accountCommitment`. A new
    * `accountCommitment` must be generated to be re-authorized for a revoked `role`.
    *
-   * @constraints k=15, rows=27558
+   * @constraints k=15, rows=27563
    *
    * Requirements:
    *
@@ -519,7 +519,7 @@ module ShieldedAccessControl {
    * @warning Outside observers may be able to use timing and pattern analysis to weaken pseudonymity
    * guarantees if renounceRole is used in tandem with other on-chain actions.
    *
-   * @constraints k=14, rows=13695
+   * @constraints k=14, rows=13700
    *
    * Requirements:
    *
@@ -562,7 +562,7 @@ module ShieldedAccessControl {
    * `role`. At this time, proofs of non-membership on values in the Merkle tree LDT are not possible
    * so a `(role, accountCommitment)` pairing that does not exist can still be revoked.
    *
-   * @constraints k=15, rows=25623
+   * @constraints k=15, rows=25628
    *
    * Requirements:
    *
@@ -854,7 +854,9 @@ module ShieldedAccessControl {
    * @returns {IdentifierCommitment} accountCommitment - The computed account commitment.
    */
   circuit _computeAccountCommitment(caller: Caller, blinding: Blinding): IdentifierCommitment {
-    return computeAccountCommitment(Identifier_publicKeyOf(caller.account), blinding);
+    const id = Identifier_unpack(caller.account);
+    assert(id.kind == IdentifierKind.Key, "ShieldedAccessControl: contract caller");
+    return computeAccountCommitment(id.bytes, blinding);
   }
 
   /**

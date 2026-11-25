@@ -2,8 +2,8 @@
  * Properties of the Identifier module over generated accounts.
  *
  * The unit suite states each claim at fixed points. This states them where
- * nobody chose: `is_left` alone decides whether the accessor answers, and
- * the answer is the `left` arm whatever the other arm holds.
+ * nobody chose: `is_left` alone picks the kind and the arm, and the answer is
+ * the active arm whatever the other arm holds.
  *
  * Runs on either backend. Every wrapper is an impure circuit on
  * `MockIdentifier`, so each call is a transaction on live, and the properties
@@ -13,7 +13,10 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { IdentifierSimulator } from './simulators/IdentifierSimulator.js';
+import {
+  IdentifierKind,
+  IdentifierSimulator,
+} from './simulators/IdentifierSimulator.js';
 
 // ---------------------------------------------------------------------------
 // Generators, each pinned to the circuit's own type
@@ -42,25 +45,29 @@ beforeAll(async () => {
 // ---------------------------------------------------------------------------
 
 describe('Identifier property: accessor', () => {
-  it('should return the key arm of any key identifier', async () => {
+  it('should return the key kind and the left arm of any key identifier', async () => {
     await fc.assert(
       fc.asyncProperty(arms(), async (a) => {
         const key = { is_left: true, ...a };
 
-        expect(await sim.publicKeyOf(key)).toStrictEqual(a.left);
+        expect(await sim.unpack(key)).toStrictEqual({
+          kind: IdentifierKind.Key,
+          bytes: a.left,
+        });
       }),
       { numRuns: PROPERTY_RUNS },
     );
   });
 
-  it('should reject any contract identifier on publicKeyOf', async () => {
+  it('should return the contract kind and the right arm of any contract identifier', async () => {
     await fc.assert(
       fc.asyncProperty(arms(), async (a) => {
         const contract = { is_left: false, ...a };
 
-        await expect(sim.publicKeyOf(contract)).rejects.toThrow(
-          'Identifier: contract identifier',
-        );
+        expect(await sim.unpack(contract)).toStrictEqual({
+          kind: IdentifierKind.Contract,
+          bytes: a.right.bytes,
+        });
       }),
       { numRuns: PROPERTY_RUNS },
     );

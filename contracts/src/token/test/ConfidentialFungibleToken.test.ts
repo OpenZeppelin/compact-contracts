@@ -1803,7 +1803,7 @@ describe.skipIf(isLiveBackend())(
     const CALLER_MOCK_DECIMALS = 18n;
     const AMOUNT = 100n;
 
-    const CONTRACT_ACCOUNT = 'Identifier: contract identifier';
+    const CONTRACT_ACCOUNT = 'ConfidentialFungibleToken: contract caller';
     const INVALID_CALLER = 'ConfidentialFungibleToken: invalid caller';
     const SENDER_NOT_REGISTERED =
       'ConfidentialFungibleToken: sender not registered';

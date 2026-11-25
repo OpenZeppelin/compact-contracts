@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   type Identifier,
+  IdentifierKind,
   IdentifierSimulator,
 } from './simulators/IdentifierSimulator.js';
 
@@ -55,32 +56,49 @@ describe('Identifier', () => {
     account = await IdentifierSimulator.create();
   });
 
-  describe('publicKeyOf', () => {
-    it('should return the key of a key identifier', async () => {
-      expect(await account.publicKeyOf(keyAccount(PK))).toStrictEqual(PK);
+  describe('unpack', () => {
+    it('should return the key kind and the key of a key identifier', async () => {
+      expect(await account.unpack(keyAccount(PK))).toStrictEqual({
+        kind: IdentifierKind.Key,
+        bytes: PK,
+      });
     });
 
     // No guard: the all-zero key is still a key.
     it('should return the all-zero key', async () => {
-      expect(await account.publicKeyOf(keyAccount(ZERO))).toStrictEqual(ZERO);
+      expect(await account.unpack(keyAccount(ZERO))).toStrictEqual({
+        kind: IdentifierKind.Key,
+        bytes: ZERO,
+      });
     });
 
     it('should ignore the contract arm of a key identifier', async () => {
-      expect(await account.publicKeyOf(keyAccount(PK, ADDRESS))).toStrictEqual(
-        PK,
-      );
+      expect(await account.unpack(keyAccount(PK, ADDRESS))).toStrictEqual({
+        kind: IdentifierKind.Key,
+        bytes: PK,
+      });
     });
 
-    it('should reject a contract identifier', async () => {
-      await expect(
-        account.publicKeyOf(contractAccount(ADDRESS)),
-      ).rejects.toThrow('Identifier: contract identifier');
+    it('should return the contract kind and the address of a contract identifier', async () => {
+      expect(await account.unpack(contractAccount(ADDRESS))).toStrictEqual({
+        kind: IdentifierKind.Contract,
+        bytes: ADDRESS,
+      });
     });
 
-    it('should reject a contract identifier whose key arm is set', async () => {
-      await expect(
-        account.publicKeyOf(contractAccount(ADDRESS, PK)),
-      ).rejects.toThrow('Identifier: contract identifier');
+    it('should ignore the key arm of a contract identifier', async () => {
+      expect(await account.unpack(contractAccount(ADDRESS, PK))).toStrictEqual({
+        kind: IdentifierKind.Contract,
+        bytes: ADDRESS,
+      });
+    });
+
+    it('should tell a key and a contract with the same bytes apart', async () => {
+      const key = await account.unpack(keyAccount(PK));
+      const contract = await account.unpack(contractAccount(PK));
+
+      expect(key.bytes).toStrictEqual(contract.bytes);
+      expect(key.kind).not.toBe(contract.kind);
     });
   });
 
@@ -92,7 +110,7 @@ describe('Identifier', () => {
         code
           .filter((line) => /\bcircuit\b/.test(line))
           .map((line) => line.slice(0, line.indexOf('('))),
-      ).toStrictEqual(['export pure circuit publicKeyOf']);
+      ).toStrictEqual(['export pure circuit unpack']);
       expect(
         code.filter((line) => /\b(ledger|witness)\b/.test(line)),
       ).toStrictEqual([]);
@@ -100,7 +118,7 @@ describe('Identifier', () => {
 
     // The mock's call counter is unexported, so a reader sees no state.
     it('should leave the mock with no exported ledger state', async () => {
-      await account.publicKeyOf(keyAccount(PK));
+      await account.unpack(keyAccount(PK));
 
       expect(await account.getPublicState()).toStrictEqual({});
     });

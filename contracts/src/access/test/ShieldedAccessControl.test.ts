@@ -1772,7 +1772,9 @@ describe('ShieldedAccessControl: abnormal callers', () => {
           ),
       ],
     ])('should reject it in %s', async (_, call) => {
-      await expect(call()).rejects.toThrow('Identifier: contract identifier');
+      await expect(call()).rejects.toThrow(
+        'ShieldedAccessControl: contract caller',
+      );
     });
   });
 

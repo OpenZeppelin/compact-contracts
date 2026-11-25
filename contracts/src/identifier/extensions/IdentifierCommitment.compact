@@ -10,15 +10,18 @@ pragma language_version >= 0.28.0;
  * The holder later recomputes it from their account and blinding.
  *
  * ```compact
+ * import { Caller, IdentifierKind } from "../identifier/Identifier";
  * import { IdentifierCommitment } from "../identifier/extensions/IdentifierCommitment";
  *
  * import "../identifier/Identifier" prefix Identifier_;
  * import "../identifier/extensions/IdentifierCommitment" prefix IdentifierCommitment_;
  *
  * circuit _holder(caller: Caller, blinding: Bytes<32>): IdentifierCommitment {
+ *   const id = Identifier_unpack(caller.account);
+ *   assert(id.kind == IdentifierKind.Key, "MyModule: contract caller");
  *   return IdentifierCommitment_commit(
  *     pad(32, "MyModule:account"),
- *     Identifier_publicKeyOf(caller.account),
+ *     id.bytes,
  *     blinding
  *   );
  * }
