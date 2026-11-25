@@ -7,7 +7,6 @@ This project is built on the Midnight Network.
 
 **A library for secure smart contract development** written in Compact for [Midnight](https://midnight.network/).
 
-
 > ## ⚠️ WARNING! ⚠️
 >
 > Pre-release versions (`-alpha`, `-rc`) contain experimental, unaudited code.

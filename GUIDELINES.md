@@ -62,9 +62,9 @@ Some other examples of automation are:
 
 Pull requests are squash-merged to keep the `main` branch history clean. The title of the pull request becomes the commit message, so it must follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `type(scope): summary`, e.g. `fix(token): reject zero-amount transfers`.
 
-1) Keep the summary short and imperative: "add feature X" and not "adds feature X" or "added feature X".
-2) Do not end with a period.
-3) Use the scope to name the module or area the change touches.
+1. Keep the summary short and imperative: "add feature X" and not "adds feature X" or "added feature X".
+2. Do not end with a period.
+3. Use the scope to name the module or area the change touches.
 
 Work in progress pull requests should be submitted as Drafts and should not be prefixed with "WIP:".
 

@@ -89,13 +89,13 @@ enforces two rules and fails fast, before any wallet build:
 2. **One live run at a time.** A pid-stamped lock (`contracts/logs/.live-run.lock`) makes a
    second concurrent run abort.
 
-| Variable | Default | Effect |
-| --- | --- | --- |
-| `MIDNIGHT_LIVE_WORKERS` | 3 | Parallel spec files under `unit-live` (max 3, one genesis-funded deployer each). |
-| `MIDNIGHT_LIVE_ALLOW_DIRTY` | unset | `1` skips the freshness check. |
-| `MIDNIGHT_LIVE_MAX_COIN_EVENTS` | 0 | Coin events beyond genesis tolerated before "not fresh". |
-| `MIDNIGHT_LIVE_MAX_SCAN_BLOCKS` | 3600 | Above this indexer head, the guard asks you to `env:up` rather than scan. |
-| `MIDNIGHT_LIVE_KEEP_ENV` | unset | `1` leaves the stack running after the run. |
+| Variable                        | Default | Effect                                                                           |
+| ------------------------------- | ------- | -------------------------------------------------------------------------------- |
+| `MIDNIGHT_LIVE_WORKERS`         | 3       | Parallel spec files under `unit-live` (max 3, one genesis-funded deployer each). |
+| `MIDNIGHT_LIVE_ALLOW_DIRTY`     | unset   | `1` skips the freshness check.                                                   |
+| `MIDNIGHT_LIVE_MAX_COIN_EVENTS` | 0       | Coin events beyond genesis tolerated before "not fresh".                         |
+| `MIDNIGHT_LIVE_MAX_SCAN_BLOCKS` | 3600    | Above this indexer head, the guard asks you to `env:up` rather than scan.        |
+| `MIDNIGHT_LIVE_KEEP_ENV`        | unset   | `1` leaves the stack running after the run.                                      |
 
 ### Reading the output
 

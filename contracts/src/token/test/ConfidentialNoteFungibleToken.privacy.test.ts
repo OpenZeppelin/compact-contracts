@@ -259,7 +259,7 @@ const digestsIn = (trace: Trace): string[] =>
  * still compared exactly.
  */
 const widthOf = (bytes: string): number =>
-  bytes.length >= DIGEST_MIN_HEX ? DIGEST_MIN_HEX : bytes.length;
+  Math.min(bytes.length, DIGEST_MIN_HEX);
 
 const CORE_SOURCE = readFileSync(
   new URL('../ConfidentialNoteFungibleToken.compact', import.meta.url),
