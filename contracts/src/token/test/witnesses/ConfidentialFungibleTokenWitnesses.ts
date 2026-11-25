@@ -91,7 +91,7 @@ export interface IConfidentialFungibleTokenWitnesses<L, P> {
    * Returns the user's account secret key. The contract's authenticator
    * derives the on-chain account identifier from it in-circuit.
    */
-  wit_AuthPrfAddrSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfPseudonymSK(context: WitnessContext<L, P>): [P, Uint8Array];
 
   /**
    * Returns the user's ElGamal encryption secret. Verified in-circuit by
@@ -247,7 +247,7 @@ export const ConfidentialFungibleTokenWitnesses = <
   L,
   ConfidentialFungibleTokenPrivateState
 > => ({
-  wit_AuthPrfAddrSK(
+  wit_AuthPrfPseudonymSK(
     context: WitnessContext<L, ConfidentialFungibleTokenPrivateState>,
   ): [ConfidentialFungibleTokenPrivateState, Uint8Array] {
     return [context.privateState, context.privateState.secretKey];

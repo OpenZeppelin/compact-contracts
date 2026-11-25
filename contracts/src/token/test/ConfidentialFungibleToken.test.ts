@@ -1748,10 +1748,10 @@ describe('ConfidentialFungibleToken: receive-path smoke', () => {
   );
 });
 
-// The base mock authenticates through `AuthPrfAddr`, which cannot produce the
-// zero account. This mock takes the caller as an argument, so a spec can act
-// as any account shape. This block runs dry only: every case deploys the full
-// token and proves several heavy circuits, and the base suite keeps its
+// The base mock authenticates through `AuthPrfPseudonym`, which cannot produce
+// the zero account. This mock takes the caller as an argument, so a spec can
+// act as any account shape. This block runs dry only: every case deploys the
+// full token and proves several heavy circuits, and the base suite keeps its
 // functional cases dry as well.
 describe.skipIf(isLiveBackend())(
   'ConfidentialFungibleToken: abnormal callers',

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
-// Exposes the AuthPrfAddr module's circuits so they can be driven from
+// Exposes the AuthPrfPseudonym module's circuits so they can be driven from
 // off-chain tests. DO NOT deploy or use this contract in any production
 // application.
 
@@ -11,7 +11,7 @@ import CompactStandardLibrary;
 
 import { Caller } from "../../../../identifier/Identifier";
 
-import "../../AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../AuthPrfPseudonym" prefix AuthPrfPseudonym_;
 
 // Gives `authenticate` a proof. Without a ledger write the compiler emits no
 // ZKIR or proving keys for it, leaving the code evaluated but never proven.
@@ -19,16 +19,16 @@ ledger _invocations: Counter;
 
 export circuit authenticate(salt: Bytes<32>): Caller {
   _invocations.increment(1);
-  return disclose(AuthPrfAddr_authenticate(salt));
+  return disclose(AuthPrfPseudonym_authenticate(salt));
 }
 
 export circuit authenticateForThisContract(): Caller {
-  return disclose(AuthPrfAddr_authenticateForThisContract());
+  return disclose(AuthPrfPseudonym_authenticateForThisContract());
 }
 
 export pure circuit deriveAccount(
                       secretKey: Bytes<32>,
                       salt: Bytes<32>
                       ): Either<Bytes<32>, ContractAddress> {
-  return AuthPrfAddr_deriveAccount(secretKey, salt);
+  return AuthPrfPseudonym_deriveAccount(secretKey, salt);
 }

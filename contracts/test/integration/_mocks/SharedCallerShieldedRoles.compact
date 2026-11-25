@@ -16,7 +16,7 @@ import CompactStandardLibrary;
 
 import { IdentifierCommitment } from "../../../src/identifier/extensions/IdentifierCommitment";
 
-import "../../../src/crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../../src/crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
 import "../../../src/crypto/randomness/RandBlinding" prefix RandBlinding_;
 import "../../../src/token/FungibleToken" prefix FungibleToken_;
 import "../../../src/access/ShieldedAccessControl" prefix ShieldedAccessControl_;
@@ -52,12 +52,12 @@ export circuit grantRole(
   role: ShieldedAccessControl_RoleIdentifier,
   accountCommitment: IdentifierCommitment
 ): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   ShieldedAccessControl_grantRole(caller, RandBlinding_read(), role, accountCommitment);
 }
 
 export circuit mint(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   ShieldedAccessControl_assertOnlyRole(
     caller,
     RandBlinding_read(),
@@ -67,6 +67,6 @@ export circuit mint(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [
 }
 
 export circuit transfer(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return FungibleToken_transfer(caller, to, value);
 }

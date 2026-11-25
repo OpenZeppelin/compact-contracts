@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 // WARNING: FOR TESTING PURPOSES ONLY.
-// Exposes the PrfAddr module's circuit so it can be driven from off-chain
+// Exposes the PrfPseudonym module's circuit so it can be driven from off-chain
 // tests. DO NOT deploy or use this contract in any production application.
 
 pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import "../../PrfAddr" prefix PrfAddr_;
+import "../../PrfPseudonym" prefix PrfPseudonym_;
 
 // Keeps the circuits impure. Without a ledger write the compiler promotes
 // them to pure, and the artifact ships without ZKIR or proving keys, leaving
@@ -16,8 +16,8 @@ import "../../PrfAddr" prefix PrfAddr_;
 ledger _invocations: Counter;
 
 // Flat copies of the hashed `{ { domain, salt }, sk }`, for a `Bytes<32>` and
-// a tuple salt. The `ref*` circuits hash them without calling `PrfAddr` or
-// `Prf`, so a spec checks `PrfAddr` against an independent encoding.
+// a tuple salt. The `ref*` circuits hash them without calling `PrfPseudonym` or
+// `Prf`, so a spec checks `PrfPseudonym` against an independent encoding.
 struct RefPreimage {
   domain: Bytes<32>;
   salt: Bytes<32>;
@@ -33,18 +33,18 @@ struct RefTuplePreimage {
 
 // Exported circuits cannot be generic: one wrapper per salt type.
 
-export circuit derivePk(domain: Bytes<32>, salt: Bytes<32>, sk: Bytes<32>): Bytes<32> {
+export circuit derivePseudonym(domain: Bytes<32>, salt: Bytes<32>, sk: Bytes<32>): Bytes<32> {
   _invocations.increment(1);
-  return PrfAddr_derivePk<Bytes<32>>(domain, salt, sk);
+  return PrfPseudonym_derivePseudonym<Bytes<32>>(domain, salt, sk);
 }
 
-export circuit derivePkOfTuple(
+export circuit derivePseudonymOfTuple(
                  domain: Bytes<32>,
                  salt: [Bytes<32>, Bytes<32>],
                  sk: Bytes<32>
                  ): Bytes<32> {
   _invocations.increment(1);
-  return PrfAddr_derivePk<[Bytes<32>, Bytes<32>]>(domain, salt, sk);
+  return PrfPseudonym_derivePseudonym<[Bytes<32>, Bytes<32>]>(domain, salt, sk);
 }
 
 export circuit refDerivePk(domain: Bytes<32>, salt: Bytes<32>, sk: Bytes<32>): Bytes<32> {

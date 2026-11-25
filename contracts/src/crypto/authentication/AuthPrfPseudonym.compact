@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/authentication/AuthPrfAddr.compact)
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/authentication/AuthPrfPseudonym.compact)
 
 pragma language_version >= 0.28.0;
 
 /**
- * @module AuthPrfAddr
+ * @module AuthPrfPseudonym
  * @description Authenticates a caller by knowledge of a secret key. The
- * account is the `crypto/prf/PrfAddr` address key of that secret. The
- * modules that take a `Caller` read no secret key: an
+ * account is the `crypto/prf/PrfPseudonym` pseudonym of that secret under
+ * the salt. The modules that take a `Caller` read no secret key: an
  * authenticator does.
  *
  * The composing contract calls `authenticate(salt)` and passes the returned
@@ -18,16 +18,16 @@ pragma language_version >= 0.28.0;
  *   to: Either<Bytes<32>, ContractAddress>,
  *   value: Uint<128>
  * ): Boolean {
- *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *   Ownable_assertOnlyOwner(caller);
  *   return FungibleToken_transfer(caller, to, value);
  * }
  * ```
  *
  * @dev Notation:
- * - `account = left(PrfAddr.derivePk(tag, salt, secretKey))`, where `tag`
- *   is `"AuthPrfAddr:account"` padded to 32 bytes.
- * - The tag and the `PrfAddr` layout are wire format: changing either
+ * - `account = left(PrfPseudonym.derivePseudonym(tag, salt, secretKey))`,
+ *   where `tag` is `"AuthPrfAddr:account"` padded to 32 bytes.
+ * - The tag and the `PrfPseudonym` layout are wire format: changing either
  *   orphans every stored account.
  *
  * @warning Produce the caller here:
@@ -55,15 +55,15 @@ pragma language_version >= 0.28.0;
  * A calling contract holds no secret key and cannot supply this witness, so
  * this module yields `left` accounts only.
  */
-module AuthPrfAddr {
+module AuthPrfPseudonym {
   import CompactStandardLibrary;
 
   import { Caller, Identifier } from "../../identifier/Identifier";
 
-  import "../prf/PrfAddr" prefix PrfAddr_;
+  import "../prf/PrfPseudonym" prefix PrfPseudonym_;
 
   /**
-   * @witness wit_AuthPrfAddrSK
+   * @witness wit_AuthPrfPseudonymSK
    * @description Returns the caller's secret key. No circuit checks it: the
    * account it derives is the identity, so there is no earlier on-chain
    * value to compare against.
@@ -72,11 +72,11 @@ module AuthPrfAddr {
    * value. Losing it loses the identity. Leaking it lets anyone impersonate
    * the caller.
    */
-  witness wit_AuthPrfAddrSK(): Bytes<32>;
+  witness wit_AuthPrfPseudonymSK(): Bytes<32>;
 
   /**
-   * @description `left(PrfAddr.derivePk(tag, salt, secretKey))`: the
-   * account behind a secret key. Pure, so a wallet or a deploy script
+   * @description `left(PrfPseudonym.derivePseudonym(tag, salt, secretKey))`:
+   * the account behind a secret key. Pure, so a wallet or a deploy script
    * computes it off-chain with no proof.
    *
    * @param {Bytes<32>} secretKey - The caller's secret: 32 bytes from a
@@ -89,7 +89,11 @@ module AuthPrfAddr {
                         salt: Bytes<32>
                         ): Identifier {
     return left<Bytes<32>, ContractAddress>(
-             PrfAddr_derivePk<Bytes<32>>(pad(32, "AuthPrfAddr:account"), salt, secretKey)
+             PrfPseudonym_derivePseudonym<Bytes<32>>(
+               pad(32, "AuthPrfAddr:account"),
+               salt,
+               secretKey
+             )
            );
   }
 
@@ -111,7 +115,7 @@ module AuthPrfAddr {
    */
   export circuit authenticate(salt: Bytes<32>): Caller {
     return Caller {
-      account: deriveAccount(wit_AuthPrfAddrSK(), salt)
+      account: deriveAccount(wit_AuthPrfPseudonymSK(), salt)
     };
   }
 

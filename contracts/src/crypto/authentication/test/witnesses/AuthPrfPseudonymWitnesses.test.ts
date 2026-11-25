@@ -1,37 +1,37 @@
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
-import type { Ledger } from '../../../../../artifacts/crypto/authentication/test/mocks/MockAuthPrfAddr/contract/index.js';
+import type { Ledger } from '../../../../../artifacts/crypto/authentication/test/mocks/MockAuthPrfPseudonym/contract/index.js';
 import {
-  AuthPrfAddrPrivateState,
-  AuthPrfAddrWitnesses,
-} from './AuthPrfAddrWitnesses.js';
+  AuthPrfPseudonymPrivateState,
+  AuthPrfPseudonymWitnesses,
+} from './AuthPrfPseudonymWitnesses.js';
 
 const SECRET_KEY = new Uint8Array(32).fill(0x34);
 
-describe('AuthPrfAddrPrivateState', () => {
+describe('AuthPrfPseudonymPrivateState', () => {
   describe('generate', () => {
     it('should return a state with a 32-byte secretKey', () => {
-      const state = AuthPrfAddrPrivateState.generate();
+      const state = AuthPrfPseudonymPrivateState.generate();
       expect(state.secretKey).toBeInstanceOf(Uint8Array);
       expect(state.secretKey.length).toBe(32);
     });
 
     it('should produce unique secret key on successive calls', () => {
-      const a = AuthPrfAddrPrivateState.generate();
-      const b = AuthPrfAddrPrivateState.generate();
+      const a = AuthPrfPseudonymPrivateState.generate();
+      const b = AuthPrfPseudonymPrivateState.generate();
       expect(a.secretKey).not.toEqual(b.secretKey);
     });
   });
 
   describe('withSecretKey', () => {
     it('should accept a valid 32-byte secret key', () => {
-      const state = AuthPrfAddrPrivateState.withSecretKey(SECRET_KEY);
+      const state = AuthPrfPseudonymPrivateState.withSecretKey(SECRET_KEY);
       expect(state.secretKey).toEqual(SECRET_KEY);
     });
 
     it('should create a defensive copy of the input secret key', () => {
       const sk = new Uint8Array(32).fill(0xcc);
-      const state = AuthPrfAddrPrivateState.withSecretKey(sk);
+      const state = AuthPrfPseudonymPrivateState.withSecretKey(sk);
 
       sk.fill(0xff);
       expect(state.secretKey).toEqual(new Uint8Array(32).fill(0xcc));
@@ -39,21 +39,25 @@ describe('AuthPrfAddrPrivateState', () => {
 
     it('should throw for a secret key shorter than 32 bytes', () => {
       const short = new Uint8Array(16);
-      expect(() => AuthPrfAddrPrivateState.withSecretKey(short)).toThrowError(
+      expect(() =>
+        AuthPrfPseudonymPrivateState.withSecretKey(short),
+      ).toThrowError(
         'withSecretKey: expected 32-byte secret key, received 16 bytes',
       );
     });
 
     it('should throw for a secret key longer than 32 bytes', () => {
       const long = new Uint8Array(64);
-      expect(() => AuthPrfAddrPrivateState.withSecretKey(long)).toThrowError(
+      expect(() =>
+        AuthPrfPseudonymPrivateState.withSecretKey(long),
+      ).toThrowError(
         'withSecretKey: expected 32-byte secret key, received 64 bytes',
       );
     });
 
     it('should throw for an empty array', () => {
       expect(() =>
-        AuthPrfAddrPrivateState.withSecretKey(new Uint8Array(0)),
+        AuthPrfPseudonymPrivateState.withSecretKey(new Uint8Array(0)),
       ).toThrowError(
         'withSecretKey: expected 32-byte secret key, received 0 bytes',
       );
@@ -61,58 +65,61 @@ describe('AuthPrfAddrPrivateState', () => {
   });
 });
 
-describe('AuthPrfAddrWitnesses', () => {
-  const witnesses = AuthPrfAddrWitnesses();
+describe('AuthPrfPseudonymWitnesses', () => {
+  const witnesses = AuthPrfPseudonymWitnesses();
 
   function makeContext(
-    privateState: AuthPrfAddrPrivateState,
-  ): WitnessContext<Ledger, AuthPrfAddrPrivateState> {
-    return { privateState } as WitnessContext<Ledger, AuthPrfAddrPrivateState>;
+    privateState: AuthPrfPseudonymPrivateState,
+  ): WitnessContext<Ledger, AuthPrfPseudonymPrivateState> {
+    return { privateState } as WitnessContext<
+      Ledger,
+      AuthPrfPseudonymPrivateState
+    >;
   }
 
-  describe('wit_AuthPrfAddrSK', () => {
+  describe('wit_AuthPrfPseudonymSK', () => {
     it('should return a tuple of [privateState, secretKey]', () => {
-      const state = AuthPrfAddrPrivateState.withSecretKey(SECRET_KEY);
+      const state = AuthPrfPseudonymPrivateState.withSecretKey(SECRET_KEY);
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(SECRET_KEY);
     });
 
     it('should return the exact same privateState reference', () => {
-      const state = AuthPrfAddrPrivateState.generate();
+      const state = AuthPrfPseudonymPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState] = witnesses.wit_AuthPrfPseudonymSK(ctx);
       expect(returnedState).toBe(state);
     });
 
     it('should return the secretKey as a Uint8Array', () => {
-      const state = AuthPrfAddrPrivateState.generate();
+      const state = AuthPrfPseudonymPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
       expect(returnedSK).toBeInstanceOf(Uint8Array);
       expect(returnedSK.length).toBe(32);
     });
 
     it('should return a copy of the secretKey', () => {
-      const state = AuthPrfAddrPrivateState.withSecretKey(SECRET_KEY);
+      const state = AuthPrfPseudonymPrivateState.withSecretKey(SECRET_KEY);
       const ctx = makeContext(state);
 
-      const [, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
       returnedSK.fill(0xff);
 
       expect(state.secretKey).toEqual(SECRET_KEY);
     });
 
     it('should work with a randomly generated state', () => {
-      const state = AuthPrfAddrPrivateState.generate();
+      const state = AuthPrfPseudonymPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(state.secretKey);
@@ -120,24 +127,24 @@ describe('AuthPrfAddrWitnesses', () => {
   });
 });
 
-describe('AuthPrfAddrWitnesses factory', () => {
+describe('AuthPrfPseudonymWitnesses factory', () => {
   it('should return a fresh witnesses object on each call', () => {
-    const a = AuthPrfAddrWitnesses();
-    const b = AuthPrfAddrWitnesses();
+    const a = AuthPrfPseudonymWitnesses();
+    const b = AuthPrfPseudonymWitnesses();
     expect(a).not.toBe(b);
   });
 
   it('should produce witnesses with identical behaviour', () => {
-    const a = AuthPrfAddrWitnesses();
-    const b = AuthPrfAddrWitnesses();
-    const state = AuthPrfAddrPrivateState.generate();
+    const a = AuthPrfPseudonymWitnesses();
+    const b = AuthPrfPseudonymWitnesses();
+    const state = AuthPrfPseudonymPrivateState.generate();
     const ctx = { privateState: state } as WitnessContext<
       Ledger,
-      AuthPrfAddrPrivateState
+      AuthPrfPseudonymPrivateState
     >;
 
-    const [stateA, skA] = a.wit_AuthPrfAddrSK(ctx);
-    const [stateB, skB] = b.wit_AuthPrfAddrSK(ctx);
+    const [stateA, skA] = a.wit_AuthPrfPseudonymSK(ctx);
+    const [stateB, skB] = b.wit_AuthPrfPseudonymSK(ctx);
 
     expect(stateA).toBe(stateB);
     expect(skA).toEqual(skB);

@@ -25,7 +25,7 @@ pragma language_version >= 0.28.0;
  * published identifier revealing the encryption key. The domain separation is
  * what makes that safe. Do not remove it. See `ElGamal.secretToScalar` and
  * the authenticator's account derivation, for example
- * `AuthPrfAddr.deriveAccount`.
+ * `AuthPrfPseudonym.deriveAccount`.
  *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
@@ -207,7 +207,7 @@ pragma language_version >= 0.28.0;
  *
  * ```compact
  * export circuit transfer(to: Bytes<32>, value: Uint<128>): Bytes<32> {
- *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *   // A gate takes this same `caller`.
  *   return ConfidentialFungibleToken_transfer(caller, to, value);
  * }

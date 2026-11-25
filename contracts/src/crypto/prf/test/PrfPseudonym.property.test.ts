@@ -1,10 +1,11 @@
 /**
- * Properties of the PrfAddr module over generated tags, salts and secrets.
+ * Properties of the PrfPseudonym module over generated tags, salts and
+ * secrets.
  *
  * The unit and compatibility suites state each claim at fixed points. This
- * states them where nobody chose: `derivePk` equals its flat reference and the
- * `Prf` digest over `{ domain, salt }`, a tuple salt hashes as its flat
- * fields, and each of the three inputs alone moves the key.
+ * states them where nobody chose: `derivePseudonym` equals its flat
+ * reference and the `Prf` digest over `{ domain, salt }`, a tuple salt hashes
+ * as its flat fields, and each of the three inputs alone moves the pseudonym.
  *
  * Runs on either backend. Every wrapper is an impure circuit on its mock, so
  * each call is a transaction on live, and the properties run twice there.
@@ -13,7 +14,7 @@
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PrfAddrSimulator } from './simulators/PrfAddrSimulator.js';
+import { PrfPseudonymSimulator } from './simulators/PrfPseudonymSimulator.js';
 import { PrfSimulator } from './simulators/PrfSimulator.js';
 
 // ---------------------------------------------------------------------------
@@ -30,11 +31,11 @@ const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 
 const PROPERTY_RUNS = isLiveBackend() ? 2 : 100;
 
-let addr: PrfAddrSimulator;
+let addr: PrfPseudonymSimulator;
 let prf: PrfSimulator;
 
 beforeAll(async () => {
-  addr = await PrfAddrSimulator.create();
+  addr = await PrfPseudonymSimulator.create();
   prf = await PrfSimulator.create();
 });
 
@@ -42,11 +43,11 @@ beforeAll(async () => {
 // Layout
 // ---------------------------------------------------------------------------
 
-describe('PrfAddr property: layout', () => {
+describe('PrfPseudonym property: layout', () => {
   it('should match the reference for any tag, salt and secret', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), bytes32(), bytes32(), async (d, s, k) => {
-        expect(await addr.derivePk(d, s, k)).toStrictEqual(
+        expect(await addr.derivePseudonym(d, s, k)).toStrictEqual(
           await addr.refDerivePk(d, s, k),
         );
       }),
@@ -57,7 +58,7 @@ describe('PrfAddr property: layout', () => {
   it('should equal the Prf digest for any tag, salt and secret', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), bytes32(), bytes32(), async (d, s, k) => {
-        expect(await addr.derivePk(d, s, k)).toStrictEqual(
+        expect(await addr.derivePseudonym(d, s, k)).toStrictEqual(
           await prf.evaluateOfBytes(d, s, k),
         );
       }),
@@ -72,7 +73,7 @@ describe('PrfAddr property: layout', () => {
         fc.tuple(bytes32(), bytes32()),
         bytes32(),
         async (d, s, k) => {
-          expect(await addr.derivePkOfTuple(d, s, k)).toStrictEqual(
+          expect(await addr.derivePseudonymOfTuple(d, s, k)).toStrictEqual(
             await addr.refDerivePkOfTuple(d, s, k),
           );
         },
@@ -90,8 +91,8 @@ describe('PrfAddr property: layout', () => {
  * Each run draws two values for one input and holds the other two fixed, so a
  * failure names the input that did not separate.
  */
-describe('PrfAddr property: separation', () => {
-  it('should move the key when any one input changes', async () => {
+describe('PrfPseudonym property: separation', () => {
+  it('should move the pseudonym when any one input changes', async () => {
     await fc.assert(
       fc.asyncProperty(
         component(),
@@ -107,8 +108,8 @@ describe('PrfAddr property: separation', () => {
             k: moved === 'sk' ? other : k,
           };
 
-          expect(hex(await addr.derivePk(d, s, k))).not.toBe(
-            hex(await addr.derivePk(next.d, next.s, next.k)),
+          expect(hex(await addr.derivePseudonym(d, s, k))).not.toBe(
+            hex(await addr.derivePseudonym(next.d, next.s, next.k)),
           );
         },
       ),

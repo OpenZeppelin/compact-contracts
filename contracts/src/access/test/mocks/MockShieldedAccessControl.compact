@@ -11,7 +11,7 @@ import CompactStandardLibrary;
 
 import { IdentifierCommitment } from "../../../identifier/extensions/IdentifierCommitment";
 
-import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
 import "../../../crypto/randomness/RandBlinding" prefix RandBlinding_;
 import "../../ShieldedAccessControl" prefix ShieldedAccessControl_;
 
@@ -39,7 +39,7 @@ export pure circuit DEFAULT_ADMIN_ROLE(): ShieldedAccessControl_RoleIdentifier {
 
 export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
   ShieldedAccessControl_assertOnlyRole(
-    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    AuthPrfPseudonym_authenticate(ShieldedAccessControl__instanceSalt),
     RandBlinding_read(),
     role
   );
@@ -47,7 +47,7 @@ export circuit assertOnlyRole(role: ShieldedAccessControl_RoleIdentifier): [] {
 
 export circuit canProveRole(role: ShieldedAccessControl_RoleIdentifier): Boolean {
   return ShieldedAccessControl_canProveRole(
-    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    AuthPrfPseudonym_authenticate(ShieldedAccessControl__instanceSalt),
     RandBlinding_read(),
     role
   );
@@ -58,7 +58,7 @@ export circuit grantRole(
                  accountCommitment: IdentifierCommitment
                  ): [] {
   ShieldedAccessControl_grantRole(
-    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    AuthPrfPseudonym_authenticate(ShieldedAccessControl__instanceSalt),
     RandBlinding_read(),
     role,
     accountCommitment
@@ -77,7 +77,7 @@ export circuit renounceRole(
                  accountCommitmentConfirmation: IdentifierCommitment
                  ): [] {
   ShieldedAccessControl_renounceRole(
-    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    AuthPrfPseudonym_authenticate(ShieldedAccessControl__instanceSalt),
     RandBlinding_read(),
     role,
     accountCommitmentConfirmation
@@ -89,7 +89,7 @@ export circuit revokeRole(
                  accountCommitment: IdentifierCommitment
                  ): [] {
   ShieldedAccessControl_revokeRole(
-    AuthPrfAddr_authenticate(ShieldedAccessControl__instanceSalt),
+    AuthPrfPseudonym_authenticate(ShieldedAccessControl__instanceSalt),
     RandBlinding_read(),
     role,
     accountCommitment

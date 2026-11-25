@@ -69,7 +69,7 @@ pragma language_version >= 0.28.0;
  *
  * // Deployed contract: authenticate inside the circuit.
  * export circuit withdraw(value: Uint<128>): [] {
- *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *   Ownable_assertOnlyOwner(caller);
  *   ...
  * }

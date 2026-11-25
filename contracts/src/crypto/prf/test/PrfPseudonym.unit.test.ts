@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PrfAddrSimulator } from './simulators/PrfAddrSimulator.js';
+import { PrfPseudonymSimulator } from './simulators/PrfPseudonymSimulator.js';
 import { PrfSimulator } from './simulators/PrfSimulator.js';
 
 /** Deterministic 32 bytes from a label. */
@@ -17,7 +17,7 @@ const SK = bytes32('key');
 const ZERO = new Uint8Array(32);
 
 const PRF_ADDR_SOURCE = readFileSync(
-  new URL('../PrfAddr.compact', import.meta.url),
+  new URL('../PrfPseudonym.compact', import.meta.url),
   'utf8',
 );
 
@@ -33,35 +33,37 @@ const codeLines = (source: string): string[] =>
         !line.startsWith('//'),
     );
 
-let addr: PrfAddrSimulator;
+let addr: PrfPseudonymSimulator;
 let prf: PrfSimulator;
 
-describe('PrfAddr', () => {
+describe('PrfPseudonym', () => {
   beforeAll(async () => {
-    addr = await PrfAddrSimulator.create();
+    addr = await PrfPseudonymSimulator.create();
     prf = await PrfSimulator.create();
   });
 
-  describe('derivePk', () => {
-    it('should return the same key for the same inputs', async () => {
-      expect(await addr.derivePk(DOMAIN, SALT, SK)).toStrictEqual(
-        await addr.derivePk(DOMAIN, SALT, SK),
+  describe('derivePseudonym', () => {
+    it('should return the same pseudonym for the same inputs', async () => {
+      expect(await addr.derivePseudonym(DOMAIN, SALT, SK)).toStrictEqual(
+        await addr.derivePseudonym(DOMAIN, SALT, SK),
       );
     });
 
     // No guard: an all-zero tag, salt and secret still hash.
     it('should return for an all-zero tag, salt and secret', async () => {
-      expect((await addr.derivePk(ZERO, ZERO, ZERO)).length).toBe(32);
+      expect((await addr.derivePseudonym(ZERO, ZERO, ZERO)).length).toBe(32);
     });
 
     it('should equal Prf over { domain, salt }', async () => {
       const digest = await prf.evaluateOfBytes(DOMAIN, SALT, SK);
 
-      expect(await addr.derivePk(DOMAIN, SALT, SK)).toStrictEqual(digest);
+      expect(await addr.derivePseudonym(DOMAIN, SALT, SK)).toStrictEqual(
+        digest,
+      );
     });
 
     it('should equal the reference', async () => {
-      expect(await addr.derivePk(DOMAIN, SALT, SK)).toStrictEqual(
+      expect(await addr.derivePseudonym(DOMAIN, SALT, SK)).toStrictEqual(
         await addr.refDerivePk(DOMAIN, SALT, SK),
       );
     });
@@ -74,7 +76,7 @@ describe('PrfAddr', () => {
 
     it('should hash a tuple salt as its flat fields', async () => {
       expect(
-        await addr.derivePkOfTuple(DOMAIN, [SALT, SALT_TAIL], SK),
+        await addr.derivePseudonymOfTuple(DOMAIN, [SALT, SALT_TAIL], SK),
       ).toStrictEqual(
         await addr.refDerivePkOfTuple(DOMAIN, [SALT, SALT_TAIL], SK),
       );
@@ -89,7 +91,7 @@ describe('PrfAddr', () => {
         code
           .filter((line) => /\bcircuit\b/.test(line))
           .map((line) => line.slice(0, line.indexOf('('))),
-      ).toStrictEqual(['export pure circuit derivePk<S>']);
+      ).toStrictEqual(['export pure circuit derivePseudonym<S>']);
       expect(
         code.filter((line) => /\b(ledger|witness)\b/.test(line)),
       ).toStrictEqual([]);
@@ -98,7 +100,7 @@ describe('PrfAddr', () => {
 
     // The mock's call counter is unexported, so a reader sees no state.
     it('should leave the mock with no exported ledger state', async () => {
-      await addr.derivePk(DOMAIN, SALT, SK);
+      await addr.derivePseudonym(DOMAIN, SALT, SK);
 
       expect(await addr.getPublicState()).toStrictEqual({});
     });

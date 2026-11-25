@@ -82,7 +82,7 @@ beforeAll(async () => {
 /**
  * The wrappers hash `{ { domain, input }, key }`. The references hash a flat
  * `{ domain, input, key }` under other struct names. Equality pins that
- * neither nesting nor struct names are hashed, which `PrfAddr` relies on.
+ * neither nesting nor struct names are hashed, which `PrfPseudonym` relies on.
  */
 describe('Prf compatibility: nesting', () => {
   it('should hash a nested Bytes<32> input as its flat preimage', async () => {

@@ -1,8 +1,8 @@
 /**
- * Compatibility claims for the PrfAddr module.
+ * Compatibility claims for the PrfPseudonym module.
  *
  * The hash over `domain`, `salt`, `sk` is wire format: every key a caller
- * derives through `PrfAddr` moves if it changes, and an installed key no
+ * derives through `PrfPseudonym` moves if it changes, and an installed key no
  * longer matches its secret. This suite pins it against a hand-written flat
  * reference, a recorded vector, and the token key derived through it.
  *
@@ -21,7 +21,7 @@
 
 import { degradeToTransient } from '@midnight-ntwrk/compact-runtime';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PrfAddrSimulator } from './simulators/PrfAddrSimulator.js';
+import { PrfPseudonymSimulator } from './simulators/PrfPseudonymSimulator.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -49,7 +49,7 @@ const GOLDEN_SALT_TAIL = bytes32('SALT:tail');
 const GOLDEN_SK = ALICE_SK;
 
 const GOLDEN = {
-  derivePk:
+  derivePseudonym:
     '0x731d9ce6c24e82b028c93ca158f2b0c18127c5793a90912b4e28c393b7da229e',
   /** `Prf`'s pinned `Bytes<32>` digest over the same inputs. */
   prfDigest:
@@ -60,22 +60,22 @@ const GOLDEN = {
 const hex = (bytes: Uint8Array): string =>
   `0x${Buffer.from(bytes).toString('hex')}`;
 
-let addr: PrfAddrSimulator;
+let addr: PrfPseudonymSimulator;
 
 beforeAll(async () => {
-  addr = await PrfAddrSimulator.create();
+  addr = await PrfPseudonymSimulator.create();
 });
 
 // ---------------------------------------------------------------------------
 // Layout and golden vector
 // ---------------------------------------------------------------------------
 
-describe('PrfAddr compatibility: layout', () => {
+describe('PrfPseudonym compatibility: layout', () => {
   // The reference hashes a flat `{ domain, salt, sk }`, so equality pins the
   // field order and that the nesting through `Prf` is not hashed.
   it('should match its flat reference', async () => {
     expect(
-      await addr.derivePk(GOLDEN_DOMAIN, GOLDEN_SALT, GOLDEN_SK),
+      await addr.derivePseudonym(GOLDEN_DOMAIN, GOLDEN_SALT, GOLDEN_SK),
     ).toStrictEqual(
       await addr.refDerivePk(GOLDEN_DOMAIN, GOLDEN_SALT, GOLDEN_SK),
     );
@@ -83,7 +83,7 @@ describe('PrfAddr compatibility: layout', () => {
 
   it('should match its flat reference for a tuple salt', async () => {
     expect(
-      await addr.derivePkOfTuple(
+      await addr.derivePseudonymOfTuple(
         GOLDEN_DOMAIN,
         [GOLDEN_SALT, GOLDEN_SALT_TAIL],
         GOLDEN_SK,
@@ -99,15 +99,15 @@ describe('PrfAddr compatibility: layout', () => {
 
   it('should reproduce the pinned key', async () => {
     expect(
-      hex(await addr.derivePk(GOLDEN_DOMAIN, GOLDEN_SALT, GOLDEN_SK)),
-    ).toBe(GOLDEN.derivePk);
+      hex(await addr.derivePseudonym(GOLDEN_DOMAIN, GOLDEN_SALT, GOLDEN_SK)),
+    ).toBe(GOLDEN.derivePseudonym);
     expect(
       hex(await addr.refDerivePk(GOLDEN_DOMAIN, GOLDEN_SALT, GOLDEN_SK)),
-    ).toBe(GOLDEN.derivePk);
+    ).toBe(GOLDEN.derivePseudonym);
   });
 
-  it("should pin the key as Prf's pinned digest", () => {
-    expect(GOLDEN.derivePk).toBe(GOLDEN.prfDigest);
+  it("should pin the pseudonym as Prf's pinned digest", () => {
+    expect(GOLDEN.derivePseudonym).toBe(GOLDEN.prfDigest);
   });
 });
 
@@ -115,13 +115,13 @@ describe('PrfAddr compatibility: layout', () => {
 // Token keys
 // ---------------------------------------------------------------------------
 
-describe('PrfAddr compatibility: token keys', () => {
-  // Recorded without `PrfAddr`, so this vector is independent of the module
-  // under test.
+describe('PrfPseudonym compatibility: token keys', () => {
+  // Recorded without `PrfPseudonym`, so this vector is independent of the
+  // module under test.
   it('should derive the pinned "CNFT:pk" key', async () => {
     expect(
       degradeToTransient(
-        await addr.derivePk(bytes32('CNFT:pk'), SALT, ALICE_SK),
+        await addr.derivePseudonym(bytes32('CNFT:pk'), SALT, ALICE_SK),
       ),
     ).toBe(PINNED_CORE_PK);
   });

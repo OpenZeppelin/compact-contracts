@@ -11,12 +11,12 @@ import {
   circuitSurface,
   readContractInfo,
 } from '#test-utils/compiler/contractInfo.js';
-import { pureCircuits } from '../../../../artifacts/crypto/authentication/test/mocks/MockAuthPrfAddr/contract/index.js';
+import { pureCircuits } from '../../../../artifacts/crypto/authentication/test/mocks/MockAuthPrfPseudonym/contract/index.js';
 import {
-  AuthPrfAddrSimulator,
+  AuthPrfPseudonymSimulator,
   type Identifier,
-} from './simulators/AuthPrfAddrSimulator.js';
-import { AuthPrfAddrPrivateState } from './witnesses/AuthPrfAddrWitnesses.js';
+} from './simulators/AuthPrfPseudonymSimulator.js';
+import { AuthPrfPseudonymPrivateState } from './witnesses/AuthPrfPseudonymWitnesses.js';
 
 /** Deterministic 32 bytes from a label; also Compact's `pad(32, label)`. */
 const bytes32 = (label: string): Uint8Array => {
@@ -32,10 +32,10 @@ const SK = bytes32('key');
 const OTHER_SK = bytes32('other key');
 const ZERO = new Uint8Array(32);
 
-const ARTIFACT = 'crypto/authentication/test/mocks/MockAuthPrfAddr';
+const ARTIFACT = 'crypto/authentication/test/mocks/MockAuthPrfPseudonym';
 
 const AUTH_SOURCE = readFileSync(
-  new URL('../AuthPrfAddr.compact', import.meta.url),
+  new URL('../AuthPrfPseudonym.compact', import.meta.url),
   'utf8',
 );
 
@@ -62,12 +62,12 @@ const codeLines = (source: string): string[] =>
         !line.startsWith('//'),
     );
 
-let auth: AuthPrfAddrSimulator;
+let auth: AuthPrfPseudonymSimulator;
 
-describe('AuthPrfAddr', () => {
+describe('AuthPrfPseudonym', () => {
   beforeAll(async () => {
-    auth = await AuthPrfAddrSimulator.create({
-      privateState: AuthPrfAddrPrivateState.withSecretKey(SK),
+    auth = await AuthPrfPseudonymSimulator.create({
+      privateState: AuthPrfPseudonymPrivateState.withSecretKey(SK),
     });
   });
 
@@ -137,8 +137,8 @@ describe('AuthPrfAddr', () => {
     });
 
     it('should produce a different account for a different secret key', async () => {
-      const other = await AuthPrfAddrSimulator.create({
-        privateState: AuthPrfAddrPrivateState.withSecretKey(OTHER_SK),
+      const other = await AuthPrfPseudonymSimulator.create({
+        privateState: AuthPrfPseudonymPrivateState.withSecretKey(OTHER_SK),
       });
       const fromOther = await other.authenticate(SALT);
 
@@ -154,7 +154,7 @@ describe('AuthPrfAddr', () => {
   });
 
   describe('authenticateForThisContract', () => {
-    const selfAddress = (sim: AuthPrfAddrSimulator): Uint8Array =>
+    const selfAddress = (sim: AuthPrfPseudonymSimulator): Uint8Array =>
       Uint8Array.from(Buffer.from(sim.contractAddress, 'hex'));
 
     it("should equal authenticate under the contract's own address", async () => {
@@ -170,8 +170,8 @@ describe('AuthPrfAddr', () => {
 
     // Dry deploys every instance at one dummy address unless given another.
     it('should produce a different account on another deployment', async () => {
-      const other = await AuthPrfAddrSimulator.create({
-        privateState: AuthPrfAddrPrivateState.withSecretKey(SK),
+      const other = await AuthPrfPseudonymSimulator.create({
+        privateState: AuthPrfPseudonymPrivateState.withSecretKey(SK),
         ...(isLiveBackend()
           ? {}
           : { contractAddress: sampleContractAddress() }),
@@ -224,7 +224,7 @@ describe('AuthPrfAddr', () => {
       const code = codeLines(AUTH_SOURCE);
 
       expect(code.filter((line) => /\bwitness\b/.test(line))).toStrictEqual([
-        'witness wit_AuthPrfAddrSK(): Bytes<32>;',
+        'witness wit_AuthPrfPseudonymSK(): Bytes<32>;',
       ]);
       expect(code.filter((line) => /\bledger\b/.test(line))).toStrictEqual([]);
       expect(code.join('\n')).not.toMatch(/\bassert\(/);

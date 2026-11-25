@@ -6,12 +6,12 @@ import {
 } from '@openzeppelin/compact-simulator';
 import {
   ledger,
-  Contract as MockAuthPrfAddr,
-} from '../../../../../artifacts/crypto/authentication/test/mocks/MockAuthPrfAddr/contract/index.js';
+  Contract as MockAuthPrfPseudonym,
+} from '../../../../../artifacts/crypto/authentication/test/mocks/MockAuthPrfPseudonym/contract/index.js';
 import {
-  AuthPrfAddrPrivateState,
-  AuthPrfAddrWitnesses,
-} from '../witnesses/AuthPrfAddrWitnesses.js';
+  AuthPrfPseudonymPrivateState,
+  AuthPrfPseudonymWitnesses,
+} from '../witnesses/AuthPrfPseudonymWitnesses.js';
 
 /** `Identifier`: a `left` public key or a `right` contract address. */
 export type Identifier = Either<Uint8Array, ContractAddress>;
@@ -22,52 +22,52 @@ export type Caller = { account: Identifier };
 /**
  * Type constructor args
  */
-type AuthPrfAddrArgs = readonly [];
+type AuthPrfPseudonymArgs = readonly [];
 
-const AuthPrfAddrSimulatorBase = createSimulator<
-  AuthPrfAddrPrivateState,
+const AuthPrfPseudonymSimulatorBase = createSimulator<
+  AuthPrfPseudonymPrivateState,
   ReturnType<typeof ledger>,
-  ReturnType<typeof AuthPrfAddrWitnesses>,
-  MockAuthPrfAddr<AuthPrfAddrPrivateState>,
-  AuthPrfAddrArgs
+  ReturnType<typeof AuthPrfPseudonymWitnesses>,
+  MockAuthPrfPseudonym<AuthPrfPseudonymPrivateState>,
+  AuthPrfPseudonymArgs
 >({
   contractFactory: (witnesses) =>
-    new MockAuthPrfAddr<AuthPrfAddrPrivateState>(witnesses),
-  defaultPrivateState: () => AuthPrfAddrPrivateState.generate(),
+    new MockAuthPrfPseudonym<AuthPrfPseudonymPrivateState>(witnesses),
+  defaultPrivateState: () => AuthPrfPseudonymPrivateState.generate(),
   contractArgs: () => [],
   ledgerExtractor: (state) => ledger(state),
-  witnessesFactory: () => AuthPrfAddrWitnesses(),
-  artifactName: 'MockAuthPrfAddr',
+  witnessesFactory: () => AuthPrfPseudonymWitnesses(),
+  artifactName: 'MockAuthPrfPseudonym',
 });
 
 /**
- * AuthPrfAddr Simulator
+ * AuthPrfPseudonym Simulator
  *
  * Each method is a thin pass-through to the mock's matching circuit. The
  * secret key comes from the private state.
  */
-export class AuthPrfAddrSimulator extends AuthPrfAddrSimulatorBase {
+export class AuthPrfPseudonymSimulator extends AuthPrfPseudonymSimulatorBase {
   static async create(
     options: SimulatorOptions<
-      AuthPrfAddrPrivateState,
-      ReturnType<typeof AuthPrfAddrWitnesses>
+      AuthPrfPseudonymPrivateState,
+      ReturnType<typeof AuthPrfPseudonymWitnesses>
     > = {},
-  ): Promise<AuthPrfAddrSimulator> {
+  ): Promise<AuthPrfPseudonymSimulator> {
     // biome-ignore lint/complexity/noThisInStatic: super.create must keep the subclass `this`
-    return super.create([], options) as Promise<AuthPrfAddrSimulator>;
+    return super.create([], options) as Promise<AuthPrfPseudonymSimulator>;
   }
 
-  /** @description `AuthPrfAddr.authenticate`. */
+  /** @description `AuthPrfPseudonym.authenticate`. */
   public authenticate(salt: Uint8Array): Promise<Caller> {
     return this.circuits.impure.authenticate(salt);
   }
 
-  /** @description `AuthPrfAddr.authenticateForThisContract`. */
+  /** @description `AuthPrfPseudonym.authenticateForThisContract`. */
   public authenticateForThisContract(): Promise<Caller> {
     return this.circuits.impure.authenticateForThisContract();
   }
 
-  /** @description `AuthPrfAddr.deriveAccount`. */
+  /** @description `AuthPrfPseudonym.deriveAccount`. */
   public deriveAccount(
     secretKey: Uint8Array,
     salt: Uint8Array,

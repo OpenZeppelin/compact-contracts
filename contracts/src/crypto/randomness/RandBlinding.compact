@@ -13,7 +13,7 @@ pragma language_version >= 0.28.0;
  * import "../crypto/randomness/RandBlinding" prefix RandBlinding_;
  *
  * export circuit vote(choice: Uint<8>): [] {
- *   const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *   const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *   MyModule_assertMember(caller, RandBlinding_read());
  *   ...
  * }

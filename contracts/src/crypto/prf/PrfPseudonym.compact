@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/prf/PrfPseudonym.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module PrfPseudonym
+ * @description Pseudonym derivation. A pseudonym is a public value computed
+ * from a secret and a scope. `derivePseudonym` maps a secret to a public
+ * 32-byte value under a purpose tag and a salt, which together are the
+ * scope. One secret gives one pseudonym per scope. Without the secret, its
+ * pseudonyms under different scopes cannot be linked, on the `Prf`
+ * assumption. The salt has any type, so a caller that binds several values
+ * passes them as one tuple.
+ *
+ * ```compact
+ * import "../crypto/prf/PrfPseudonym" prefix PrfPseudonym_;
+ *
+ * export pure circuit pseudonymOf(sk: Bytes<32>, salt: Bytes<32>): Bytes<32> {
+ *   return PrfPseudonym_derivePseudonym<Bytes<32>>(
+ *            pad(32, "MyModule:pseudonym"),
+ *            salt,
+ *            sk
+ *          );
+ * }
+ * ```
+ *
+ * @see https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-per-verifier-linkability-03 Kalos, Bernstein, BBS per Verifier Linkability (IRTF CFRG draft, 2026)
+ * @see https://arxiv.org/abs/2510.05419 Mayrhofer, Lehmann, shelat, A Brief Note on Cryptographic Pseudonyms for Anonymous Credentials
+ * @see https://eprint.iacr.org/2014/349 Ben-Sasson et al., Zerocash: Decentralized Anonymous Payments from Bitcoin (IEEE S&P 2014)
+ *
+ * @dev Structure:
+ * Zerocash derives `PRF^addr_x(z) = PRF_x(00 || z)` and sets the address key
+ * `a_pk = PRF^addr_{a_sk}(0)`. Here `domain` is the tag, `salt` is `z` and
+ * `sk` is the seed `x`. The tag is an argument, so each caller keeps its own
+ * pseudonym space. Zerocash hashes the seed first. This layout hashes it
+ * last.
+ *
+ * Zerocash calls the output an address public key. Here it is a pseudonym:
+ * it is no protocol address, and it verifies no signature.
+ *
+ * @dev Layout:
+ * `Prf.evaluate` over `{domain, salt}` with `sk` as key. The hash covers
+ * `domain`, `salt`, `sk` in that order, and it is wire format: changing it
+ * orphans every derived pseudonym. A tuple or struct `salt` is hashed field
+ * by field, in order. Its type name and nesting are not hashed.
+ *
+ * @dev Output:
+ * The pseudonym is the 32-byte digest. A caller that needs a `Field` reduces
+ * it itself with `degradeToTransient`, which loses information: 32 bytes do
+ * not fit the field.
+ *
+ * @notice Caller duties:
+ * - One tag per purpose. Two callers sharing a tag derive the same pseudonym
+ *   from one secret and salt.
+ * - `sk` MUST be 32 bytes from a CSPRNG. With the tag and salt public, a
+ *   guessable secret is found offline.
+ *
+ * @dev No ledger state, no witnesses, no asserts.
+ */
+module PrfPseudonym {
+  import CompactStandardLibrary;
+
+  import "./Prf" prefix Prf_;
+
+  /**
+   * @description The `Prf.evaluate` input, in wire-format order.
+   * @type {Bytes<32>} domain - The purpose tag.
+   * @type {S} salt - The salt the pseudonym is derived under.
+   */
+  struct Input<S> {
+    domain: Bytes<32>;
+    salt: S;
+  }
+
+  /**
+   * @description `pseudonym = Prf.evaluate({domain, salt}, sk)`.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {S} salt - The salt the pseudonym is derived under.
+   * @param {Bytes<32>} sk - The secret.
+   * @return {Bytes<32>} - The pseudonym.
+   */
+  export pure circuit derivePseudonym<S>(
+                        domain: Bytes<32>,
+                        salt: S,
+                        sk: Bytes<32>
+                        ): Bytes<32> {
+    return Prf_evaluate<Input<S>, Bytes<32>>(
+      Input<S> { domain: domain, salt: salt },
+      sk
+    );
+  }
+}

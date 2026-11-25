@@ -932,7 +932,7 @@ describe('AccessControl', () => {
   });
 });
 
-// The base mock authenticates through `AuthPrfAddr`, which yields only
+// The base mock authenticates through `AuthPrfPseudonym`, which yields only
 // canonical, non-zero key identifiers. This mock takes the caller as an
 // argument, so a spec can act as any account.
 describe('AccessControl: abnormal callers', () => {

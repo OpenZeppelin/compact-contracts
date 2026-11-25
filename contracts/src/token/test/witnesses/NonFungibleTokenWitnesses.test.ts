@@ -77,12 +77,12 @@ describe('NonFungibleTokenWitnesses', () => {
     >;
   }
 
-  describe('wit_AuthPrfAddrSK', () => {
+  describe('wit_AuthPrfPseudonymSK', () => {
     it('should return a tuple of [privateState, secretKey]', () => {
       const state = NonFungibleTokenPrivateState.withSecretKey(SECRET_KEY);
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(SECRET_KEY);
@@ -92,7 +92,7 @@ describe('NonFungibleTokenWitnesses', () => {
       const state = NonFungibleTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState] = witnesses.wit_AuthPrfPseudonymSK(ctx);
       expect(returnedState).toBe(state);
     });
 
@@ -100,7 +100,7 @@ describe('NonFungibleTokenWitnesses', () => {
       const state = NonFungibleTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
       expect(returnedSK).toBeInstanceOf(Uint8Array);
       expect(returnedSK.length).toBe(32);
     });
@@ -109,7 +109,7 @@ describe('NonFungibleTokenWitnesses', () => {
       const state = NonFungibleTokenPrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(state.secretKey);
@@ -133,8 +133,8 @@ describe('NonFungibleTokenWitnesses factory', () => {
       NonFungibleTokenPrivateState
     >;
 
-    const [stateA, skA] = a.wit_AuthPrfAddrSK(ctx);
-    const [stateB, skB] = b.wit_AuthPrfAddrSK(ctx);
+    const [stateA, skA] = a.wit_AuthPrfPseudonymSK(ctx);
+    const [stateB, skB] = b.wit_AuthPrfPseudonymSK(ctx);
 
     expect(stateA).toBe(stateB);
     expect(skA).toEqual(skB);

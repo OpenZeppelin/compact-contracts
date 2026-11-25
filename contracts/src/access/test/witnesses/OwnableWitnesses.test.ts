@@ -67,12 +67,12 @@ describe('OwnableWitnesses', () => {
     return { privateState } as WitnessContext<Ledger, OwnablePrivateState>;
   }
 
-  describe('wit_AuthPrfAddrSK', () => {
+  describe('wit_AuthPrfPseudonymSK', () => {
     it('should return a tuple of [privateState, secretKey]', () => {
       const state = OwnablePrivateState.withSecretKey(SECRET_KEY);
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(SECRET_KEY);
@@ -82,7 +82,7 @@ describe('OwnableWitnesses', () => {
       const state = OwnablePrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState] = witnesses.wit_AuthPrfPseudonymSK(ctx);
       expect(returnedState).toBe(state);
     });
 
@@ -90,7 +90,7 @@ describe('OwnableWitnesses', () => {
       const state = OwnablePrivateState.generate();
       const ctx = makeContext(state);
 
-      const [, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
       expect(returnedSK).toBeInstanceOf(Uint8Array);
       expect(returnedSK.length).toBe(32);
     });
@@ -99,7 +99,7 @@ describe('OwnableWitnesses', () => {
       const state = OwnablePrivateState.generate();
       const ctx = makeContext(state);
 
-      const [returnedState, returnedSK] = witnesses.wit_AuthPrfAddrSK(ctx);
+      const [returnedState, returnedSK] = witnesses.wit_AuthPrfPseudonymSK(ctx);
 
       expect(returnedState).toBe(state);
       expect(returnedSK).toEqual(state.secretKey);
@@ -123,8 +123,8 @@ describe('OwnableWitnesses factory', () => {
       OwnablePrivateState
     >;
 
-    const [stateA, skA] = a.wit_AuthPrfAddrSK(ctx);
-    const [stateB, skB] = b.wit_AuthPrfAddrSK(ctx);
+    const [stateA, skA] = a.wit_AuthPrfPseudonymSK(ctx);
+    const [stateB, skB] = b.wit_AuthPrfPseudonymSK(ctx);
 
     expect(stateA).toBe(stateB);
     expect(skA).toEqual(skB);

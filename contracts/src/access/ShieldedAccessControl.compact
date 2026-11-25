@@ -82,7 +82,7 @@ pragma language_version >= 0.28.0;
  *
  * ```compact
  * circuit foo(): [] {
- *  const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *  ShieldedAccessControl_assertOnlyRole(caller, RandBlinding_read(), MY_ROLE as ShieldedAccessControl_RoleIdentifier);
  *  // ... rest of circuit logic
  * }

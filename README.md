@@ -69,8 +69,8 @@ import CompactStandardLibrary;
 
 import "./node_modules/@openzeppelin/compact-contracts/access/Ownable"
   prefix Ownable_;
-import "./node_modules/@openzeppelin/compact-contracts/crypto/authentication/AuthPrfAddr"
-  prefix AuthPrfAddr_;
+import "./node_modules/@openzeppelin/compact-contracts/crypto/authentication/AuthPrfPseudonym"
+  prefix AuthPrfPseudonym_;
 import "./node_modules/@openzeppelin/compact-contracts/security/Pausable"
   prefix Pausable_;
 import "./node_modules/@openzeppelin/compact-contracts/token/FungibleToken"
@@ -128,7 +128,7 @@ export circuit transfer(
   value: Uint<128>,
 ): Boolean {
   Pausable_assertNotPaused();
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return FungibleToken_transfer(caller, to, value);
 }
 
@@ -138,13 +138,13 @@ export circuit transferFrom(
   value: Uint<128>
 ): Boolean {
   Pausable_assertNotPaused();
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return FungibleToken_transferFrom(caller, fromAddress, to, value);
 }
 
 export circuit approve(spender: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
   Pausable_assertNotPaused();
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return FungibleToken_approve(caller, spender, value);
 }
 
@@ -155,25 +155,25 @@ export circuit owner(): Either<Bytes<32>, ContractAddress> {
 }
 
 export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return Ownable_transferOwnership(caller, newOwner);
 }
 
 export circuit renounceOwnership(): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   return Ownable_renounceOwnership(caller);
 }
 
 /** IPausable */
 
 export circuit pause(): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   Ownable_assertOnlyOwner(caller);
   Pausable__pause();
 }
 
 export circuit unpause(): [] {
-  const caller = AuthPrfAddr_authenticate(_callerSalt);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
   Ownable_assertOnlyOwner(caller);
   Pausable__unpause();
 }

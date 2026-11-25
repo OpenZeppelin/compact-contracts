@@ -9,7 +9,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
 import "../../FungibleToken" prefix FungibleToken_;
 
 export { ContractAddress, Either, Maybe };
@@ -61,7 +61,7 @@ export circuit allowance(
 
 export circuit transfer(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
   return FungibleToken_transfer(
-    AuthPrfAddr_authenticate(pad(32, "MockFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockFungibleToken")),
     to,
     value
   );
@@ -69,7 +69,7 @@ export circuit transfer(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>
 
 export circuit _unsafeTransfer(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
   return FungibleToken__unsafeTransfer(
-    AuthPrfAddr_authenticate(pad(32, "MockFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockFungibleToken")),
     to,
     value
   );
@@ -81,7 +81,7 @@ export circuit transferFrom(
   value: Uint<128>
 ): Boolean {
   return FungibleToken_transferFrom(
-    AuthPrfAddr_authenticate(pad(32, "MockFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockFungibleToken")),
     fromAddress,
     to,
     value
@@ -94,7 +94,7 @@ export circuit _unsafeTransferFrom(
   value: Uint<128>
 ): Boolean {
   return FungibleToken__unsafeTransferFrom(
-    AuthPrfAddr_authenticate(pad(32, "MockFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockFungibleToken")),
     fromAddress,
     to,
     value
@@ -103,7 +103,7 @@ export circuit _unsafeTransferFrom(
 
 export circuit approve(spender: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
   return FungibleToken_approve(
-    AuthPrfAddr_authenticate(pad(32, "MockFungibleToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockFungibleToken")),
     spender,
     value
   );

@@ -587,9 +587,9 @@ const otherShapeCallers = [
   ['contract', callerWith(false, zeroBytes, new Uint8Array(32).fill(4))],
 ] as const;
 
-// The base mock authenticates through `AuthPrfAddr`, which cannot produce the
-// zero account. This mock takes the caller as an argument, so a spec can act
-// as it.
+// The base mock authenticates through `AuthPrfPseudonym`, which cannot produce
+// the zero account. This mock takes the caller as an argument, so a spec can
+// act as it.
 describe('Ownable: the zero account as caller', () => {
   let ownableCaller: OwnableCallerSimulator;
 

@@ -1,5 +1,5 @@
 /**
- * Compatibility claims for the AuthPrfAddr module.
+ * Compatibility claims for the AuthPrfPseudonym module.
  *
  * The hash over the tag, `salt`, `secretKey` is wire format: every stored
  * account moves if it changes, and its holder no longer passes a check
@@ -22,8 +22,8 @@ import {
   persistentHash,
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { AuthPrfAddrSimulator } from './simulators/AuthPrfAddrSimulator.js';
-import { AuthPrfAddrPrivateState } from './witnesses/AuthPrfAddrWitnesses.js';
+import { AuthPrfPseudonymSimulator } from './simulators/AuthPrfPseudonymSimulator.js';
+import { AuthPrfPseudonymPrivateState } from './witnesses/AuthPrfPseudonymWitnesses.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -53,11 +53,11 @@ const goldenAccount = () => ({
   right: { bytes: new Uint8Array(32) },
 });
 
-let auth: AuthPrfAddrSimulator;
+let auth: AuthPrfPseudonymSimulator;
 
 beforeAll(async () => {
-  auth = await AuthPrfAddrSimulator.create({
-    privateState: AuthPrfAddrPrivateState.withSecretKey(GOLDEN_SK),
+  auth = await AuthPrfPseudonymSimulator.create({
+    privateState: AuthPrfPseudonymPrivateState.withSecretKey(GOLDEN_SK),
   });
 });
 
@@ -65,9 +65,9 @@ beforeAll(async () => {
 // Layout and golden vector
 // ---------------------------------------------------------------------------
 
-describe('AuthPrfAddr compatibility: layout', () => {
+describe('AuthPrfPseudonym compatibility: layout', () => {
   // A flat `[tag, salt, secretKey]`, so equality pins the field order and that
-  // the nesting through `PrfAddr` and `Prf` is not hashed.
+  // the nesting through `PrfPseudonym` and `Prf` is not hashed.
   it('should match a persistentHash over the tag, salt and secret key', async () => {
     const reference = persistentHash(
       new CompactTypeVector(3, new CompactTypeBytes(32)),

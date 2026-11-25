@@ -1506,7 +1506,7 @@ describe('ShieldedAccessControl', () => {
   });
 });
 
-// The base mock authenticates through `AuthPrfAddr` and reads the blinding
+// The base mock authenticates through `AuthPrfPseudonym` and reads the blinding
 // through `RandBlinding`, which yield only a canonical, non-zero key
 // identifier and a non-zero blinding. This mock takes both as arguments, so a
 // spec can act as any account under any blinding.

@@ -31,7 +31,7 @@ pragma language_version >= 0.28.0;
  *
  * ```compact
  * circuit foo(): [] {
- *  const caller = AuthPrfAddr_authenticate(_callerSalt);
+ *  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
  *  AccessControl_assertOnlyRole(caller, MY_ROLE);
  *  // ... rest of circuit logic
  * }

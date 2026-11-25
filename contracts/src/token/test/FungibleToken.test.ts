@@ -1282,9 +1282,9 @@ describe('FungibleToken', () => {
   });
 });
 
-// The base mock authenticates through `AuthPrfAddr`, which cannot produce the
-// zero account. This mock takes the caller as an argument, so a spec can act
-// as any account shape.
+// The base mock authenticates through `AuthPrfPseudonym`, which cannot produce
+// the zero account. This mock takes the caller as an argument, so a spec can
+// act as any account shape.
 describe('FungibleToken: abnormal callers', () => {
   type Identifier = Either<Uint8Array, ContractAddress>;
 

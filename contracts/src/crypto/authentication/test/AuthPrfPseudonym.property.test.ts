@@ -1,5 +1,6 @@
 /**
- * Properties of the AuthPrfAddr module over generated secret keys and salts.
+ * Properties of the AuthPrfPseudonym module over generated secret keys and
+ * salts.
  *
  * The unit and compatibility suites state each claim at fixed points. This
  * states them where nobody chose: `deriveAccount` equals the `persistentHash`
@@ -18,7 +19,7 @@ import {
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { AuthPrfAddrSimulator } from './simulators/AuthPrfAddrSimulator.js';
+import { AuthPrfPseudonymSimulator } from './simulators/AuthPrfPseudonymSimulator.js';
 
 // ---------------------------------------------------------------------------
 // Generators, each pinned to the circuit's own type
@@ -44,17 +45,17 @@ const reference = (sk: Uint8Array, salt: Uint8Array): Uint8Array =>
 
 const PROPERTY_RUNS = isLiveBackend() ? 2 : 100;
 
-let auth: AuthPrfAddrSimulator;
+let auth: AuthPrfPseudonymSimulator;
 
 beforeAll(async () => {
-  auth = await AuthPrfAddrSimulator.create();
+  auth = await AuthPrfPseudonymSimulator.create();
 });
 
 // ---------------------------------------------------------------------------
 // Layout
 // ---------------------------------------------------------------------------
 
-describe('AuthPrfAddr property: layout', () => {
+describe('AuthPrfPseudonym property: layout', () => {
   it('should match the reference for any secret key and salt', async () => {
     await fc.assert(
       fc.asyncProperty(bytes32(), bytes32(), async (sk, salt) => {
@@ -90,7 +91,7 @@ describe('AuthPrfAddr property: layout', () => {
  * Each run draws two values for one input and holds the other fixed, so a
  * failure names the input that did not separate.
  */
-describe('AuthPrfAddr property: separation', () => {
+describe('AuthPrfPseudonym property: separation', () => {
   it('should move the account when either input changes', async () => {
     await fc.assert(
       fc.asyncProperty(

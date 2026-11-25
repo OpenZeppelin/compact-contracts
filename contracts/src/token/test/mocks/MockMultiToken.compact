@@ -9,7 +9,7 @@ pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
 
-import "../../../crypto/authentication/AuthPrfAddr" prefix AuthPrfAddr_;
+import "../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
 import "../../MultiToken" prefix MultiToken_;
 
 export { ContractAddress, Either, Maybe };
@@ -43,7 +43,7 @@ export circuit balanceOf(account: Either<Bytes<32>, ContractAddress>, id: Uint<1
 
 export circuit setApprovalForAll(operator: Either<Bytes<32>, ContractAddress>, approved: Boolean): [] {
   return MultiToken_setApprovalForAll(
-    AuthPrfAddr_authenticate(pad(32, "MockMultiToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockMultiToken")),
     operator,
     approved
   );
@@ -63,7 +63,7 @@ export circuit transferFrom(
   value: Uint<128>
 ): [] {
   return MultiToken_transferFrom(
-    AuthPrfAddr_authenticate(pad(32, "MockMultiToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockMultiToken")),
     fromAddress,
     to,
     id,
@@ -78,7 +78,7 @@ export circuit _unsafeTransferFrom(
   value: Uint<128>
 ): [] {
   return MultiToken__unsafeTransferFrom(
-    AuthPrfAddr_authenticate(pad(32, "MockMultiToken")),
+    AuthPrfPseudonym_authenticate(pad(32, "MockMultiToken")),
     fromAddress,
     to,
     id,
