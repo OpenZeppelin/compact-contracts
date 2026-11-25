@@ -65,12 +65,18 @@ Import the modules through `./node_modules/@openzeppelin/compact-contracts/...`.
 pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
+
 import "./node_modules/@openzeppelin/compact-contracts/access/Ownable"
   prefix Ownable_;
+import "./node_modules/@openzeppelin/compact-contracts/crypto/authentication/AuthPrfPseudonym"
+  prefix AuthPrfPseudonym_;
 import "./node_modules/@openzeppelin/compact-contracts/security/Pausable"
   prefix Pausable_;
 import "./node_modules/@openzeppelin/compact-contracts/token/FungibleToken"
   prefix FungibleToken_;
+
+// The salt every caller account on this deployment is derived under.
+export sealed ledger _callerSalt: Bytes<32>;
 
 constructor(
   _name: Opaque<"string">,
@@ -79,7 +85,9 @@ constructor(
   _recipient: Either<Bytes<32>, ContractAddress>,
   _amount: Uint<128>,
   _initOwner: Either<Bytes<32>, ContractAddress>,
+  _salt: Bytes<32>,
 ) {
+  _callerSalt = disclose(_salt);
   Ownable_initialize(_initOwner);
   FungibleToken_initialize(_name, _symbol, _decimals);
   FungibleToken__mint(_recipient, _amount);
@@ -119,7 +127,8 @@ export circuit transfer(
   value: Uint<128>,
 ): Boolean {
   Pausable_assertNotPaused();
-  return FungibleToken_transfer(to, value);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  return FungibleToken_transfer(caller, to, value);
 }
 
 export circuit transferFrom(
@@ -128,12 +137,14 @@ export circuit transferFrom(
   value: Uint<128>
 ): Boolean {
   Pausable_assertNotPaused();
-  return FungibleToken_transferFrom(fromAddress, to, value);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  return FungibleToken_transferFrom(caller, fromAddress, to, value);
 }
 
 export circuit approve(spender: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
   Pausable_assertNotPaused();
-  return FungibleToken_approve(spender, value);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  return FungibleToken_approve(caller, spender, value);
 }
 
 /** IOwnable */
@@ -143,22 +154,26 @@ export circuit owner(): Either<Bytes<32>, ContractAddress> {
 }
 
 export circuit transferOwnership(newOwner: Either<Bytes<32>, ContractAddress>): [] {
-  return Ownable_transferOwnership(newOwner);
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  return Ownable_transferOwnership(caller, newOwner);
 }
 
 export circuit renounceOwnership(): [] {
-  return Ownable_renounceOwnership();
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  return Ownable_renounceOwnership(caller);
 }
 
 /** IPausable */
 
 export circuit pause(): [] {
-  Ownable_assertOnlyOwner();
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  Ownable_assertOnlyOwner(caller);
   Pausable__pause();
 }
 
 export circuit unpause(): [] {
-  Ownable_assertOnlyOwner();
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  Ownable_assertOnlyOwner(caller);
   Pausable__unpause();
 }
 ```
@@ -170,20 +185,20 @@ Compile the contract.
 ```bash
 % compact compile MyContract.compact artifacts/MyContract
 Compiling 14 circuits:
-  circuit "allowance" (k=11, rows=1352)
-  circuit "approve" (k=13, rows=3080)
-  circuit "balanceOf" (k=10, rows=673)
-  circuit "decimals" (k=6, rows=28)
-  circuit "name" (k=6, rows=28)
-  circuit "owner" (k=7, rows=76)
-  circuit "pause" (k=13, rows=2365)
-  circuit "renounceOwnership" (k=13, rows=2364)
-  circuit "symbol" (k=6, rows=28)
-  circuit "totalSupply" (k=6, rows=28)
-  circuit "transfer" (k=13, rows=3990)
-  circuit "transferFrom" (k=13, rows=4977)
-  circuit "transferOwnership" (k=13, rows=2959)
-  circuit "unpause" (k=13, rows=2362)
+  circuit "allowance" (k=10, rows=511)
+  circuit "approve" (k=13, rows=4238)
+  circuit "balanceOf" (k=9, rows=282)
+  circuit "decimals" (k=6, rows=45)
+  circuit "name" (k=6, rows=45)
+  circuit "owner" (k=7, rows=99)
+  circuit "pause" (k=13, rows=3974)
+  circuit "renounceOwnership" (k=13, rows=3989)
+  circuit "symbol" (k=6, rows=45)
+  circuit "totalSupply" (k=6, rows=45)
+  circuit "transfer" (k=13, rows=4524)
+  circuit "transferFrom" (k=13, rows=4998)
+  circuit "transferOwnership" (k=13, rows=4197)
+  circuit "unpause" (k=13, rows=3972)
 Overall progress [====================] 14/14
 ```
 
@@ -191,6 +206,10 @@ ZKIR v3: compiler 0.36.0 emits ZKIR v3 only, and `--feature-zkir-v3` is gone.
 Every `@constraints` annotation in the library is a ZKIR v3 measurement.
 Key generation for a circuit that produces Jubjub points without taking a Jubjub
 scalar or point as an input still fails upstream; see [Known issues](CHANGELOG.md#known-issues).
+
+`@constraints` on a circuit that takes a `Caller` excludes authentication, and
+on one that takes a `Blinding` the blinding read. A deployed circuit adds the
+cost of each `authenticate` and `RandBlinding.read` call it makes.
 
 ## Development
 

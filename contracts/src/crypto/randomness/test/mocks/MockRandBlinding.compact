@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// Exposes the RandBlinding module's circuit so it can be driven from
+// off-chain tests. DO NOT deploy or use this contract in any production
+// application.
+
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Blinding } from "../../RandBlinding";
+
+import "../../RandBlinding" prefix RandBlinding_;
+
+// Gives `read` a proof. Without a ledger write the compiler emits no ZKIR or
+// proving keys for it, leaving the code evaluated but never proven.
+ledger _invocations: Counter;
+
+// Discloses the blinding factor so a test can read it. A contract never does.
+export circuit read(): Blinding {
+  _invocations.increment(1);
+  return disclose(RandBlinding_read());
+}

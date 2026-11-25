@@ -3,6 +3,8 @@ import {
   type SimulatorOptions,
 } from '@openzeppelin/compact-simulator';
 import {
+  type ContractAddress,
+  type Either,
   ledger,
   Contract as MockAllowlist,
 } from '../../../../artifacts/security/test/mocks/MockAllowlist/contract/index.js';
@@ -50,28 +52,32 @@ export class AllowlistSimulator extends AllowlistSimulatorBase {
    * @description Returns whether `account` is currently allowed.
    * @returns True if `account` is a member of the allowlist.
    */
-  public isAllowed(account: Uint8Array): Promise<boolean> {
+  public isAllowed(
+    account: Either<Uint8Array, ContractAddress>,
+  ): Promise<boolean> {
     return this.circuits.impure.isAllowed(account);
   }
 
   /**
    * @description Asserts that `account` is allowed.
    */
-  public assertAllowed(account: Uint8Array): Promise<[]> {
+  public assertAllowed(
+    account: Either<Uint8Array, ContractAddress>,
+  ): Promise<[]> {
     return this.circuits.impure.assertAllowed(account);
   }
 
   /**
    * @description Adds `account` to the allowlist.
    */
-  public allow(account: Uint8Array): Promise<[]> {
+  public allow(account: Either<Uint8Array, ContractAddress>): Promise<[]> {
     return this.circuits.impure.allow(account);
   }
 
   /**
    * @description Removes `account` from the allowlist.
    */
-  public disallow(account: Uint8Array): Promise<[]> {
+  public disallow(account: Either<Uint8Array, ContractAddress>): Promise<[]> {
     return this.circuits.impure.disallow(account);
   }
 }

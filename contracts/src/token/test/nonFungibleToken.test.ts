@@ -5,12 +5,20 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import {
+  type Caller,
+  type ContractAddress,
+  type Either,
+  NonFungibleTokenCallerSimulator,
+} from './simulators/NonFungibleTokenCallerSimulator.js';
 import { NonFungibleTokenSimulator } from './simulators/NonFungibleTokenSimulator.js';
 
 // Helpers
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+  const domain = createTestSK('AuthPrfPseudonym:identifier');
+  const salt = createTestSK('MockNonFungibleToken');
+  return persistentHash(rt_type, [domain, salt, sk]);
 };
 
 const zeroBytes = utils.zeroUint8Array();
@@ -1591,6 +1599,148 @@ describe('NonFungibleTokenSimulator wiring', () => {
       await expect(sim.privateState.getCurrentSecretKey()).rejects.toThrow(
         'Missing secret key',
       );
+    });
+  });
+});
+
+// The base mock authenticates through `AuthPrfPseudonym`, which cannot produce
+// the zero account. This mock takes the caller as an argument, so a spec can
+// act as any account shape.
+describe('NonFungibleToken: abnormal callers', () => {
+  type Identifier = Either<Uint8Array, ContractAddress>;
+
+  const bytesOf = (byte: number) => new Uint8Array(32).fill(byte);
+
+  const userAccount = (key: Uint8Array, inactive = zeroBytes): Identifier => ({
+    is_left: true,
+    left: key,
+    right: { bytes: inactive },
+  });
+
+  const contractAccount = (
+    address: Uint8Array,
+    inactive = zeroBytes,
+  ): Identifier => ({
+    is_left: false,
+    left: inactive,
+    right: { bytes: address },
+  });
+
+  const callerOf = (account: Identifier): Caller => ({ identifier: account });
+
+  const ALICE = userAccount(bytesOf(1));
+  const BOB = userAccount(bytesOf(2));
+  const MALLORY = userAccount(bytesOf(3));
+  const CONTRACT = contractAccount(bytesOf(7));
+
+  const NON_CANONICAL_ZERO = userAccount(zeroBytes, bytesOf(9));
+  const NON_CANONICAL_ALICE = userAccount(bytesOf(1), bytesOf(9));
+
+  const ZERO_CALLERS: [string, Identifier][] = [
+    ['the zero account', ZERO_ACCOUNT],
+    ['the contract-arm zero account', ZERO_CONTRACT],
+    ['a non-canonical zero account', NON_CANONICAL_ZERO],
+  ];
+
+  const INVALID_CALLER = 'NonFungibleToken: invalid caller';
+  const INVALID_OWNER = 'NonFungibleToken: invalid owner';
+  const INSUFFICIENT_APPROVAL = 'NonFungibleToken: insufficient approval';
+
+  let callerToken: NonFungibleTokenCallerSimulator;
+
+  beforeEach(async () => {
+    callerToken = await NonFungibleTokenCallerSimulator.create(NAME, SYMBOL);
+    await callerToken._mint(ALICE, TOKENID_1);
+  });
+
+  const expectUnchanged = async () => {
+    expect(await callerToken.ownerOf(TOKENID_1)).toEqual(ALICE);
+    expect(await callerToken.getApproved(TOKENID_1)).toEqual(ZERO_ACCOUNT);
+    expect(await callerToken.balanceOf(ALICE)).toEqual(1n);
+    expect(await callerToken.balanceOf(MALLORY)).toEqual(0n);
+  };
+
+  describe.each(ZERO_CALLERS)('when the caller is %s', (_, account) => {
+    const caller = callerOf(account);
+
+    it('should fail approve', async () => {
+      await expect(
+        callerToken.approve(caller, MALLORY, TOKENID_1),
+      ).rejects.toThrow(INVALID_CALLER);
+      await expectUnchanged();
+    });
+
+    it('should fail transferFrom', async () => {
+      await expect(
+        callerToken.transferFrom(caller, ALICE, MALLORY, TOKENID_1),
+      ).rejects.toThrow(INVALID_CALLER);
+      await expectUnchanged();
+    });
+
+    it('should fail _unsafeTransferFrom', async () => {
+      await expect(
+        callerToken._unsafeTransferFrom(caller, ALICE, MALLORY, TOKENID_1),
+      ).rejects.toThrow(INVALID_CALLER);
+      await expectUnchanged();
+    });
+
+    it('should fail setApprovalForAll', async () => {
+      await expect(
+        callerToken.setApprovalForAll(caller, MALLORY, true),
+      ).rejects.toThrow(INVALID_OWNER);
+      expect(await callerToken.isApprovedForAll(account, MALLORY)).toBe(false);
+      await expectUnchanged();
+    });
+  });
+
+  describe('when the owner calls with a non-zero inactive arm', () => {
+    const caller = callerOf(NON_CANONICAL_ALICE);
+
+    it('should approve as the owner', async () => {
+      await callerToken.approve(caller, BOB, TOKENID_1);
+      expect(await callerToken.getApproved(TOKENID_1)).toEqual(BOB);
+    });
+
+    it('should set an operator for the owner', async () => {
+      await callerToken.setApprovalForAll(caller, BOB, true);
+      expect(await callerToken.isApprovedForAll(ALICE, BOB)).toBe(true);
+    });
+
+    it('should transfer the token with transferFrom', async () => {
+      await callerToken.transferFrom(caller, ALICE, BOB, TOKENID_1);
+      expect(await callerToken.ownerOf(TOKENID_1)).toEqual(BOB);
+      expect(await callerToken.balanceOf(ALICE)).toEqual(0n);
+      expect(await callerToken.balanceOf(BOB)).toEqual(1n);
+    });
+
+    it('should transfer the token with _unsafeTransferFrom', async () => {
+      await callerToken._unsafeTransferFrom(caller, ALICE, BOB, TOKENID_1);
+      expect(await callerToken.ownerOf(TOKENID_1)).toEqual(BOB);
+      expect(await callerToken.balanceOf(ALICE)).toEqual(0n);
+      expect(await callerToken.balanceOf(BOB)).toEqual(1n);
+    });
+  });
+
+  describe('when the caller is a contract identifier', () => {
+    const caller = callerOf(CONTRACT);
+
+    beforeEach(async () => {
+      await callerToken._unsafeMint(CONTRACT, TOKENID_2);
+    });
+
+    it('should transfer a token it owns', async () => {
+      await callerToken.transferFrom(caller, CONTRACT, BOB, TOKENID_2);
+      expect(await callerToken.ownerOf(TOKENID_2)).toEqual(BOB);
+      expect(await callerToken.balanceOf(CONTRACT)).toEqual(0n);
+      expect(await callerToken.balanceOf(BOB)).toEqual(1n);
+    });
+
+    it("should fail to transfer another account's token", async () => {
+      await expect(
+        callerToken.transferFrom(caller, ALICE, BOB, TOKENID_1),
+      ).rejects.toThrow(INSUFFICIENT_APPROVAL);
+      expect(await callerToken.ownerOf(TOKENID_1)).toEqual(ALICE);
+      expect(await callerToken.balanceOf(BOB)).toEqual(0n);
     });
   });
 });

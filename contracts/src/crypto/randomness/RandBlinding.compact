@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/randomness/RandBlinding.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module RandBlinding
+ * @description The blinding factor of a hash commitment: a secret random
+ * value hashed with the committed data, so an observer who can guess the
+ * data cannot test the guess. `read` returns the caller's.
+ *
+ * ```compact
+ * import "../crypto/randomness/RandBlinding" prefix RandBlinding_;
+ *
+ * export circuit vote(choice: Uint<8>): [] {
+ *   const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+ *   MyModule_assertMember(caller, RandBlinding_read());
+ *   ...
+ * }
+ * ```
+ *
+ * @see https://elementsproject.org/features/confidential-transactions/investigation Maxwell, Confidential Transactions - Investigation
+ * @see https://zips.z.cash/protocol/protocol.pdf#abstractcommit Hopwood et al., Zcash Protocol Specification, "Commitment"
+ *
+ * @dev Structure:
+ * `commitment = hash(tag, blinding, data)`, with `tag` the calling module's
+ * own. The blinding factor is the commitment's randomness, the commitment
+ * trapdoor of the Zcash specification. It is drawn once, then supplied
+ * again on every call that recomputes the commitment.
+ *
+ * @notice Security:
+ * - A zero value is rejected: it is the value of an unset 32-byte field.
+ * - No circuit can tell a guessable value from a random one. That rests on
+ *   the client.
+ * - A wrong value is not an error here. It recomputes a commitment that
+ *   matches nothing.
+ *
+ * @notice Caller duties:
+ * - Use the value only as an input of a hash that carries the module's own
+ *   tag. Never store or disclose it.
+ * - Every module of a contract reads the same value. A party that learns it
+ *   can recompute any of those modules' commitments over data it can guess.
+ *
+ * @notice Client-side duties:
+ * - Implement `wit_RandBlindingFactor`: 32 bytes from a CSPRNG, secret, and
+ *   the same for as long as a commitment made with it is in use.
+ * - Never the same value in two contracts: it can link the caller across
+ *   them.
+ * - Losing the value orphans every commitment made with it.
+ *
+ * @dev No ledger state.
+ */
+module RandBlinding {
+  import CompactStandardLibrary;
+
+  /**
+   * @description A blinding factor, typed apart from other 32-byte values:
+   * a salt or a constant in its place does not compile. A cast or
+   * `default<Blinding>` still compiles, so the type catches a mistake, not
+   * intent.
+   */
+  export new type Blinding = Bytes<32>;
+
+  /**
+   * @witness wit_RandBlindingFactor
+   * @description Returns the caller's blinding factor.
+   *
+   * @returns {Bytes<32>} blinding - A 32-byte cryptographically secure random
+   * value, secret, and the same for as long as a commitment made with it is
+   * in use.
+   */
+  witness wit_RandBlindingFactor(): Bytes<32>;
+
+  /**
+   * @description The caller's blinding factor.
+   *
+   * @constraints k=8, rows=126
+   *
+   * Requirements:
+   *
+   * - The blinding factor is not zero.
+   *
+   * @return {Bytes<32>} - The blinding factor.
+   */
+  export circuit read(): Blinding {
+    const blinding = wit_RandBlindingFactor();
+    assert(blinding != default<Bytes<32>>, "RandBlinding: zero blinding");
+    return blinding as Blinding;
+  }
+}

@@ -8,22 +8,24 @@
 pragma language_version >= 0.28.0;
 
 import CompactStandardLibrary;
+
 import "../../Allowlist" prefix Allowlist_;
 
+export { ContractAddress, Either };
 export { Allowlist__allowed };
 
-export circuit isAllowed(account: Bytes<32>): Boolean {
+export circuit isAllowed(account: Either<Bytes<32>, ContractAddress>): Boolean {
   return Allowlist_isAllowed(account);
 }
 
-export circuit assertAllowed(account: Bytes<32>): [] {
+export circuit assertAllowed(account: Either<Bytes<32>, ContractAddress>): [] {
   return Allowlist_assertAllowed(account);
 }
 
-export circuit allow(account: Bytes<32>): [] {
+export circuit allow(account: Either<Bytes<32>, ContractAddress>): [] {
   return Allowlist__allow(account);
 }
 
-export circuit disallow(account: Bytes<32>): [] {
+export circuit disallow(account: Either<Bytes<32>, ContractAddress>): [] {
   return Allowlist__disallow(account);
 }

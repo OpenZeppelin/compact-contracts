@@ -16,7 +16,7 @@ export interface INonFungibleTokenWitnesses<L, P> {
    * @param context - The witness context containing the private state.
    * @returns A tuple of the private state and the secret key as a Uint8Array.
    */
-  wit_NonFungibleTokenSK(context: WitnessContext<L, P>): [P, Uint8Array];
+  wit_AuthPrfPseudonymSK(context: WitnessContext<L, P>): [P, Uint8Array];
 }
 
 /**
@@ -71,7 +71,7 @@ export const NonFungibleTokenWitnesses = <L>(): INonFungibleTokenWitnesses<
   L,
   NonFungibleTokenPrivateState
 > => ({
-  wit_NonFungibleTokenSK(
+  wit_AuthPrfPseudonymSK(
     context: WitnessContext<L, NonFungibleTokenPrivateState>,
   ): [NonFungibleTokenPrivateState, Uint8Array] {
     return [

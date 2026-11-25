@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: MIT
+
+// WARNING: FOR TESTING PURPOSES ONLY.
+// This contract exposes internal circuits and bypasses safety checks that the
+// corresponding production contract relies on. DO NOT deploy or use this
+// contract in any production application.
+
+// Top-level contract composing the production FungibleToken and
+// ShieldedAccessControl modules. Every authenticating circuit authenticates
+// under `_callerSalt`, so one secret key yields one account in both modules,
+// and a role holder's account can be a public `_balances` key. Each circuit
+// that proves a role passes the caller's secret blinding factor.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { IdentifierCommitment } from "../../../src/identifier/extensions/IdentifierCommitment";
+
+import "../../../src/crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
+import "../../../src/crypto/randomness/RandBlinding" prefix RandBlinding_;
+import "../../../src/token/FungibleToken" prefix FungibleToken_;
+import "../../../src/access/ShieldedAccessControl" prefix ShieldedAccessControl_;
+
+export { ContractAddress, Either, MerkleTreePath };
+
+export {
+  FungibleToken__balances,
+  ShieldedAccessControl__instanceSalt,
+  ShieldedAccessControl__operatorRoles,
+  ShieldedAccessControl__grantedRoleNullifiers
+};
+
+export sealed ledger _callerSalt: Bytes<32>;
+export sealed ledger MINTER_ROLE: Bytes<32>;
+
+constructor(
+  name_: Opaque<"string">,
+  symbol_: Opaque<"string">,
+  decimals_: Uint<8>,
+  callerSalt: Bytes<32>,
+  instanceSalt: Bytes<32>,
+  admin: IdentifierCommitment
+) {
+  _callerSalt = disclose(callerSalt);
+  MINTER_ROLE = persistentHash<Bytes<32>>(pad(32, "MINTER_ROLE"));
+  FungibleToken_initialize(name_, symbol_, decimals_);
+  ShieldedAccessControl_initialize(instanceSalt);
+  ShieldedAccessControl__grantRole(ShieldedAccessControl_DEFAULT_ADMIN_ROLE(), admin);
+}
+
+export circuit grantRole(
+  role: ShieldedAccessControl_RoleIdentifier,
+  accountCommitment: IdentifierCommitment
+): [] {
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  ShieldedAccessControl_grantRole(caller, RandBlinding_read(), role, accountCommitment);
+}
+
+export circuit mint(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>): [] {
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  ShieldedAccessControl_assertOnlyRole(
+    caller,
+    RandBlinding_read(),
+    MINTER_ROLE as ShieldedAccessControl_RoleIdentifier
+  );
+  FungibleToken__mint(to, value);
+}
+
+export circuit transfer(to: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Boolean {
+  const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+  return FungibleToken_transfer(caller, to, value);
+}

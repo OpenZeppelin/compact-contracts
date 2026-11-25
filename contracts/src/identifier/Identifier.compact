@@ -1,0 +1,150 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (identifier/Identifier.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module Identifier
+ * @description The identifier that modules in this library store and take:
+ * the `Identifier` type and one accessor. It also holds the `Caller` every
+ * authenticating circuit in this library takes. An authenticator module
+ * produces a `Caller`. No witness, no ledger state and no derivation: a
+ * module imports this to name the caller without learning how the caller was
+ * authenticated.
+ *
+ * A module imports the types by name with no prefix. For the accessor it
+ * imports the module under the `Identifier_` prefix.
+ *
+ * ```compact
+ * import { Identifier, IdentifierKind } from "../identifier/Identifier";
+ *
+ * import "../identifier/Identifier" prefix Identifier_;
+ *
+ * export pure circuit isContract(account: Identifier): Boolean {
+ *   return Identifier_unpack(account).kind == IdentifierKind.Contract;
+ * }
+ * ```
+ *
+ * @dev Notation:
+ * - `Identifier`: `Either<Bytes<32>, ContractAddress>`, the type of an
+ *   account wherever a module stores or takes one. `left` is 32 bytes bound
+ *   one-way to a secret key, whose holder proves knowledge of it. `right` is
+ *   a contract address. Either can stand for a user: the arms differ in what
+ *   controls the account, a key or a contract.
+ * - `UnpackedIdentifier`: an `Identifier` as its kind and the 32 bytes of
+ *   its active arm.
+ * - `identifier`: the field of a `Caller`, who the caller is.
+ *
+ * @dev Authenticators:
+ * An authenticator is a module that produces a `Caller`. By convention it
+ * exports:
+ * - `authenticate(salt): Caller`, which derives the caller's account under
+ *   `salt`. The salt is per deployment, never per module, so one deployment
+ *   gives one account to every module that takes a caller.
+ * - A pure `deriveIdentifier`, so a client computes the same identifier
+ *   off-chain.
+ *
+ * The account it returns is canonical: the inactive arm is zero. A module
+ * may compare the account as a whole.
+ *
+ * It never returns the zero account. Modules reserve it as a marker, such as
+ * a renounced owner. A module does not rely on the authenticator for this:
+ * it rejects the zero account itself wherever that account would pass a
+ * check or be granted authority.
+ *
+ * The authenticators of this library are under `crypto/authentication`.
+ *
+ * @dev Why a struct:
+ * An authenticated account and one passed in as an argument have the same
+ * type. `Caller` types them apart, so a plain account in the caller's place
+ * does not compile.
+ *
+ * @warning Produce the caller, never accept one:
+ * An exported circuit of a deployed contract MUST NOT take a `Caller`
+ * parameter. The transaction sender chooses it, so they choose the account
+ * every gate sees. Only the deployed contract calls an authenticator, and it
+ * passes the result down.
+ *
+ * ```compact
+ * // Module circuit: the composing contract supplies the caller.
+ * export circuit assertOnlyOwner(caller: Caller): [] { ... }
+ *
+ * // Deployed contract: authenticate inside the circuit.
+ * export circuit withdraw(value: Uint<128>): [] {
+ *   const caller = AuthPrfPseudonym_authenticate(_callerSalt);
+ *   Ownable_assertOnlyOwner(caller);
+ *   ...
+ * }
+ * ```
+ *
+ * @warning Not unforgeable:
+ * Compact structs are not opaque, so a composing contract can build
+ * `Caller { identifier: anyIdentifier }` and no module can tell it from an
+ * authenticated one. The type makes one derivation the default and a second
+ * one visible. It does not make identity confusion impossible.
+ */
+module Identifier {
+  import CompactStandardLibrary;
+
+  /**
+   * @description An account's identifier, in the shape the library stores
+   * and passes it: `left` for a key, `right` for a contract address.
+   * A structural alias: any `Either<Bytes<32>, ContractAddress>` is an
+   * `Identifier`.
+   */
+  export type Identifier = Either<Bytes<32>, ContractAddress>;
+
+  /**
+   * @description A caller an authenticator produced, as opposed to an
+   * identifier passed in as an argument.
+   * @type {Either<Bytes<32>, ContractAddress>} identifier - The caller's
+   * identifier.
+   */
+  export struct Caller {
+    identifier: Identifier;
+  }
+
+  /**
+   * @description What controls an identifier.
+   *
+   * - `Key`: a secret key. The bytes are bound one-way to it.
+   * - `Contract`: a contract. The bytes are its address.
+   */
+  export enum IdentifierKind {
+    Key,
+    Contract
+  }
+
+  /**
+   * @description An identifier as its kind and the 32 bytes of its active
+   * arm.
+   *
+   * @warning `bytes` alone names no account. A key identifier and a contract
+   * identifier can hold the same 32 bytes: compare `kind` as well.
+   */
+  export struct UnpackedIdentifier {
+    kind: IdentifierKind,
+    bytes: Bytes<32>
+  }
+
+  /**
+   * @description The kind and the bytes of `account`. It reads the active
+   * arm only, so the answer does not depend on what the other arm holds. A
+   * module that accepts one kind asserts on `kind` itself.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account.
+   * @return {UnpackedIdentifier} - `Key` with the `left`, or `Contract` with
+   * the bytes of the `right`.
+   */
+  export pure circuit unpack(account: Identifier): UnpackedIdentifier {
+    return account.is_left
+           ? UnpackedIdentifier {
+               kind: IdentifierKind.Key,
+               bytes: account.left
+             }
+           : UnpackedIdentifier {
+               kind: IdentifierKind.Contract,
+               bytes: account.right.bytes
+             };
+  }
+}

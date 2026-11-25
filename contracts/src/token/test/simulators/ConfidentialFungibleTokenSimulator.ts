@@ -230,16 +230,6 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
   }
 
   /**
-   * @description Computes an account identifier without on-chain state, allowing a user to derive
-   * their identity commitment before submitting it in a grant or revoke operation.
-   * @param {Bytes<32>} secretKey - A 32-byte cryptographically secure random value.
-   * @returns {Bytes<32>} accountId - The computed account identifier.
-   */
-  public computeAccountId(secretKey: Uint8Array): Promise<Uint8Array> {
-    return this.circuits.pure.computeAccountId(secretKey);
-  }
-
-  /**
    * @description Builds a circuit call against the CURRENT state and returns the
    * public transcript it would submit, WITHOUT committing it. Pair with
    * `replayTranscript` to check what the node does when state moves underneath a
@@ -402,17 +392,5 @@ export class ConfidentialFungibleTokenSimulator extends ConfidentialFungibleToke
      */
     clearCache: (): Promise<ConfidentialFungibleTokenPrivateState> =>
       this.updatePrivateState({ plaintextCache: new Map<string, bigint>() }),
-
-    /**
-     * @description Returns the accountId derived from the current SK. Wraps
-     * the contract's pure `computeAccountId` for convenience in tests.
-     */
-    getCurrentAccountId: async (): Promise<Uint8Array> => {
-      const sk = (await this.getPrivateState()).secretKey;
-      if (typeof sk === 'undefined') {
-        throw new Error('Missing secret key');
-      }
-      return this.circuits.pure.computeAccountId(sk);
-    },
   };
 }

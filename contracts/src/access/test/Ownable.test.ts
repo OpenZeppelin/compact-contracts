@@ -5,12 +5,18 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as utils from '#test-utils/fixtures/address.js';
+import {
+  type Caller,
+  OwnableCallerSimulator,
+} from './simulators/OwnableCallerSimulator.js';
 import { OwnableSimulator } from './simulators/OwnableSimulator.js';
 
 // Helpers
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+  const domain = createTestSK('AuthPrfPseudonym:identifier');
+  const salt = createTestSK('MockOwnable');
+  return persistentHash(rt_type, [domain, salt, sk]);
 };
 
 const zeroBytes = utils.zeroUint8Array();
@@ -545,5 +551,176 @@ describe('Ownable', () => {
         );
       });
     });
+  });
+});
+
+const callerOf = (publicKey: Uint8Array): Caller => ({
+  identifier: { is_left: true, left: publicKey, right: { bytes: zeroBytes } },
+});
+
+const callerWith = (
+  isLeft: boolean,
+  left: Uint8Array,
+  right: Uint8Array,
+): Caller => ({
+  identifier: { is_left: isLeft, left, right: { bytes: right } },
+});
+
+const OWNER_CALLER = callerOf(new Uint8Array(32).fill(1));
+const NEW_OWNER_CALLER = callerOf(new Uint8Array(32).fill(2));
+const ZERO_CALLER: Caller = { identifier: ZERO_ACCOUNT };
+
+const NOT_OWNER = 'Ownable: caller is not the owner';
+
+const DIRT = new Uint8Array(32).fill(0xff);
+
+const otherZeroCallers = [
+  ['contract-arm zero account', { identifier: ZERO_CONTRACT }],
+  ['non-canonical zero account', callerWith(true, zeroBytes, DIRT)],
+] as const;
+
+const otherShapeCallers = [
+  [
+    'non-canonical owner account',
+    callerWith(true, OWNER_CALLER.identifier.left, DIRT),
+  ],
+  ['contract', callerWith(false, zeroBytes, new Uint8Array(32).fill(4))],
+] as const;
+
+// The base mock authenticates through `AuthPrfPseudonym`, which cannot produce
+// the zero account. This mock takes the caller as an argument, so a spec can
+// act as it.
+describe('Ownable: the zero account as caller', () => {
+  let ownableCaller: OwnableCallerSimulator;
+
+  beforeEach(async () => {
+    ownableCaller = await OwnableCallerSimulator.create(
+      OWNER_CALLER.identifier,
+    );
+  });
+
+  describe('before ownership is renounced', () => {
+    it('should let the owner through', async () => {
+      await ownableCaller.assertOnlyOwner(OWNER_CALLER);
+    });
+
+    it('should reject the zero account', async () => {
+      await expect(ownableCaller.assertOnlyOwner(ZERO_CALLER)).rejects.toThrow(
+        NOT_OWNER,
+      );
+    });
+
+    it.each(otherZeroCallers)('should reject the %s', async (_, caller) => {
+      await expect(ownableCaller.assertOnlyOwner(caller)).rejects.toThrow(
+        NOT_OWNER,
+      );
+    });
+  });
+
+  describe('after ownership is renounced', () => {
+    beforeEach(async () => {
+      await ownableCaller.renounceOwnership(OWNER_CALLER);
+    });
+
+    it('should store the zero account as owner', async () => {
+      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.identifier);
+    });
+
+    it('should reject the zero account in assertOnlyOwner', async () => {
+      await expect(ownableCaller.assertOnlyOwner(ZERO_CALLER)).rejects.toThrow(
+        NOT_OWNER,
+      );
+    });
+
+    it('should reject the zero account in transferOwnership', async () => {
+      await expect(
+        ownableCaller.transferOwnership(
+          ZERO_CALLER,
+          NEW_OWNER_CALLER.identifier,
+        ),
+      ).rejects.toThrow(NOT_OWNER);
+      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.identifier);
+    });
+
+    it('should reject the zero account in _unsafeTransferOwnership', async () => {
+      await expect(
+        ownableCaller._unsafeTransferOwnership(
+          ZERO_CALLER,
+          NEW_OWNER_CALLER.identifier,
+        ),
+      ).rejects.toThrow(NOT_OWNER);
+      expect(await ownableCaller.owner()).toEqual(ZERO_CALLER.identifier);
+    });
+
+    it('should reject the zero account in renounceOwnership', async () => {
+      await expect(
+        ownableCaller.renounceOwnership(ZERO_CALLER),
+      ).rejects.toThrow(NOT_OWNER);
+    });
+
+    it.each(otherZeroCallers)(
+      'should reject the %s in assertOnlyOwner',
+      async (_, caller) => {
+        await expect(ownableCaller.assertOnlyOwner(caller)).rejects.toThrow(
+          NOT_OWNER,
+        );
+      },
+    );
+  });
+});
+
+describe('Ownable: a caller in another account shape', () => {
+  let ownableCaller: OwnableCallerSimulator;
+
+  beforeEach(async () => {
+    ownableCaller = await OwnableCallerSimulator.create(
+      OWNER_CALLER.identifier,
+    );
+  });
+
+  describe('before ownership is renounced', () => {
+    it.each(otherShapeCallers)(
+      'should reject the %s in assertOnlyOwner',
+      async (_, caller) => {
+        await expect(ownableCaller.assertOnlyOwner(caller)).rejects.toThrow(
+          NOT_OWNER,
+        );
+      },
+    );
+
+    it.each(otherShapeCallers)(
+      'should reject the %s in transferOwnership',
+      async (_, caller) => {
+        await expect(
+          ownableCaller.transferOwnership(caller, NEW_OWNER_CALLER.identifier),
+        ).rejects.toThrow(NOT_OWNER);
+        expect(await ownableCaller.owner()).toEqual(OWNER_CALLER.identifier);
+      },
+    );
+
+    it.each(otherShapeCallers)(
+      'should reject the %s in renounceOwnership',
+      async (_, caller) => {
+        await expect(ownableCaller.renounceOwnership(caller)).rejects.toThrow(
+          NOT_OWNER,
+        );
+        expect(await ownableCaller.owner()).toEqual(OWNER_CALLER.identifier);
+      },
+    );
+  });
+
+  describe('after ownership is renounced', () => {
+    beforeEach(async () => {
+      await ownableCaller.renounceOwnership(OWNER_CALLER);
+    });
+
+    it.each(otherShapeCallers)(
+      'should reject the %s in assertOnlyOwner',
+      async (_, caller) => {
+        await expect(ownableCaller.assertOnlyOwner(caller)).rejects.toThrow(
+          NOT_OWNER,
+        );
+      },
+    );
   });
 });

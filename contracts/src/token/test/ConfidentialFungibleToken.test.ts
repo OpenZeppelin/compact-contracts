@@ -8,12 +8,19 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { isLiveBackend } from '@openzeppelin/compact-simulator';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import * as utils from '#test-utils/fixtures/address.js';
 import { deriveEncryptionPk, padTag } from '#test-utils/fixtures/elgamal.js';
 import { pureCircuits as cftPure } from '../../../artifacts/token/test/mocks/MockConfidentialFungibleToken/contract/index.js';
 // The crypto simulators double as an off-chain mirror to predict ciphertexts
 // the contract derives internally.
 import { EcdhMaskSimulator } from '../../crypto/test/simulators/EcdhMaskSimulator.js';
 import { ElGamalSimulator } from '../../crypto/test/simulators/ElGamalSimulator.js';
+import {
+  type Caller,
+  ConfidentialFungibleTokenCallerSimulator,
+  type ContractAddress,
+  type Either,
+} from './simulators/ConfidentialFungibleTokenCallerSimulator.js';
 import { ConfidentialFungibleTokenSimulator } from './simulators/ConfidentialFungibleTokenSimulator.js';
 import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialFungibleTokenWitnesses.js';
 
@@ -22,8 +29,12 @@ import { ConfidentialFungibleTokenPrivateState } from './witnesses/ConfidentialF
 // ---------------------------------------------------------------------------
 
 const buildAccountIdHash = (sk: Uint8Array): Uint8Array => {
-  const rt_type = new CompactTypeVector(1, new CompactTypeBytes(32));
-  return persistentHash(rt_type, [sk]);
+  const rt_type = new CompactTypeVector(3, new CompactTypeBytes(32));
+  return persistentHash(rt_type, [
+    padTag('AuthPrfPseudonym:identifier'),
+    padTag('MockConfidentialFungibleToken'),
+    sk,
+  ]);
 };
 
 /**
@@ -253,38 +264,6 @@ describe.skipIf(isLiveBackend())(
         await cft.register();
 
         expect(await cft.isRegistered(BOB.accountId)).toBe(false);
-      });
-    });
-
-    describe('computeAccountId', () => {
-      it('should match the test helper derivation', async () => {
-        const users = [ALICE, BOB, CHARLIE];
-
-        for (const user of users) {
-          expect(await cft.computeAccountId(user.secretKey)).toEqual(
-            user.accountId,
-          );
-        }
-      });
-
-      it('should produce distinct identifiers for distinct keys', async () => {
-        const users = [ALICE, BOB, CHARLIE];
-        const ids = await Promise.all(
-          users.map((u) => cft.computeAccountId(u.secretKey)),
-        );
-
-        for (let i = 0; i < ids.length; i++) {
-          for (let j = i + 1; j < ids.length; j++) {
-            expect(ids[i]).not.toEqual(ids[j]);
-          }
-        }
-      });
-
-      it('should be deterministic for the same secret key', async () => {
-        const id1 = await cft.computeAccountId(ALICE.secretKey);
-        const id2 = await cft.computeAccountId(ALICE.secretKey);
-
-        expect(id1).toEqual(id2);
       });
     });
   },
@@ -1768,3 +1747,269 @@ describe('ConfidentialFungibleToken: receive-path smoke', () => {
     },
   );
 });
+
+// The base mock authenticates through `AuthPrfPseudonym`, which cannot produce
+// the zero account. This mock takes the caller as an argument, so a spec can
+// act as any account shape. This block runs dry only: every case deploys the
+// full token and proves several heavy circuits, and the base suite keeps its
+// functional cases dry as well.
+describe.skipIf(isLiveBackend())(
+  'ConfidentialFungibleToken: abnormal callers',
+  () => {
+    type Identifier = Either<Uint8Array, ContractAddress>;
+
+    const zeroBytes = utils.zeroUint8Array();
+    const bytesOf = (byte: number) => new Uint8Array(32).fill(byte);
+
+    const userAccount = (
+      key: Uint8Array,
+      inactive = zeroBytes,
+    ): Identifier => ({
+      is_left: true,
+      left: key,
+      right: { bytes: inactive },
+    });
+
+    const contractAccount = (
+      address: Uint8Array,
+      inactive = zeroBytes,
+    ): Identifier => ({
+      is_left: false,
+      left: inactive,
+      right: { bytes: address },
+    });
+
+    const callerOf = (account: Identifier): Caller => ({ identifier: account });
+
+    const ALICE_ID = bytesOf(1);
+    const BOB_ID = bytesOf(2);
+    const CONTRACT_ID = bytesOf(7);
+
+    const ALICE_ACCOUNT = userAccount(ALICE_ID);
+    const BOB_ACCOUNT = userAccount(BOB_ID);
+    const CONTRACT = contractAccount(CONTRACT_ID);
+
+    const ZERO = userAccount(zeroBytes);
+    const CONTRACT_ARM_ZERO = contractAccount(zeroBytes);
+    const NON_CANONICAL_ZERO = userAccount(zeroBytes, bytesOf(9));
+    const NON_CANONICAL_ALICE = userAccount(ALICE_ID, bytesOf(9));
+
+    const ALICE_EK = bytesOf(0x11);
+    const BOB_EK = bytesOf(0x22);
+    const ZERO_EK = bytesOf(0x33);
+
+    const CALLER_MOCK_NAME = 'Confidential';
+    const CALLER_MOCK_SYMBOL = 'CNF';
+    const CALLER_MOCK_DECIMALS = 18n;
+    const AMOUNT = 100n;
+
+    const CONTRACT_ACCOUNT = 'ConfidentialFungibleToken: contract caller';
+    const INVALID_CALLER = 'ConfidentialFungibleToken: invalid caller';
+    const SENDER_NOT_REGISTERED =
+      'ConfidentialFungibleToken: sender not registered';
+    const INVALID_RECEIVER = 'ConfidentialFungibleToken: invalid receiver';
+    const INVALID_SPENDER = 'ConfidentialFungibleToken: invalid spender';
+    const NO_ESCROW = 'ConfidentialFungibleToken: no escrow';
+
+    let callerCft: ConfidentialFungibleTokenCallerSimulator;
+
+    const register = async (account: Identifier, ek: Uint8Array) => {
+      await callerCft.privateState.switchEncryptionKey(ek);
+      return callerCft.register(callerOf(account));
+    };
+
+    // Mints `amount` to `account`, sweeps it into spendable and caches it.
+    // Leaves `ek` active.
+    const fund = async (
+      account: Identifier,
+      ek: Uint8Array,
+      amount: bigint,
+    ) => {
+      await callerCft.privateState.switchEncryptionKey(ek);
+      await callerCft._mint(account.left, amount);
+      await callerCft.sweep(callerOf(account));
+      await callerCft.privateState.cachePlaintext(
+        await callerCft.balanceOf(account.left),
+        amount,
+      );
+    };
+
+    const snapshot = async () => {
+      const ids = [ALICE_ID, BOB_ID, CONTRACT_ID, zeroBytes];
+      const views = [];
+      for (const id of ids) {
+        views.push({
+          registered: await callerCft.isRegistered(id),
+          balance: await callerCft.balanceOf(id),
+          pending: await callerCft.pendingOf(id),
+        });
+      }
+      return { views, escrow: await callerCft.allowance(ALICE_ID, BOB_ID) };
+    };
+
+    const CALLER_CIRCUITS: [string, (caller: Caller) => Promise<unknown>][] = [
+      ['registerWithKey', (caller) => callerCft.register(caller)],
+      ['_burn', (caller) => callerCft._burn(caller, 10n)],
+      ['transfer', (caller) => callerCft.transfer(caller, BOB_ID, 10n)],
+      ['_move', (caller) => callerCft._move(caller, BOB_ID, 10n)],
+      ['sweep', (caller) => callerCft.sweep(caller)],
+      ['approve', (caller) => callerCft.approve(caller, BOB_ID, 10n)],
+      [
+        'transferFrom',
+        (caller) => callerCft.transferFrom(caller, ALICE_ID, BOB_ID, 10n),
+      ],
+      ['_burnFrom', (caller) => callerCft._burnFrom(caller, ALICE_ID, 10n)],
+      ['clearMemos', (caller) => callerCft.clearMemos(caller, 0n)],
+    ];
+
+    beforeEach(async () => {
+      callerCft = await ConfidentialFungibleTokenCallerSimulator.create(
+        CALLER_MOCK_NAME,
+        CALLER_MOCK_SYMBOL,
+        CALLER_MOCK_DECIMALS,
+      );
+      await register(BOB_ACCOUNT, BOB_EK);
+    });
+
+    describe.each([
+      ['a contract identifier', CONTRACT],
+      ['the contract-arm zero account', CONTRACT_ARM_ZERO],
+    ])('when the caller is %s', (_, account) => {
+      const caller = callerOf(account);
+
+      beforeEach(async () => {
+        await register(ALICE_ACCOUNT, ALICE_EK);
+        await fund(ALICE_ACCOUNT, ALICE_EK, AMOUNT);
+      });
+
+      it.each(CALLER_CIRCUITS)('should fail %s', async (_, call) => {
+        const before = await snapshot();
+        await expect(call(caller)).rejects.toThrow(CONTRACT_ACCOUNT);
+        expect(await snapshot()).toEqual(before);
+      });
+    });
+
+    describe('when an account calls with a non-zero inactive arm', () => {
+      const caller = callerOf(NON_CANONICAL_ALICE);
+
+      it('should register under its key', async () => {
+        await callerCft.privateState.switchEncryptionKey(ALICE_EK);
+        expect(await callerCft.register(caller)).toEqual(ALICE_ID);
+        expect(await callerCft.isRegistered(ALICE_ID)).toBe(true);
+      });
+
+      it('should transfer from the balance of its key', async () => {
+        await register(NON_CANONICAL_ALICE, ALICE_EK);
+        await fund(NON_CANONICAL_ALICE, ALICE_EK, AMOUNT);
+
+        expect(await callerCft.transfer(caller, BOB_ID, 30n)).toEqual(ALICE_ID);
+
+        // Burning exactly the remainder proves the balance of the key.
+        await callerCft.privateState.cachePlaintext(
+          await callerCft.balanceOf(ALICE_ID),
+          AMOUNT - 30n,
+        );
+        expect(await callerCft._burn(caller, AMOUNT - 30n)).toEqual(ALICE_ID);
+      });
+    });
+
+    describe.each([
+      ['the zero account', ZERO],
+      ['a non-canonical zero account', NON_CANONICAL_ZERO],
+    ])('when the caller is %s', (_, account) => {
+      const caller = callerOf(account);
+
+      beforeEach(async () => {
+        await register(ALICE_ACCOUNT, ALICE_EK);
+        await fund(ALICE_ACCOUNT, ALICE_EK, AMOUNT);
+        await callerCft.approve(callerOf(ALICE_ACCOUNT), BOB_ID, 40n);
+      });
+
+      it('should fail transfer while unregistered', async () => {
+        const before = await snapshot();
+        await expect(callerCft.transfer(caller, BOB_ID, 10n)).rejects.toThrow(
+          SENDER_NOT_REGISTERED,
+        );
+        expect(await snapshot()).toEqual(before);
+      });
+
+      it('should fail transferFrom from another account', async () => {
+        const before = await snapshot();
+        await expect(
+          callerCft.transferFrom(caller, ALICE_ID, BOB_ID, 10n),
+        ).rejects.toThrow(NO_ESCROW);
+        expect(await snapshot()).toEqual(before);
+      });
+
+      it('should fail _burnFrom from another account', async () => {
+        const before = await snapshot();
+        await expect(
+          callerCft._burnFrom(caller, ALICE_ID, 10n),
+        ).rejects.toThrow(NO_ESCROW);
+        expect(await snapshot()).toEqual(before);
+      });
+
+      it('should fail registerWithKey', async () => {
+        const before = await snapshot();
+        await expect(register(account, ZERO_EK)).rejects.toThrow(
+          INVALID_CALLER,
+        );
+        expect(await callerCft.isRegistered(zeroBytes)).toBe(false);
+        expect(await snapshot()).toEqual(before);
+      });
+    });
+
+    describe('when the zero account is the counterparty', () => {
+      beforeEach(async () => {
+        await register(ALICE_ACCOUNT, ALICE_EK);
+        await fund(ALICE_ACCOUNT, ALICE_EK, AMOUNT);
+      });
+
+      it('should fail _mint to it', async () => {
+        const before = await snapshot();
+        await expect(callerCft._mint(zeroBytes, 10n)).rejects.toThrow(
+          INVALID_RECEIVER,
+        );
+        expect(await snapshot()).toEqual(before);
+      });
+
+      it('should fail transfer to it', async () => {
+        const before = await snapshot();
+        await expect(
+          callerCft.transfer(callerOf(ALICE_ACCOUNT), zeroBytes, 10n),
+        ).rejects.toThrow(INVALID_RECEIVER);
+        expect(await snapshot()).toEqual(before);
+      });
+
+      it('should fail _move to it', async () => {
+        const before = await snapshot();
+        await expect(
+          callerCft._move(callerOf(ALICE_ACCOUNT), zeroBytes, 10n),
+        ).rejects.toThrow(INVALID_RECEIVER);
+        expect(await snapshot()).toEqual(before);
+      });
+
+      it('should fail transferFrom to it', async () => {
+        await callerCft.approve(callerOf(ALICE_ACCOUNT), BOB_ID, 40n);
+        const before = await snapshot();
+        await expect(
+          callerCft.transferFrom(
+            callerOf(BOB_ACCOUNT),
+            ALICE_ID,
+            zeroBytes,
+            10n,
+          ),
+        ).rejects.toThrow(INVALID_RECEIVER);
+        expect(await snapshot()).toEqual(before);
+      });
+
+      it('should fail approve of it as spender', async () => {
+        const before = await snapshot();
+        await expect(
+          callerCft.approve(callerOf(ALICE_ACCOUNT), zeroBytes, 10n),
+        ).rejects.toThrow(INVALID_SPENDER);
+        expect(await snapshot()).toEqual(before);
+      });
+    });
+  },
+);
