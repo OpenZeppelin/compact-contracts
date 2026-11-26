@@ -1,0 +1,34 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenAllowlist extension in
+// isolation, at depth 32: `_allow` and `_disallow` are re-exported ungated, so
+// anyone can edit the list. DO NOT deploy this mock.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../ConfidentialNoteFungibleTokenAllowlist"<32> prefix Allowlist_;
+
+export { ContractAddress, Either };
+
+export { Allowlist__allowed, Allowlist__members };
+
+export circuit assertAllowed(
+  account: Either<Bytes<32>, ContractAddress>,
+  path: Vector<32, MerkleTreePathEntry>,
+): [] {
+  return Allowlist_assertAllowed(account, path);
+}
+
+export circuit _allow(account: Either<Bytes<32>, ContractAddress>): [] {
+  return Allowlist__allow(account);
+}
+
+export circuit _disallow(
+  account: Either<Bytes<32>, ContractAddress>,
+  path: Vector<32, MerkleTreePathEntry>,
+): [] {
+  return Allowlist__disallow(account, path);
+}
+
+export pure circuit leafOf(account: Either<Bytes<32>, ContractAddress>): Bytes<32> {
+  return Allowlist_leafOf(account);
+}

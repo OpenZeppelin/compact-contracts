@@ -1,0 +1,100 @@
+// TEST-ONLY. Composes the ConfidentialNoteFungibleToken core at depth 32 with
+// the Freeze extension the way a deployed token would: `transfer` and `burn`
+// check the input note against `_frozen`, `seize` does not. `mint`, `seize`,
+// `_freeze` and `_unfreeze` are ungated, so anyone can create value, freeze
+// any note and seize any note. DO NOT deploy this mock.
+//
+// A spender authenticates under `_noteSalt` and passes the input note and its
+// path entries as arguments. Every circuit returns the notes it created.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
+import "../../../../crypto/randomness/RandPrfExpand" prefix RandPrfExpand_;
+import "../../../ConfidentialNoteFungibleToken"<32, Either<Bytes<32>, ContractAddress>> prefix Core_;
+import "../../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
+import "../../ConfidentialNoteFungibleTokenFreeze" prefix Freeze_;
+
+export { ContractAddress, Either, Core_Note };
+
+export { Core__commitments, Core__nullifiers, Core__issuedNonces, Freeze__frozen };
+
+// The salt every note-owner key on this deployment is derived under.
+sealed ledger _noteSalt: Bytes<32>;
+
+constructor(noteSalt: Bytes<32>) {
+  _noteSalt = disclose(noteSalt);
+}
+
+export circuit mint(recipientPk: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Core_Note {
+  return Core__mint(recipientPk, value);
+}
+
+export circuit transfer(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): [Core_Note, Core_Note] {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  Freeze_assertNotFrozen(note);
+  return Core__transfer(caller.identifier, recipientPk, value, note, path);
+}
+
+export circuit burn(
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): Core_Note {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  Freeze_assertNotFrozen(note);
+  return Core__burn(caller.identifier, value, note, path);
+}
+
+export circuit _freeze(nf: Bytes<32>): [] {
+  return Freeze__freeze(nf);
+}
+
+export circuit _unfreeze(nf: Bytes<32>): [] {
+  return Freeze__unfreeze(nf);
+}
+
+export circuit isFrozen(nf: Bytes<32>): Boolean {
+  return Freeze_isFrozen(nf);
+}
+
+// No freeze line: a frozen note can still be seized. The output carries the
+// consumed value, under a nonce bound to the consumed nonce and the recovery
+// key.
+export circuit seize(
+  targetPk: Either<Bytes<32>, ContractAddress>,
+  recoveryPk: Either<Bytes<32>, ContractAddress>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): Core_Note {
+  Core__consumeNote(note, targetPk, path);
+  const seized = Core_Note {
+    value: note.value,
+    nonce: degradeToTransient(RandPrfExpand_derive<[Field, Either<Bytes<32>, ContractAddress>]>(
+      pad(32, "MockFreezable:nonce"), pad(32, "MockFreezable:seize"), [note.nonce, recoveryPk]
+    ))
+  };
+  Core__mintNote(seized, recoveryPk);
+  return disclose(seized);
+}
+
+export pure circuit deriveIdentifier(
+  secretKey: Bytes<32>,
+  salt: Bytes<32>,
+): Either<Bytes<32>, ContractAddress> {
+  return AuthPrfPseudonym_deriveIdentifier(secretKey, salt);
+}
+
+export pure circuit commitOf(note: Core_Note, pk: Either<Bytes<32>, ContractAddress>): Bytes<32> {
+  return Utils_commitOf<Either<Bytes<32>, ContractAddress>>(note, pk);
+}
+
+export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
+  return Utils_nullifierOf(note);
+}

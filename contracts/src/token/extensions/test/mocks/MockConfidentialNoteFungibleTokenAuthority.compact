@@ -1,0 +1,46 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenAuthority extension in
+// isolation. The checking circuits authenticate the caller under the salt
+// `pad(32, "MockAuthority")`, and `_transferAuthority` is re-exported ungated,
+// so anyone can take the role. DO NOT deploy this mock.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
+import "../../ConfidentialNoteFungibleTokenAuthority" prefix Authority_;
+
+export { ContractAddress, Either };
+
+export { Authority__isInitialized, Authority__authority };
+
+// `inits` is the number of `initialize` calls: 0 leaves the contract
+// uninitialized, 2 reaches the guard against a second call.
+constructor(initialAuthority: Either<Bytes<32>, ContractAddress>, inits: Uint<8>) {
+  if (disclose(inits) >= 1) {
+    Authority_initialize(initialAuthority);
+  }
+  if (disclose(inits) >= 2) {
+    Authority_initialize(initialAuthority);
+  }
+}
+
+export circuit authority(): Either<Bytes<32>, ContractAddress> {
+  return Authority_authority();
+}
+
+export circuit assertOnlyAuthority(): [] {
+  return Authority_assertOnlyAuthority(
+    AuthPrfPseudonym_authenticate(pad(32, "MockAuthority"))
+  );
+}
+
+export circuit transferAuthority(newAuthority: Either<Bytes<32>, ContractAddress>): [] {
+  return Authority_transferAuthority(
+    AuthPrfPseudonym_authenticate(pad(32, "MockAuthority")),
+    newAuthority
+  );
+}
+
+export circuit _transferAuthority(newAuthority: Either<Bytes<32>, ContractAddress>): [] {
+  return Authority__transferAuthority(newAuthority);
+}

@@ -1,0 +1,47 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenReview extension in
+// isolation: `_review` and the registry mutators are re-exported ungated, so
+// anyone can approve a key or push a record. The extension imports no token
+// module, so nothing here is committed. DO NOT deploy this mock.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../ConfidentialNoteFungibleTokenReview" prefix Review_;
+
+export { ContractAddress, Either };
+
+export { Review_ReviewRecord, Review_RecoveredRecord };
+
+export { Review__reviewers, Review__reviewTrail };
+
+export circuit _addReviewer(reviewerKey: JubjubPoint): [] {
+  return Review__addReviewer(reviewerKey);
+}
+
+export circuit _removeReviewer(reviewerKey: JubjubPoint): [] {
+  return Review__removeReviewer(reviewerKey);
+}
+
+export circuit _review(
+  reviewerKey: JubjubPoint,
+  owner: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  nonce: Field,
+  slot: Bytes<32>,
+): [] {
+  return Review__review(reviewerKey, owner, value, nonce, slot);
+}
+
+export pure circuit recoverRecord(
+  record: Review_ReviewRecord,
+  reviewerScalar: JubjubScalar,
+): Review_RecoveredRecord {
+  return Review_recoverRecord(record, reviewerScalar);
+}
+
+export pure circuit ownerOf(
+  ownerLo: Uint<128>,
+  ownerHi: Uint<128>,
+): Either<Bytes<32>, ContractAddress> {
+  return Review_ownerOf(ownerLo, ownerHi);
+}

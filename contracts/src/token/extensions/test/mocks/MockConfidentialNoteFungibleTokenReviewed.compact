@@ -1,0 +1,113 @@
+// TEST-ONLY. Composes the ConfidentialNoteFungibleToken core at depth 32 with
+// the Review extension the way a deployed token would: every output note is
+// committed and reviewed in one circuit, to the reviewer key the caller names.
+// `mint` and the registry mutators are ungated, so anyone can create value or
+// approve a key. DO NOT deploy this mock.
+//
+// Spends authenticate the caller under `_noteSalt` and take the note and its
+// path as arguments. Created notes are returned.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
+import "../../../ConfidentialNoteFungibleToken"<32, Either<Bytes<32>, ContractAddress>> prefix Core_;
+import "../../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
+import "../../ConfidentialNoteFungibleTokenReview" prefix Review_;
+
+export { ContractAddress, Either };
+
+export { Core_Note, Review_ReviewRecord, Review_RecoveredRecord };
+
+export {
+  Core__commitments,
+  Core__nullifiers,
+  Core__issuedNonces,
+  Review__reviewers,
+  Review__reviewTrail,
+};
+
+// The salt every holder's note key on this deployment is derived under.
+sealed ledger _noteSalt: Bytes<32>;
+
+constructor(noteSalt: Bytes<32>) {
+  _noteSalt = disclose(noteSalt);
+}
+
+export circuit _addReviewer(reviewerKey: JubjubPoint): [] {
+  Review__addReviewer(reviewerKey);
+}
+
+export circuit _removeReviewer(reviewerKey: JubjubPoint): [] {
+  Review__removeReviewer(reviewerKey);
+}
+
+export circuit mint(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  reviewerKey: JubjubPoint,
+): Core_Note {
+  const note = Core__mint(recipientPk, value);
+  Review__review(reviewerKey, recipientPk, note.value, note.nonce, pad(32, "MockReviewed:mint"));
+  return note;
+}
+
+// Both outputs are reviewed, the change to the spender, so the record count
+// per transfer is two whatever the amounts.
+export circuit transfer(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+  reviewerKey: JubjubPoint,
+): [Core_Note, Core_Note] {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  const notes = Core__transfer(caller.identifier, recipientPk, value, note, path);
+  Review__review(reviewerKey, recipientPk, notes[0].value, notes[0].nonce, pad(32, "MockReviewed:out"));
+  Review__review(reviewerKey, caller.identifier, notes[1].value, notes[1].nonce, pad(32, "MockReviewed:change"));
+  return notes;
+}
+
+export circuit burn(
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+  reviewerKey: JubjubPoint,
+): Core_Note {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  const change = Core__burn(caller.identifier, value, note, path);
+  Review__review(reviewerKey, caller.identifier, change.value, change.nonce, pad(32, "MockReviewed:change"));
+  return change;
+}
+
+export pure circuit deriveIdentifier(
+  secretKey: Bytes<32>,
+  salt: Bytes<32>,
+): Either<Bytes<32>, ContractAddress> {
+  return AuthPrfPseudonym_deriveIdentifier(secretKey, salt);
+}
+
+export pure circuit commitOf(
+  note: Core_Note,
+  pk: Either<Bytes<32>, ContractAddress>,
+): Bytes<32> {
+  return Utils_commitOf<Either<Bytes<32>, ContractAddress>>(note, pk);
+}
+
+export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
+  return Utils_nullifierOf(note);
+}
+
+export pure circuit recoverRecord(
+  record: Review_ReviewRecord,
+  reviewerScalar: JubjubScalar,
+): Review_RecoveredRecord {
+  return Review_recoverRecord(record, reviewerScalar);
+}
+
+export pure circuit ownerOf(
+  ownerLo: Uint<128>,
+  ownerHi: Uint<128>,
+): Either<Bytes<32>, ContractAddress> {
+  return Review_ownerOf(ownerLo, ownerHi);
+}

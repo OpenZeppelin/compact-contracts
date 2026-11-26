@@ -1,0 +1,33 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenMetadata extension in
+// isolation. The constructor can skip `initialize` or call it twice, so a
+// spec reaches both init guards. DO NOT deploy this mock.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../ConfidentialNoteFungibleTokenMetadata" prefix Metadata_;
+
+export { Metadata__isInitialized, Metadata__name, Metadata__symbol, Metadata__decimals };
+
+// `inits` is the number of `initialize` calls: 0 leaves the contract
+// uninitialized, 2 reaches the guard against a second call.
+constructor(name_: Opaque<"string">, symbol_: Opaque<"string">, decimals_: Uint<8>, inits: Uint<8>) {
+  if (disclose(inits) >= 1) {
+    Metadata_initialize(name_, symbol_, decimals_);
+  }
+  if (disclose(inits) >= 2) {
+    Metadata_initialize(name_, symbol_, decimals_);
+  }
+}
+
+export circuit name(): Opaque<"string"> {
+  return Metadata_name();
+}
+
+export circuit symbol(): Opaque<"string"> {
+  return Metadata_symbol();
+}
+
+export circuit decimals(): Uint<8> {
+  return Metadata_decimals();
+}

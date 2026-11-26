@@ -1,0 +1,37 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenAuthority extension
+// that takes the caller as a circuit argument, so anyone can act as any
+// account. DO NOT deploy this mock.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import { Caller } from "../../../../identifier/Identifier";
+
+import "../../ConfidentialNoteFungibleTokenAuthority" prefix Authority_;
+
+export { Caller, ContractAddress, Either };
+
+export { Authority__isInitialized, Authority__authority };
+
+// `inits` is the number of `initialize` calls: 0 leaves the contract
+// uninitialized, so a hand-built caller can meet the unset authority.
+constructor(initialAuthority: Either<Bytes<32>, ContractAddress>, inits: Uint<8>) {
+  if (disclose(inits) >= 1) {
+    Authority_initialize(initialAuthority);
+  }
+  if (disclose(inits) >= 2) {
+    Authority_initialize(initialAuthority);
+  }
+}
+
+export circuit authority(): Either<Bytes<32>, ContractAddress> {
+  return Authority_authority();
+}
+
+export circuit assertOnlyAuthority(caller: Caller): [] {
+  return Authority_assertOnlyAuthority(caller);
+}
+
+export circuit transferAuthority(caller: Caller, newAuthority: Either<Bytes<32>, ContractAddress>): [] {
+  return Authority_transferAuthority(caller, newAuthority);
+}

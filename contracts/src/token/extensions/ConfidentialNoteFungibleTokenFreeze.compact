@@ -1,0 +1,141 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialNoteFungibleTokenFreeze.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenFreeze
+ * @description Extension that freezes single notes of a
+ * `ConfidentialNoteFungibleToken`: a public set of frozen nullifiers, checked
+ * on the owner's spend paths. Freezing needs the note's nonce and nothing from
+ * its owner. It imports the note type and `nullifierOf` from the token's
+ * utils and no module with state: the composer calls `assertNotFrozen`
+ * beside the core's spend.
+ *
+ * ```compact
+ * export circuit burn(value: Uint<128>, note: Core_Note,
+ *                     path: Vector<32, MerkleTreePathEntry>): Core_Note {
+ *   const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+ *   Freeze_assertNotFrozen(note);
+ *   return Core__burn(caller.identifier, value, note, path);
+ * }
+ * ```
+ *
+ * @dev Notation:
+ * `nf = nullifierOf(note)`, the nullifier the core publishes when the note is
+ * spent (see `ConfidentialNoteFungibleTokenUtils`).
+ *
+ * @notice Privacy:
+ * - `_freeze` publishes `nf` before the note is spent. The same `nf` enters
+ *   the core's `_nullifiers` at the later spend or seize, so the two are
+ *   linkable. Whoever holds the nonce (the owner, the sender) recognizes it.
+ *   No owner, value or leaf is shown.
+ * - `assertNotFrozen` discloses the `nf` the core publishes in the same
+ *   transaction. No new data.
+ * - `isFrozen` puts the queried `nf` in a transaction. A reader who wants no
+ *   trace reads `_frozen` off chain.
+ *
+ * @notice Security:
+ * - `_freeze` and `_unfreeze` are ungated. The composer gates them.
+ * - `assertNotFrozen` binds the `note` it is given and protects only the
+ *   paths that call it.
+ * - The set does not prove a note exists. Freezing a spent or unknown `nf`
+ *   stops no spend. The entry still lands in `_frozen`, and a spend or a
+ *   seize removes none.
+ *
+ * @notice Concurrency:
+ * - `isFrozen` and `assertNotFrozen` read the membership of one `nf`, so a
+ *   `_freeze` or `_unfreeze` of that `nf` that lands first and changes it
+ *   fails them.
+ * - `_freeze` and `_unfreeze` read nothing. A freeze that lands first fails
+ *   the in-flight spend of that note. A spend that lands first leaves the
+ *   freeze with no effect.
+ *
+ * @notice Composition:
+ * - Owner paths: call `assertNotFrozen(note)` before the core's `_transfer`
+ *   or `_burn`, with the same `note` argument.
+ * - `mint` takes no freeze line. A seize takes none either, so a frozen note
+ *   can still be seized.
+ * - Gate `_freeze` and `_unfreeze` behind the composer's access control.
+ * - Operational sequence: freeze, wait for finality, seize. A freeze wins only
+ *   if it lands first.
+ *
+ * @notice Client-side duties:
+ * The freezing party computes `nullifierOf(note)` off chain from the nonce it
+ * holds, and passes `nf`.
+ *
+ * @notice Scalability:
+ * Notes are frozen one by one. There is no account-level freeze of a hidden
+ * holder. `_frozen` grows by one entry per frozen note.
+ */
+module ConfidentialNoteFungibleTokenFreeze {
+  import CompactStandardLibrary;
+
+  import { Note, nullifierOf } from "../utils/ConfidentialNoteFungibleTokenUtils";
+
+  /**
+   * @description The nullifiers of frozen notes.
+   * @type {Set<Bytes<32>>} _frozen
+   */
+  export ledger _frozen: Set<Bytes<32>>;
+
+  /**
+   * @description Whether `nf` is frozen.
+   *
+   * @constraints k=8, rows=129
+   *
+   * @param {Bytes<32>} nf - The nullifier to query.
+   * @return {Boolean} - True if `nf` is frozen.
+   */
+  export circuit isFrozen(nf: Bytes<32>): Boolean {
+    return _frozen.member(disclose(nf));
+  }
+
+  /**
+   * @description Throws if `note` is frozen. The nullifier is derived here, so
+   * the checked note is the spent one when the composer passes one value to
+   * both calls.
+   *
+   * @constraints k=13, rows=3983
+   *
+   * Requirements:
+   *
+   * - `nullifierOf(note)` is not frozen.
+   *
+   * @param {Note} note - The note about to be spent.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertNotFrozen(note: Note): [] {
+    assert(!_frozen.member(disclose(nullifierOf(note))), "ConfidentialNoteFungibleTokenFreeze: note frozen");
+  }
+
+  /**
+   * @description Freezes the note whose nullifier is `nf`. Idempotent.
+   *
+   * @constraints k=8, rows=125
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * @param {Bytes<32>} nf - The nullifier to freeze.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _freeze(nf: Bytes<32>): [] {
+    _frozen.insert(disclose(nf));
+  }
+
+  /**
+   * @description Unfreezes the note whose nullifier is `nf`. Idempotent.
+   *
+   * @constraints k=8, rows=123
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * @param {Bytes<32>} nf - The nullifier to unfreeze.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _unfreeze(nf: Bytes<32>): [] {
+    _frozen.remove(disclose(nf));
+  }
+}

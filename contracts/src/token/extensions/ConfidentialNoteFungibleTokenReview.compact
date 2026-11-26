@@ -1,0 +1,407 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialNoteFungibleTokenReview.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenReview
+ * @description Extension that publishes an encrypted record of
+ * `(owner, value, nonce)` for an output note of a
+ * `ConfidentialNoteFungibleToken`, to a reviewer key the caller names and the
+ * module has approved. One ECDH per record, four one-time pads from
+ * `EcdhMask.kdfFromDigest`, one append-only `_reviewTrail` list. It imports no
+ * token module: the composer calls `_review` for a note the core already
+ * created.
+ *
+ * ```compact
+ * export circuit mint(recipientPk: Either<Bytes<32>, ContractAddress>, value: Uint<128>,
+ *                     reviewerKey: JubjubPoint): Core_Note {
+ *   // The composer's issuer gate goes first.
+ *   const note = Core__mint(recipientPk, value);
+ *   Review__review(reviewerKey, recipientPk, note.value, note.nonce, pad(32, "Token:mint"));
+ *   return note;
+ * }
+ * ```
+ *
+ * @dev Notation. `pk`, `nonce` and `cm` are defined in the core
+ * - `reviewerKey = g^reviewerScalar`: an approved key in `_reviewers`.
+ * - `owner`: the `Either<Bytes<32>, ContractAddress>` the core commits for the
+ *   output, always its key arm here.
+ * - `ownerLo`, `ownerHi`: bytes 0 to 15 and 16 to 31 of `owner.left`, each
+ *   read as a little-endian `Uint<128>`.
+ * - `e`: the ephemeral scalar, `RandPrfExpand.derive` under the tag
+ *   `"CNFT:review:e"`, the caller's `slot` and the context
+ *   `(nonce, reviewerKey, value, owner.left)`, reduced to a scalar.
+ * - `E = g^e` and `S = reviewerKey^e = E^reviewerScalar`: the `crypto/Ecdh`
+ *   exchange.
+ * - `xCt = (x + kdf(S, "CNFT:review:<x>")) mod 2^248` for `x` in `value`,
+ *   `nonce`, `owner:lo` and `owner:hi`: one-time pads over `[0, 2^248)`, the
+ *   width of `kdf`'s output.
+ *
+ * @dev Compatibility:
+ * The wire format a reviewer depends on is the `ReviewRecord` layout, the four
+ * pad tags, the modular pad and the limb order (`lo` is bytes 0 to 15, each
+ * limb little-endian). The `e` tag and its derivation are sender-side: the
+ * reviewer recovers `S` from `E` and never recomputes `e`.
+ *
+ * @notice Privacy:
+ * - Public, per record: `reviewerKey`. Anyone sees which reviewer can open an
+ *   output, links the outputs sent to one reviewer and counts them.
+ * - Public, per record: `E`, a fresh pseudorandom point, and four pad outputs,
+ *   each uniform to anyone without `reviewerScalar`. No field names the owner
+ *   or `cm`.
+ * - Public, per tx: one record per `_review` call. The count is constant per
+ *   entry point when the composer reviews every output (see Composition).
+ * - Public, per registry change: the key added or removed.
+ * - Private: `owner`, `value`, `nonce`, the seed, `e`, `S`. `slot` is hashed
+ *   into `e` and never written.
+ * - A reviewer learns the owner, value and nonce of every note addressed to
+ *   it, and can watch each of those notes being spent.
+ *
+ * @notice Security:
+ * - Registry: `_reviewers` is the set of approved keys. `_review` rejects any
+ *   other key. `_addReviewer` and `_removeReviewer` are ungated and
+ *   idempotent; the composer gates them.
+ * - The caller chooses the reviewer. The module checks only that the key is
+ *   approved, so binding a holder to one reviewer is the composer's policy.
+ * - No authentication: the pads are malleable and nothing binds a record to a
+ *   leaf. The reviewer accepts a record only once its commitment is a leaf
+ *   (see Client-side duties).
+ * - No authorization: `_review` is ungated like the core's `_` circuits. The
+ *   composer's gate on note creation is the gate on review.
+ * - Not checked here: that the recorded triple is the committed note. The
+ *   composer passes one owner and one note to the core and to `_review` in
+ *   one circuit.
+ * - The owner must be a canonical key arm. It is checked, never rewritten: the
+ *   core commits the whole `Either`, so a rewritten owner would give a record
+ *   that matches no leaf. A zero key is accepted, since the record stays
+ *   faithful to it.
+ * - The nonce in a record is spend-critical: the reviewer derives the note's
+ *   nullifier.
+ * - The pads are one-time: a repeated `e` to one key opens both records. `e`
+ *   binds the whole plaintext and the key, so under a reused seed two records
+ *   share a pad only when they carry the same triple to the same key. The
+ *   seed MUST still be fresh and secret per call.
+ * - Removal is forward-only: records written earlier stay readable.
+ * - `reviewerScalar` never enters an on-chain circuit: `recoverRecord` is pure.
+ *
+ * @notice Concurrency:
+ * - `_review` reads `_reviewers` for its key, then pushes one record. It fails
+ *   only when `_removeReviewer` of that key lands first. The caller names
+ *   another approved key and rebuilds the transaction.
+ * - `_addReviewer` and `_removeReviewer` read nothing and pin nothing.
+ * - `pushFront` pins nothing, so two `_review` calls in one block never
+ *   conflict.
+ *
+ * @notice Composition:
+ * - Nothing to initialize. A composer that wants no review does not import
+ *   the module: emission is a compile-time choice.
+ * - Call `_review` once per output, zero-value change included, never under a
+ *   condition on private data. `owner` is the value passed to the core for
+ *   that output.
+ *   - `mint`: one call with the recipient.
+ *   - `transfer`: one for the output with the recipient and one for the
+ *     change with the spender, under distinct slots.
+ *   - `burn`: one for the change with the spender.
+ * - A composer whose `T` is `Bytes<32>` passes
+ *   `left<Bytes<32>, ContractAddress>(pk)`, and its reviewer recomputes the
+ *   leaf with `commitOf<Bytes<32>>(note, owner.left)`.
+ * - Gate `_addReviewer` and `_removeReviewer` behind the composer's access
+ *   control.
+ *
+ * @notice Client-side duties:
+ * - Randomness: implement `RandPrfExpand`'s seed witness.
+ * - Keys: `reviewerKey = g^reviewerScalar`. Derive `reviewerScalar` under a
+ *   module-specific domain.
+ * - Senders read the approved keys from `_reviewers`.
+ * - Recovery, by the reviewer:
+ *   1. Read `_reviewTrail` from the length last seen. It is newest first.
+ *      Keep the records whose `reviewerKey` is its own key.
+ *   2. `r = recoverRecord(record, reviewerScalar)`.
+ *   3. Drop the record unless `r.value`, `r.ownerLo` and `r.ownerHi` are all
+ *      below `2^128`.
+ *   4. `owner = ownerOf(r.ownerLo, r.ownerHi)` and
+ *      `note = { value: r.value, nonce: r.nonce }`.
+ *   5. Keep it only if `commitOf<T>(note, owner)` is a leaf of the core's
+ *      `_commitments`. `nullifierOf(note)` in `_nullifiers` means spent.
+ * - There is no completeness check: a reviewer sees only what is addressed to
+ *   it.
+ *
+ * @notice Scalability:
+ * `_reviewTrail` gains one record per `_review` call and is never pruned.
+ * Each reviewer scans every record once.
+ *
+ * @dev Performance:
+ * `_review` pays one set lookup, one SHA-256 over the ephemeral preimage, two
+ * scalar multiplications, one point digest, four masks derived from it, four
+ * modular pads and the owner split.
+ */
+module ConfidentialNoteFungibleTokenReview {
+  import CompactStandardLibrary;
+
+  import { Identifier, IdentifierKind } from "../../identifier/Identifier";
+
+  import "../../crypto/Ecdh" prefix Ecdh_;
+  import "../../crypto/EcdhMask" prefix EcdhMask_;
+  import "../../crypto/randomness/RandPrfExpand" prefix RandPrfExpand_;
+  import "../../identifier/Identifier" prefix Identifier_;
+  import "../../math/UintN"<248> prefix U248_;
+  import "../../utils/Utils" prefix Utils_;
+
+  /**
+   * @description One output note, encrypted to an approved reviewer key.
+   * Public once written; only `reviewerKey` says anything on its own.
+   * @type {JubjubPoint} reviewerKey - The key the record is addressed to.
+   * @type {JubjubPoint} ephemeralPk - `E = g^e`, fresh per record. Never the
+   * identity.
+   * @type {Uint<248>} valueCt - `(value + kdf(S, "CNFT:review:value")) mod 2^248`.
+   * @type {Uint<248>} nonceCt - `(nonce + kdf(S, "CNFT:review:nonce")) mod 2^248`.
+   * @type {Uint<248>} ownerLoCt - `(ownerLo + kdf(S, "CNFT:review:owner:lo")) mod 2^248`.
+   * @type {Uint<248>} ownerHiCt - `(ownerHi + kdf(S, "CNFT:review:owner:hi")) mod 2^248`.
+   *
+   * @dev The `Uint<248>` pads keep every ciphertext atom below 32 bytes. The
+   * generated `List` accessors (`head`, `popFront`) throw `exceeded structure
+   * bounds` on an entry with a full-width field atom.
+   */
+  export struct ReviewRecord {
+    reviewerKey: JubjubPoint;
+    ephemeralPk: JubjubPoint;
+    valueCt: Uint<248>;
+    nonceCt: Uint<248>;
+    ownerLoCt: Uint<248>;
+    ownerHiCt: Uint<248>;
+  }
+
+  /**
+   * @description A record with its pads stripped, nothing checked. A wrong
+   * scalar yields four uniform values; the reviewer range-checks them and
+   * matches the commitment.
+   * @type {Uint<248>} value - The note's value, below `2^128` for a record
+   * addressed to the scalar's key.
+   * @type {Uint<248>} nonce - The note's nonce.
+   * @type {Uint<248>} ownerLo - Bytes 0 to 15 of the owner key, little-endian.
+   * @type {Uint<248>} ownerHi - Bytes 16 to 31 of the owner key, little-endian.
+   */
+  export struct RecoveredRecord {
+    value: Uint<248>;
+    nonce: Uint<248>;
+    ownerLo: Uint<248>;
+    ownerHi: Uint<248>;
+  }
+
+  struct OwnerLimbs {
+    bytes: Bytes<32>;
+    lo: Uint<128>;
+    hi: Uint<128>;
+  }
+
+  /**
+   * @description The approved reviewer keys. Never holds the identity point.
+   * @type {Set<JubjubPoint>} _reviewers
+   */
+  export ledger _reviewers: Set<JubjubPoint>;
+
+  /**
+   * @description Every record ever written, newest first. Append-only: no
+   * circuit reads, removes or overwrites a record. Unbounded.
+   * @type {List<ReviewRecord>} _reviewTrail - The feed reviewers scan.
+   */
+  export ledger _reviewTrail: List<ReviewRecord>;
+
+  /**
+   * @description Approves `reviewerKey`. Adding an approved key does nothing.
+   *
+   * @constraints k=10, rows=754
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * Requirements:
+   *
+   * - `reviewerKey` is not the identity point.
+   *
+   * @param {JubjubPoint} reviewerKey - The key to approve, `g^reviewerScalar`.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _addReviewer(reviewerKey: JubjubPoint): [] {
+    assert(reviewerKey != ecMulGenerator(0 as JubjubScalar),
+           "ConfidentialNoteFungibleTokenReview: identity reviewer key");
+    _reviewers.insert(disclose(reviewerKey));
+  }
+
+  /**
+   * @description Withdraws `reviewerKey`'s approval. Records already written
+   * to it stay readable. Removing an unknown key does nothing.
+   *
+   * @constraints k=7, rows=63
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * @param {JubjubPoint} reviewerKey - The key to withdraw.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _removeReviewer(reviewerKey: JubjubPoint): [] {
+    _reviewers.remove(disclose(reviewerKey));
+  }
+
+  /**
+   * @description Publishes `(owner, value, nonce)` encrypted to an approved
+   * `reviewerKey`: one ECDH under an ephemeral bound to the key and the
+   * plaintext, four modular `EcdhMask` pads, one `_reviewTrail` record. Call
+   * it beside the core's note creation, once per output.
+   *
+   * @constraints k=16, rows=34255
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * @dev Bound ephemeral:
+   * `e` is derived under `slot` and the context
+   * `(nonce, reviewerKey, value, owner.left)`, so it repeats only when all of
+   * `(seed, slot, nonce, reviewerKey, value, owner)` repeat.
+   *
+   * @dev Constant shape:
+   * No branch on the ledger: the transcript is the same for every input.
+   *
+   * Requirements:
+   *
+   * - `reviewerKey` is in `_reviewers`.
+   * - `owner` is a key arm.
+   * - `owner` is canonical: its unused `right` arm is the default.
+   * - The seed is not zero.
+   * - `nonce < 2^248`. Every `degradeToTransient` output qualifies.
+   *
+   * @param {JubjubPoint} reviewerKey - The approved key to address.
+   * @param {Either<Bytes<32>, ContractAddress>} owner - The owner the core
+   * committed the note to.
+   * @param {Uint<128>} value - The note's value.
+   * @param {Field} nonce - The note's nonce.
+   * @param {Bytes<32>} slot - The per-output tag; distinct per call when one
+   * circuit reviews more than one output.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _review(
+                   reviewerKey: JubjubPoint,
+                   owner: Identifier,
+                   value: Uint<128>,
+                   nonce: Field,
+                   slot: Bytes<32>
+                   ): [] {
+    assert(_reviewers.member(disclose(reviewerKey)),
+           "ConfidentialNoteFungibleTokenReview: reviewer not approved");
+    const key = reviewerKey;
+    const limbs = ownerLimbs(owner);
+    // The tag keeps `e` apart from a core nonce drawn from the same seed.
+    const e = degradeToTransient(RandPrfExpand_derive<[Field, JubjubPoint, Uint<128>, Bytes<32>]>(
+      pad(32, "CNFT:review:e"),
+      slot,
+      [nonce, key, value, limbs.bytes]
+    )) as JubjubScalar;
+    const shared = Ecdh_deriveShared(key, e);
+    // One point digest feeds all four pads.
+    const sharedDigest = EcdhMask_pointDigest(shared.sShared);
+    // The cast is the width check: a bit above the pad would sit in the clear.
+    const paddedNonce = nonce as Uint<248>;
+    const record = ReviewRecord {
+      reviewerKey: key,
+      ephemeralPk: shared.ephemeralPk,
+      valueCt: U248_wrappingAdd(value as Uint<248>,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:value")) as Uint<248>),
+      nonceCt: U248_wrappingAdd(paddedNonce,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:nonce")) as Uint<248>),
+      ownerLoCt: U248_wrappingAdd(limbs.lo as Uint<248>,
+                                  EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:owner:lo")) as Uint<248>),
+      ownerHiCt: U248_wrappingAdd(limbs.hi as Uint<248>,
+                                  EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:owner:hi")) as Uint<248>)
+    };
+    _reviewTrail.pushFront(disclose(record));
+  }
+
+  /**
+   * @description Strips the pads from a record with the reviewer's scalar.
+   * Pure and off-chain: a reviewer reads records with no proof.
+   *
+   * @constraints k=15, rows=21303
+   *
+   * @notice Raw result:
+   * Nothing derived from `reviewerScalar` or the recovered values is checked,
+   * so the circuit is no oracle for a candidate key. A wrong scalar returns
+   * four uniform values; the reviewer filters on `2^128` and the commitment
+   * tree.
+   *
+   * @dev Identity ephemeral:
+   * `_review` never writes one, and its pads would be public constants, so
+   * the record is refused rather than opened.
+   *
+   * Requirements:
+   *
+   * - `record.ephemeralPk` is not the identity point.
+   *
+   * @param {ReviewRecord} record - The record to open.
+   * @param {JubjubScalar} reviewerScalar - The secret behind the record's
+   * `reviewerKey`.
+   * @return {RecoveredRecord} - The padded quadruple.
+   */
+  export pure circuit recoverRecord(record: ReviewRecord, reviewerScalar: JubjubScalar): RecoveredRecord {
+    assert(record.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
+           "ConfidentialNoteFungibleTokenReview: identity ephemeral");
+    const sharedDigest = EcdhMask_pointDigest(Ecdh_recoverShared(record.ephemeralPk, reviewerScalar));
+    return RecoveredRecord {
+      value: U248_wrappingSub(record.valueCt,
+                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:value")) as Uint<248>),
+      nonce: U248_wrappingSub(record.nonceCt,
+                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:nonce")) as Uint<248>),
+      ownerLo: U248_wrappingSub(record.ownerLoCt,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:owner:lo")) as Uint<248>),
+      ownerHi: U248_wrappingSub(record.ownerHiCt,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:review:owner:hi")) as Uint<248>)
+    };
+  }
+
+  /**
+   * @description Joins two recovered limbs into the owner's key arm, the
+   * inverse of the split `_review` records.
+   *
+   * @constraints k=14, rows=8864
+   *
+   * @param {Uint<128>} ownerLo - Bytes 0 to 15 of the key, little-endian.
+   * @param {Uint<128>} ownerHi - Bytes 16 to 31 of the key, little-endian.
+   * @return {Either<Bytes<32>, ContractAddress>} - The canonical key arm.
+   */
+  export pure circuit ownerOf(ownerLo: Uint<128>, ownerHi: Uint<128>): Identifier {
+    const lo = (ownerLo as Bytes<16>) as Vector<16, Uint<8>>;
+    const hi = (ownerHi as Bytes<16>) as Vector<16, Uint<8>>;
+    const bytes: Vector<32, Uint<8>> = [...lo, ...hi];
+    return left<Bytes<32>, ContractAddress>(bytes as Bytes<32>);
+  }
+
+  // The one place the owner is checked. `owner` is an
+  // `Either<Bytes<32>, ContractAddress>`. Asserts, never rewrites: the record
+  // must reproduce the committed `Either` exactly.
+  pure circuit ownerLimbs(owner: Identifier): OwnerLimbs {
+    const id = Identifier_unpack(owner);
+    assert(id.kind == IdentifierKind.Key, "ConfidentialNoteFungibleTokenReview: contract owner");
+    assert(owner == Utils_canonicalize<Bytes<32>, ContractAddress>(owner),
+           "ConfidentialNoteFungibleTokenReview: non-canonical owner");
+    const b = id.bytes as Vector<32, Uint<8>>;
+    const lo: Vector<16, Uint<8>> = [b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+                                     b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]];
+    const hi: Vector<16, Uint<8>> = [b[16], b[17], b[18], b[19], b[20], b[21], b[22], b[23],
+                                     b[24], b[25], b[26], b[27], b[28], b[29], b[30], b[31]];
+    return OwnerLimbs {
+      bytes: id.bytes,
+      lo: limbOf(lo),
+      hi: limbOf(hi)
+    };
+  }
+
+  // Little-endian value of 16 bytes. The field sum costs fewer rows than a
+  // cast through `Bytes<16>`.
+  pure circuit limbOf(bytes: Vector<16, Uint<8>>): Uint<128> {
+    return fold((acc: [Field, Field], byte: Uint<8>): [Field, Field] =>
+                  [acc[0] + (byte as Field) * acc[1], acc[1] * 256],
+                [0 as Field, 1 as Field],
+                bytes)[0] as Uint<128>;
+  }
+}

@@ -1,0 +1,161 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialNoteFungibleTokenMetadata.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenMetadata
+ * @description Extension that gives a `ConfidentialNoteFungibleToken` a
+ * display name, a symbol and a decimals count: three constants and three
+ * getters. It imports no token module and touches no note.
+ *
+ * ```compact
+ * constructor(name_: Opaque<"string">, symbol_: Opaque<"string">, decimals_: Uint<8>) {
+ *   Metadata_initialize(name_, symbol_, decimals_);
+ * }
+ *
+ * export circuit name(): Opaque<"string"> {
+ *   return Metadata_name();
+ * }
+ * ```
+ *
+ * @notice Privacy:
+ * The three values are public constants. No circuit takes or writes per-call
+ * data.
+ *
+ * @notice Security:
+ * - The fields are `sealed`: only the constructor sets them, through
+ *   `initialize`, and no circuit changes them afterwards. A wrong value needs a
+ *   new deployment.
+ * - Presentational only: no circuit scales a value by `decimals`.
+ */
+module ConfidentialNoteFungibleTokenMetadata {
+  import CompactStandardLibrary;
+
+  /**
+   * @description Initialization flag, tracked per module.
+   * @type {Boolean} _isInitialized
+   */
+  export ledger _isInitialized: Boolean;
+
+  /**
+   * @description The token's display name, set once at construction.
+   * @type {Opaque<"string">} _name
+   */
+  export sealed ledger _name: Opaque<"string">;
+
+  /**
+   * @description The token's ticker symbol, set once at construction.
+   * @type {Opaque<"string">} _symbol
+   */
+  export sealed ledger _symbol: Opaque<"string">;
+
+  /**
+   * @description The number of decimals a wallet displays a value with, set
+   * once at construction.
+   * @type {Uint<8>} _decimals
+   */
+  export sealed ledger _decimals: Uint<8>;
+
+  /**
+   * @description Sets the name, the symbol and the decimals. Call it from the
+   * constructor: the fields are `sealed`, so no other circuit can.
+   *
+   * @constraints k=7, rows=108
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   *
+   * @param {Opaque<"string">} name_ - The token name.
+   * @param {Opaque<"string">} symbol_ - The token symbol.
+   * @param {Uint<8>} decimals_ - The display decimals.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(
+                   name_: Opaque<"string">,
+                   symbol_: Opaque<"string">,
+                   decimals_: Uint<8>
+                   ): [] {
+    assertNotInitialized();
+    _isInitialized = true;
+    _name = disclose(name_);
+    _symbol = disclose(symbol_);
+    _decimals = disclose(decimals_);
+  }
+
+  /**
+   * @description Asserts that the contract is initialized.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenMetadata: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract is not initialized.
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenMetadata: contract already initialized");
+  }
+
+  /**
+   * @description Returns the token name.
+   *
+   * @constraints k=6, rows=45
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Opaque<"string">} - The token name.
+   */
+  export circuit name(): Opaque<"string"> {
+    assertInitialized();
+    return _name;
+  }
+
+  /**
+   * @description Returns the token symbol.
+   *
+   * @constraints k=6, rows=45
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Opaque<"string">} - The token symbol.
+   */
+  export circuit symbol(): Opaque<"string"> {
+    assertInitialized();
+    return _symbol;
+  }
+
+  /**
+   * @description Returns the number of decimals a wallet displays a value
+   * with.
+   *
+   * @constraints k=6, rows=45
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Uint<8>} - The display decimals.
+   */
+  export circuit decimals(): Uint<8> {
+    assertInitialized();
+    return _decimals;
+  }
+}

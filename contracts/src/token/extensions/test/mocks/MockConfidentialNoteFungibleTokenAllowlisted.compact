@@ -1,0 +1,102 @@
+// TEST-ONLY. Composes the ConfidentialNoteFungibleToken core at depth 32 with
+// the Allowlist extension at depth 32: `mint` checks the recipient, `transfer`
+// the spender and the recipient, `burn` the spender. `mint`, `_allow` and
+// `_disallow` are ungated, so anyone can create value or edit the list. DO NOT
+// deploy this mock.
+//
+// Spends authenticate the caller under `_noteSalt` and take the note, its
+// path and the allowlist paths as arguments.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
+import "../../../ConfidentialNoteFungibleToken"<32, Either<Bytes<32>, ContractAddress>> prefix Core_;
+import "../../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
+import "../../ConfidentialNoteFungibleTokenAllowlist"<32> prefix Allowlist_;
+
+export { ContractAddress, Either };
+
+export { Core_Note };
+
+export {
+  Core__commitments,
+  Core__nullifiers,
+  Core__issuedNonces,
+  Allowlist__allowed,
+  Allowlist__members,
+};
+
+// The salt holders authenticate under.
+sealed ledger _noteSalt: Bytes<32>;
+
+constructor(noteSalt: Bytes<32>) {
+  _noteSalt = disclose(noteSalt);
+}
+
+export circuit _allow(account: Either<Bytes<32>, ContractAddress>): [] {
+  return Allowlist__allow(account);
+}
+
+export circuit _disallow(
+  account: Either<Bytes<32>, ContractAddress>,
+  path: Vector<32, MerkleTreePathEntry>,
+): [] {
+  return Allowlist__disallow(account, path);
+}
+
+export circuit mint(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  recipientAllowPath: Vector<32, MerkleTreePathEntry>,
+): Core_Note {
+  Allowlist_assertAllowed(recipientPk, recipientAllowPath);
+  return Core__mint(recipientPk, value);
+}
+
+export circuit transfer(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+  spenderAllowPath: Vector<32, MerkleTreePathEntry>,
+  recipientAllowPath: Vector<32, MerkleTreePathEntry>,
+): [Core_Note, Core_Note] {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  Allowlist_assertAllowed(caller.identifier, spenderAllowPath);
+  Allowlist_assertAllowed(recipientPk, recipientAllowPath);
+  return Core__transfer(caller.identifier, recipientPk, value, note, path);
+}
+
+export circuit burn(
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+  spenderAllowPath: Vector<32, MerkleTreePathEntry>,
+): Core_Note {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  Allowlist_assertAllowed(caller.identifier, spenderAllowPath);
+  return Core__burn(caller.identifier, value, note, path);
+}
+
+export pure circuit deriveIdentifier(
+  secretKey: Bytes<32>,
+  salt: Bytes<32>,
+): Either<Bytes<32>, ContractAddress> {
+  return AuthPrfPseudonym_deriveIdentifier(secretKey, salt);
+}
+
+export pure circuit commitOf(
+  note: Core_Note,
+  pk: Either<Bytes<32>, ContractAddress>,
+): Bytes<32> {
+  return Utils_commitOf<Either<Bytes<32>, ContractAddress>>(note, pk);
+}
+
+export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
+  return Utils_nullifierOf(note);
+}
+
+export pure circuit leafOf(account: Either<Bytes<32>, ContractAddress>): Bytes<32> {
+  return Allowlist_leafOf(account);
+}
