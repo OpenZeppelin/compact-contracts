@@ -652,10 +652,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/ledger-v9@npm:1.0.0-rc.5":
-  version: 1.0.0-rc.5
-  resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.5"
-  checksum: 10/e40470c85cc4a74f5cec3cc5d4f7bbfd4e2b54cd5ac4a1b128d1c919219e1a6574ac74db5558f99521a280453cb07d778cccb38bcf842389506104103666bfc0
+"@midnightntwrk/ledger-v9@npm:1.0.2":
+  version: 1.0.2
+  resolution: "@midnightntwrk/ledger-v9@npm:1.0.2"
+  checksum: 10/a9ffa82dacd2dcf1bb127dca87db3fa7845a3852c61a008014f2fbda033ac84e3f951b2f1b05020f512f06653e784803b93f6599672a6e624b39fd4ebfe12782
   languageName: node
   linkType: hard
 
@@ -1068,7 +1068,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/midnight-js-types": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/testkit-js": "npm:5.0.0-beta.7"
-    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "npm:1.0.2"
     "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-beta.2"
     "@noble/curves": "npm:^2.2.0"
     "@noble/hashes": "npm:^2.4.0"
@@ -4340,7 +4340,7 @@ __metadata:
     "@biomejs/biome": "npm:^2.6.8"
     "@midnight-ntwrk/compact-runtime": "npm:0.21.0"
     "@midnight-ntwrk/zswap": "npm:^4.0.0"
-    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "npm:1.0.2"
     "@types/node": "npm:26.6.2"
     ts-node: "npm:^10.9.2"
     turbo: "npm:^2.10.13"

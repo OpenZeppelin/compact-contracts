@@ -47,7 +47,7 @@
     "postcss": "8.5.10",
     "picomatch": "4.0.4",
     "ip-address": "10.1.1",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "1.0.2"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.21.0"
@@ -55,7 +55,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.6.8",
     "@midnight-ntwrk/zswap": "^4.0.0",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
+    "@midnightntwrk/ledger-v9": "1.0.2",
     "@types/node": "26.6.2",
     "ts-node": "^10.9.2",
     "turbo": "^2.10.13",
