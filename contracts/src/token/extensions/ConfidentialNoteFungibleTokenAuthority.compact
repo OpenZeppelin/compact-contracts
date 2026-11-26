@@ -1,0 +1,214 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialNoteFungibleTokenAuthority.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenAuthority
+ * @description Extension that holds one administrative account for a
+ * `ConfidentialNoteFungibleToken` and checks a caller against it. A gate
+ * only: it knows nothing about the circuits it guards. It imports no token
+ * module and derives no caller: each checking circuit takes a `Caller`, see
+ * `Caller` in the `Identifier` module.
+ *
+ * ```compact
+ * export circuit seize(targetPk: Either<Bytes<32>, ContractAddress>,
+ *                      recoveryPk: Either<Bytes<32>, ContractAddress>,
+ *                      note: Core_Note, path: Vector<32, MerkleTreePathEntry>): Core_Note {
+ *   Authority_assertOnlyAuthority(AuthPrfPseudonym_authenticate(_authoritySalt));
+ *   ...
+ * }
+ * ```
+ *
+ * @dev Canonicalization:
+ * `_transferAuthority` is the single write point. It rejects a contract
+ * address and the zero key, and canonicalizes before the write, so
+ * `_authority` always holds a canonical, non-zero key arm. A caller passes
+ * `assertOnlyAuthority` only when its whole identifier equals it.
+ *
+ * @notice Privacy:
+ * - `_authority` is a public account id.
+ * - Each gated call shows its entry point, so the authority's actions are
+ *   public. The secret key stays in the composer's authenticator witness.
+ *
+ * @notice Security:
+ * - The check trusts the `caller` it is given. Produce it with an
+ *   authenticator inside the composing circuit. An exported circuit that
+ *   accepts a caller lets the transaction sender choose who passes.
+ * - One key, no threshold, no renounce. A composer needing a quorum gates with
+ *   its own multisig and rotates through `_transferAuthority`.
+ * - The transfer is one step: a wrong id or a lost key ends the role for good.
+ *
+ * @notice Concurrency:
+ * - `assertOnlyAuthority`, `authority` and `transferAuthority` read
+ *   `_authority`. A handover that lands first and changes the id fails them.
+ *   A handover to the current id fails none.
+ * - `_transferAuthority` reads no id. Two of them built on one state both
+ *   land and the last one wins.
+ *
+ * @notice Composition:
+ * - Call `initialize` from the constructor, once.
+ * - Make `assertOnlyAuthority` the first line of each administrative circuit,
+ *   with a caller authenticated in that circuit.
+ * - Authenticate the authority under a salt apart from the note-owner salt.
+ *   Under one salt, the public `_authority` equals the authority's note-owner
+ *   key.
+ * - `mint`, `transfer` and `burn` take no authority line.
+ */
+module ConfidentialNoteFungibleTokenAuthority {
+  import CompactStandardLibrary;
+
+  import { Caller, Identifier, IdentifierKind } from "../../identifier/Identifier";
+
+  import "../../identifier/Identifier" prefix Identifier_;
+  import "../../utils/Utils" prefix Utils_;
+
+  /**
+   * @description Initialization flag, tracked per module.
+   * @type {Boolean} _isInitialized
+   */
+  export ledger _isInitialized: Boolean;
+
+  /**
+   * @description The current authority: a canonical, non-zero key arm once
+   * initialized. Unset, it reads as the zero contract arm.
+   * @type {Either<Bytes<32>, ContractAddress>} _authority
+   */
+  export ledger _authority: Identifier;
+
+  /**
+   * @description Sets the first authority. Call it from the constructor.
+   *
+   * @constraints k=9, rows=276
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   * - `initialAuthority` is not a ContractAddress.
+   * - `initialAuthority` is not zero.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} initialAuthority - The first
+   * authority.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(initialAuthority: Identifier): [] {
+    assertNotInitialized();
+    _isInitialized = true;
+    _transferAuthority(initialAuthority);
+  }
+
+  /**
+   * @description Returns the current authority.
+   *
+   * @constraints k=7, rows=99
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {Either<Bytes<32>, ContractAddress>} - The authority.
+   */
+  export circuit authority(): Identifier {
+    assertInitialized();
+    return _authority;
+  }
+
+  /**
+   * @description Throws unless `caller` is the authority.
+   *
+   * @constraints k=9, rows=251
+   *
+   * @dev The init check runs first: an unset `_authority` is the zero
+   * contract arm, which a hand-built `Caller` could equal.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `caller`'s identifier equals `_authority`.
+   *
+   * @param {Caller} caller - The authenticated caller.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertOnlyAuthority(caller: Caller): [] {
+    assertInitialized();
+    assert(caller.identifier == _authority,
+           "ConfidentialNoteFungibleTokenAuthority: caller is not the authority");
+  }
+
+  /**
+   * @description Hands the authority role to `newAuthority`.
+   *
+   * @constraints k=9, rows=500
+   *
+   * @warning One step:
+   * A wrong `newAuthority` ends the role for good.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `caller` is the authority.
+   * - `newAuthority` is not a ContractAddress.
+   * - `newAuthority` is not zero.
+   *
+   * @param {Caller} caller - The authenticated caller.
+   * @param {Either<Bytes<32>, ContractAddress>} newAuthority - The new
+   * authority.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit transferAuthority(caller: Caller, newAuthority: Identifier): [] {
+    assertOnlyAuthority(caller);
+    _transferAuthority(newAuthority);
+  }
+
+  /**
+   * @description Sets `_authority` to `newAuthority`, canonicalized.
+   *
+   * @constraints k=9, rows=252
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   * - `newAuthority` is not a ContractAddress.
+   * - `newAuthority` is not zero.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} newAuthority - The new
+   * authority.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _transferAuthority(newAuthority: Identifier): [] {
+    assertInitialized();
+    assert(Identifier_unpack(newAuthority).kind == IdentifierKind.Key,
+           "ConfidentialNoteFungibleTokenAuthority: contract authority");
+    assert(!Utils_isTargetZero(newAuthority), "ConfidentialNoteFungibleTokenAuthority: zero authority");
+    _authority = disclose(Utils_canonicalize<Bytes<32>, ContractAddress>(newAuthority));
+  }
+
+  /**
+   * @description Asserts that the contract is initialized.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenAuthority: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract is not initialized.
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenAuthority: contract already initialized");
+  }
+}
