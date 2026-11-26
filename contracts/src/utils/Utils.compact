@@ -17,7 +17,7 @@ module Utils {
    * in Compact, so we've chosen to represent the zero address as this structure as well.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is zero.
+   * @returns {Boolean} - Returns true if `keyOrAddress` is zero.
    */
   export pure circuit isKeyOrAddressZero(
                         keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>
@@ -31,7 +31,7 @@ module Utils {
    * @description Returns whether `key` is the zero address.
    *
    * @param {ZswapCoinPublicKey} key - A ZswapCoinPublicKey
-   * @return {Boolean} - Returns true if `key` is zero.
+   * @returns {Boolean} - Returns true if `key` is zero.
    */
   export pure circuit isKeyZero(key: ZswapCoinPublicKey): Boolean {
     const zero = default<ZswapCoinPublicKey>;
@@ -44,7 +44,7 @@ module Utils {
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} other - The other value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is equal to `other`.
+   * @returns {Boolean} - Returns true if `keyOrAddress` is equal to `other`.
    */
   export pure circuit isKeyOrAddressEqual(
                         keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>,
@@ -63,7 +63,7 @@ module Utils {
    * @description Returns whether `keyOrAddress` is a ContractAddress type.
    *
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} keyOrAddress - The target value to check, either a ZswapCoinPublicKey or a ContractAddress.
-   * @return {Boolean} - Returns true if `keyOrAddress` is a ContractAddress.
+   * @returns {Boolean} - Returns true if `keyOrAddress` is a ContractAddress.
    */
   export pure circuit isContractAddress(
                         keyOrAddress: Either<ZswapCoinPublicKey, ContractAddress>
@@ -74,7 +74,7 @@ module Utils {
   /**
    * @description A helper function that returns the empty string: "".
    *
-   * @return {Opaque<"string">} - The empty string: "".
+   * @returns {Opaque<"string">} - The empty string: "".
    */
   export pure circuit emptyString(): Opaque<"string"> {
     return default<Opaque<"string">>;
@@ -86,14 +86,12 @@ module Utils {
    * only inspect the active side.
    *
    * @param {Either<T1, T2>} value - The value to canonicalize.
-   * @return {Either<T1, T2>} - The canonicalized value.
+   * @returns {Either<T1, T2>} - The canonicalized value.
    */
-  export pure circuit canonicalize<T1, T2>(
-                        value: Either<T1, T2>
-                        ): Either<T1, T2> {
+  export pure circuit canonicalize<T1, T2>(value: Either<T1, T2>): Either<T1, T2> {
     return value.is_left
-      ? Either<T1, T2>{ is_left: true, left: value.left, right: default<T2> }
-      : Either<T1, T2>{ is_left: false, left: default<T1>, right: value.right };
+             ? Either<T1, T2> { is_left: true, left: value.left, right: default<T2> }
+             : Either<T1, T2> { is_left: false, left: default<T1>, right: value.right };
   }
 
   /**
@@ -106,12 +104,12 @@ module Utils {
    * before delegating to an `_unsafe` variant). A right variant with `default<ContractAddress>`
    * would also pass `isTargetZero`, but the left variant keeps guards and error messages consistent.
    *
-   * @return {Either<Bytes<32>, ContractAddress>} - The canonical zero value.
+   * @returns {Either<Bytes<32>, ContractAddress>} - The canonical zero value.
    */
   export pure circuit zeroAccount(): Either<Bytes<32>, ContractAddress> {
-    return Either<Bytes<32>, ContractAddress> {
-      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
-    };
+    return Either<Bytes<32>, ContractAddress> { is_left: true,
+                                                left: default<Bytes<32>>,
+                                                right: default<ContractAddress> };
   }
 
   /**
@@ -119,7 +117,7 @@ module Utils {
    * holds the zero value.
    *
    * @param {Either<Bytes<32>, ContractAddress>} target - The value to check.
-   * @return {Boolean} - `true` if the active branch is zero, `false` otherwise.
+   * @returns {Boolean} - `true` if the active branch is zero, `false` otherwise.
    */
   export pure circuit isTargetZero(target: Either<Bytes<32>, ContractAddress>): Boolean {
     if (target.is_left) {
@@ -133,6 +131,8 @@ module Utils {
    * @description Returns the current contract's address as an
    * `Either<ZswapCoinPublicKey, ContractAddress>` for use as a
    * recipient in shielded send operations (deposits and receiving change).
+   *
+   * @constraints k=7, rows=78
    *
    * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The contract's address as a recipient.
    */

@@ -124,8 +124,7 @@ module AccessControl {
    * @type {Map<roleId, hasRole>}
    * @type {Map<Bytes<32>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>} _operatorRoles
    */
-  export ledger _operatorRoles: Map<Bytes<32>,
-                                    Map<Identifier, Boolean>>;
+  export ledger _operatorRoles: Map<Bytes<32>, Map<Identifier, Boolean>>;
 
   /**
    * @description Mapping from a role identifier to an admin role identifier.
@@ -140,7 +139,7 @@ module AccessControl {
    * @description The default admin role for all roles. Only accounts with this role will be able
    * to grant or revoke other roles unless custom admin roles are created via {_setRoleAdmin}.
    *
-   * @return {Bytes<32>} - The default admin role identifier (zero bytes).
+   * @returns {Bytes<32>} - The default admin role identifier (zero bytes).
    */
   export pure circuit DEFAULT_ADMIN_ROLE(): Bytes<32> {
     return default<Bytes<32>>;
@@ -153,11 +152,9 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
-   * @return {Boolean} - Whether the account has the specified role.
+   * @returns {Boolean} - Whether the account has the specified role.
     */
-  export circuit hasRole(roleId: Bytes<32>,
-                         account: Identifier
-                         ): Boolean {
+  export circuit hasRole(roleId: Bytes<32>, account: Identifier): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     return _hasRole(roleId, canonAcct);
   }
@@ -169,11 +166,9 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - The canonicalized account to query.
-   * @return {Boolean} - Whether the account has the specified role.
+   * @returns {Boolean} - Whether the account has the specified role.
    */
-  circuit _hasRole(roleId: Bytes<32>,
-                         account: Identifier
-                         ): Boolean {
+  circuit _hasRole(roleId: Bytes<32>, account: Identifier): Boolean {
     if (_operatorRoles.member(disclose(roleId)) &&
         _operatorRoles.lookup(roleId).member(disclose(account))) {
       return _operatorRoles.lookup(roleId).lookup(disclose(account));
@@ -193,12 +188,9 @@ module AccessControl {
    *
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit assertOnlyRole(
-                   caller: Caller,
-                   roleId: Bytes<32>
-                   ): [] {
+  export circuit assertOnlyRole(caller: Caller, roleId: Bytes<32>): [] {
     // An authenticator returns a canonical account,
     // but we route through _checkRole -> hasRole for consistency.
     // The redundant canonicalization is negligible.
@@ -216,12 +208,9 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit _checkRole(
-                   roleId: Bytes<32>,
-                   account: Identifier
-                   ): [] {
+  export circuit _checkRole(roleId: Bytes<32>, account: Identifier): [] {
     assert(hasRole(roleId, account), "AccessControl: unauthorized account");
   }
 
@@ -234,7 +223,7 @@ module AccessControl {
    * @constraints k=8, rows=170
    *
    * @param {Bytes<32>} roleId - The role identifier.
-   * @return {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
+   * @returns {Bytes<32>} roleAdmin - The admin role that controls `roleId`.
    */
   export circuit getRoleAdmin(roleId: Bytes<32>): Bytes<32> {
     if (_adminRoles.member(disclose(roleId))) {
@@ -257,13 +246,9 @@ module AccessControl {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit grantRole(
-                   caller: Caller,
-                   roleId: Bytes<32>,
-                   account: Identifier
-                   ): [] {
+  export circuit grantRole(caller: Caller, roleId: Bytes<32>, account: Identifier): [] {
     assertOnlyRole(caller, getRoleAdmin(roleId));
     _grantRole(roleId, account);
   }
@@ -280,13 +265,9 @@ module AccessControl {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit revokeRole(
-                   caller: Caller,
-                   roleId: Bytes<32>,
-                   account: Identifier
-                   ): [] {
+  export circuit revokeRole(caller: Caller, roleId: Bytes<32>, account: Identifier): [] {
     assertOnlyRole(caller, getRoleAdmin(roleId));
     _revokeRole(roleId, account);
   }
@@ -310,16 +291,10 @@ module AccessControl {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} callerConfirmation - The caller's account identifier, must match `caller`'s account.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit renounceRole(
-                   caller: Caller,
-                   roleId: Bytes<32>,
-                   callerConfirmation: Identifier
-                   ): [] {
-    assert(callerConfirmation == caller.identifier,
-           "AccessControl: bad confirmation"
-           );
+  export circuit renounceRole(caller: Caller, roleId: Bytes<32>, callerConfirmation: Identifier): [] {
+    assert(callerConfirmation == caller.identifier, "AccessControl: bad confirmation");
 
     _revokeRole(roleId, callerConfirmation);
   }
@@ -331,7 +306,7 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Bytes<32>} adminRole - The admin role identifier.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _setRoleAdmin(roleId: Bytes<32>, adminRole: Bytes<32>): [] {
     _adminRoles.insert(disclose(roleId), disclose(adminRole));
@@ -350,12 +325,9 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
-   * @return {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
+   * @returns {Boolean} roleGranted - A boolean indicating if `roleId` was granted.
    */
-  export circuit _grantRole(
-                   roleId: Bytes<32>,
-                   account: Identifier
-                   ): Boolean {
+  export circuit _grantRole(roleId: Bytes<32>, account: Identifier): Boolean {
     const isContractAddr = !account.is_left;
     assert(!isContractAddr, "AccessControl: unsafe role approval");
     return _unsafeGrantRole(roleId, account);
@@ -376,12 +348,9 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
-   * @return {Boolean} roleGranted - A boolean indicating if `role` was granted.
+   * @returns {Boolean} roleGranted - A boolean indicating if `role` was granted.
    */
-  export circuit _unsafeGrantRole(
-                   roleId: Bytes<32>,
-                   account: Identifier
-                   ): Boolean {
+  export circuit _unsafeGrantRole(roleId: Bytes<32>, account: Identifier): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
     assert(!Utils_isTargetZero(canonAcct), "AccessControl: invalid account");
     if (_hasRole(roleId, canonAcct)) {
@@ -389,10 +358,7 @@ module AccessControl {
     }
 
     if (!_operatorRoles.member(disclose(roleId))) {
-      _operatorRoles.insert(
-        disclose(roleId),
-        default<Map<Identifier, Boolean>>
-        );
+      _operatorRoles.insert(disclose(roleId), default<Map<Identifier, Boolean>>);
     }
 
     _operatorRoles.lookup(roleId).insert(disclose(canonAcct), true);
@@ -407,12 +373,9 @@ module AccessControl {
    *
    * @param {Bytes<32>} roleId - The role identifier.
    * @param {Either<Bytes<32>, ContractAddress>} account - A Bytes<32> or ContractAddress.
-   * @return {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
+   * @returns {Boolean} roleRevoked - A boolean indicating if `roleId` was revoked.
    */
-  export circuit _revokeRole(
-                   roleId: Bytes<32>,
-                   account: Identifier
-                   ): Boolean {
+  export circuit _revokeRole(roleId: Bytes<32>, account: Identifier): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
 
     if (!_hasRole(roleId, canonAcct)) {

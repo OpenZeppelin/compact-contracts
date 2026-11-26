@@ -156,14 +156,13 @@ module ElGamal {
    * `ConfidentialFungibleToken.registerWithKey`.
    *
    * @param secret - The 32-byte secret to map.
-   * @return A valid Jubjub scalar.
+   * @returns A valid Jubjub scalar.
    */
   export pure circuit secretToScalar(secret: Bytes<32>): JubjubScalar {
     return degradeToTransient(
-             persistentHash<Vector<2, Bytes<32>>>(
-               [pad(32, "ElGamal:secretToScalar"), secret]
+             persistentHash<Vector<2, Bytes<32>>>([pad(32, "ElGamal:secretToScalar"), secret])
              )
-           ) as JubjubScalar;
+           as JubjubScalar;
   }
 
   /**
@@ -177,7 +176,7 @@ module ElGamal {
    * `ConfidentialFungibleToken.registerWithKey`.
    *
    * @param ek - The 32-byte encryption secret.
-   * @return The corresponding public key point.
+   * @returns The corresponding public key point.
    */
   export pure circuit derivePk(ek: Bytes<32>): JubjubPoint {
     return ecMulGenerator(secretToScalar(ek));
@@ -198,7 +197,7 @@ module ElGamal {
    *
    * @param seed - The seed to expand.
    * @param tag - A 32-byte tag distinguishing this expansion from its siblings.
-   * @return A scalar suitable for use as encryption randomness.
+   * @returns A scalar suitable for use as encryption randomness.
    */
   export pure circuit expandRandomness(seed: Bytes<32>, tag: Bytes<32>): JubjubScalar {
     return degradeToTransient(persistentHash<Vector<2, Bytes<32>>>([seed, tag])) as JubjubScalar;
@@ -254,7 +253,7 @@ module ElGamal {
    * @param pk - The recipient public key.
    * @param m - The message point to encrypt.
    * @param r - The encryption randomness.
-   * @return The ciphertext `(g^r, pk^r * m)`.
+   * @returns The ciphertext `(g^r, pk^r * m)`.
    */
   export pure circuit encryptPoint(pk: JubjubPoint, m: JubjubPoint, r: JubjubScalar): Ciphertext {
     // The weak-input guards come from `deriveShared`, not repeated here.
@@ -277,7 +276,7 @@ module ElGamal {
    * @param pk - The recipient public key.
    * @param value - The plaintext value to encrypt.
    * @param r - The encryption randomness.
-   * @return The ciphertext `(g^r, pk^r * g^value)`.
+   * @returns The ciphertext `(g^r, pk^r * g^value)`.
    */
   export pure circuit encrypt(pk: JubjubPoint, value: Uint<128>, r: JubjubScalar): Ciphertext {
     return encryptPoint(pk, ecMulGenerator(value as JubjubScalar), r);
@@ -289,7 +288,7 @@ module ElGamal {
    * This is the building block `sub` rests on.
    *
    * @param ct - The ciphertext to negate.
-   * @return A ciphertext of `-v`.
+   * @returns A ciphertext of `-v`.
    */
   export pure circuit negate(ct: Ciphertext): Ciphertext {
     return Ciphertext { c1: ecNeg(ct.c1), c2: ecNeg(ct.c2) };
@@ -308,7 +307,7 @@ module ElGamal {
    *
    * @param a - The first ciphertext.
    * @param b - The second ciphertext (same recipient key as `a`).
-   * @return A ciphertext of `a + b`.
+   * @returns A ciphertext of `a + b`.
    */
   export pure circuit add(a: Ciphertext, b: Ciphertext): Ciphertext {
     return Ciphertext { c1: ecAdd(a.c1, b.c1), c2: ecAdd(a.c2, b.c2) };
@@ -324,7 +323,7 @@ module ElGamal {
    *
    * @param a - The minuend ciphertext.
    * @param b - The subtrahend ciphertext (same recipient key as `a`).
-   * @return A ciphertext of `a - b`.
+   * @returns A ciphertext of `a - b`.
    */
   export pure circuit sub(a: Ciphertext, b: Ciphertext): Ciphertext {
     return add(a, negate(b));
@@ -348,7 +347,7 @@ module ElGamal {
    *
    * @param ct - The ciphertext whose plaintext is scaled.
    * @param k - The public scalar multiplier (a valid Jubjub scalar).
-   * @return A ciphertext of `k * v`.
+   * @returns A ciphertext of `k * v`.
    */
   export pure circuit scalarMul(ct: Ciphertext, k: JubjubScalar): Ciphertext {
     return Ciphertext { c1: ecMul(ct.c1, k), c2: ecMul(ct.c2, k) };
@@ -418,7 +417,7 @@ module ElGamal {
    * @param ct - The ciphertext to rerandomize.
    * @param pk - The recipient public key `ct` is encrypted under.
    * @param r - Fresh, nonzero randomness for the rerandomization.
-   * @return A fresh ciphertext of the same plaintext.
+   * @returns A fresh ciphertext of the same plaintext.
    */
   export pure circuit rerandomize(ct: Ciphertext, pk: JubjubPoint, r: JubjubScalar): Ciphertext {
     return add(ct, encrypt(pk, 0, r));
@@ -441,8 +440,7 @@ module ElGamal {
    * @param ek - The secret claimed to correspond to `pk`.
    */
   export pure circuit assertKeyPair(pk: JubjubPoint, ek: Bytes<32>): [] {
-    assert(derivePk(ek) == pk,
-           "ElGamal: ek/pk mismatch");
+    assert(derivePk(ek) == pk, "ElGamal: ek/pk mismatch");
   }
 
   /**
@@ -462,23 +460,21 @@ module ElGamal {
    * @param m - The message point `ct` is claimed to encrypt.
    */
   export pure circuit assertDecryptsToPoint(
-                   ct: Ciphertext,
-                   pk: JubjubPoint,
-                   ek: Bytes<32>,
-                   m: JubjubPoint
-                   ): [] {
+                        ct: Ciphertext,
+                        pk: JubjubPoint,
+                        ek: Bytes<32>,
+                        m: JubjubPoint
+                        ): [] {
     // Inlines the same key check as `assertKeyPair` (rather than calling it) so
     // `ekScalar` is computed once and reused for the decryption below, avoiding
     // a second `secretToScalar` hash in this hot verification path.
     const ekScalar = secretToScalar(ek);
-    assert(ecMulGenerator(ekScalar) == pk,
-           "ElGamal: ek/pk mismatch");
+    assert(ecMulGenerator(ekScalar) == pk, "ElGamal: ek/pk mismatch");
 
     // m = c2 - ek*c1, with ek*c1 negated via ecNeg.
     const ekC1 = ecMul(ct.c1, ekScalar);
     const mPoint = ecAdd(ct.c2, ecNeg(ekC1));
-    assert(mPoint == m,
-           "ElGamal: plaintext mismatch");
+    assert(mPoint == m, "ElGamal: plaintext mismatch");
   }
 
   /**
@@ -511,11 +507,11 @@ module ElGamal {
    * @param claimedValue - The plaintext `ct` is claimed to encrypt.
    */
   export pure circuit assertDecryptsTo(
-                   ct: Ciphertext,
-                   pk: JubjubPoint,
-                   ek: Bytes<32>,
-                   claimedValue: Uint<248>
-                   ): [] {
+                        ct: Ciphertext,
+                        pk: JubjubPoint,
+                        ek: Bytes<32>,
+                        claimedValue: Uint<248>
+                        ): [] {
     assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as JubjubScalar));
   }
 }

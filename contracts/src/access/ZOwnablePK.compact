@@ -109,6 +109,8 @@ module ZOwnablePK {
    * and storing the `instanceSalt` that acts as a privacy additive for preventing
    * duplicate commitments among other contracts implementing ZOwnablePK.
    *
+   * @constraints k=13, rows=6091
+   *
    * @warning The `ownerId` must be calculated prior to contract deployment using the SHA256 hashing algorithm.
    * Using any other algorithm will result in a permanent loss of contract access.
    *
@@ -141,7 +143,7 @@ module ZOwnablePK {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "ZOwnablePK: contract not initialized");
@@ -154,7 +156,7 @@ module ZOwnablePK {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "ZOwnablePK: contract already initialized");

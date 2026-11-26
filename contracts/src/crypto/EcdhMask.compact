@@ -150,14 +150,13 @@ module EcdhMask {
    *                shrinks as its width grows (see the module security note).
    * @param e - A fresh ephemeral scalar.
    * @param domain - The consumer's domain-separation tag (must match decrypt).
-   * @return The ciphertext `{ ephemeralPk = g^e, ct = value + KDF(pk^e) }`.
+   * @returns The ciphertext `{ ephemeralPk = g^e, ct = value + KDF(pk^e) }`.
    */
-  export pure circuit encrypt(
-                        recipientPk: JubjubPoint,
-                        value: Uint<248>,
-                        e: JubjubScalar,
-                        domain: Bytes<32>
-                        ): Ciphertext {
+  export pure circuit encrypt(recipientPk: JubjubPoint,
+                              value: Uint<248>,
+                              e: JubjubScalar,
+                              domain: Bytes<32>
+                              ): Ciphertext {
     // The weak-input guards come from `deriveShared`, not repeated here.
     const shared = Ecdh_deriveShared(recipientPk, e);
     const mask = kdf(shared.sShared, domain);
@@ -180,7 +179,7 @@ module EcdhMask {
    * @param sShared - The ECDH shared secret point (`pk^e` for the sender,
    *                  `E^ek` for the recipient; equal by construction).
    * @param domain - The consumer's domain-separation tag.
-   * @return The field mask.
+   * @returns The field mask.
    */
   export pure circuit kdf(sShared: JubjubPoint, domain: Bytes<32>): Field {
     return kdfFromDigest(pointDigest(sShared), domain);
@@ -194,7 +193,7 @@ module EcdhMask {
    * @constraints k=13, rows=4098
    *
    * @param sShared - The ECDH shared secret point.
-   * @return The point's digest, secret while `sShared` is.
+   * @returns The point's digest, secret while `sShared` is.
    */
   export pure circuit pointDigest(sShared: JubjubPoint): Bytes<32> {
     return persistentHash<JubjubPoint>(sShared);
@@ -212,12 +211,10 @@ module EcdhMask {
    *
    * @param digest - `pointDigest` of the shared point.
    * @param domain - The consumer's domain-separation tag.
-   * @return The field mask.
+   * @returns The field mask.
    */
   export pure circuit kdfFromDigest(digest: Bytes<32>, domain: Bytes<32>): Field {
-    return degradeToTransient(
-      persistentHash<Vector<2, Bytes<32>>>([digest, domain])
-    );
+    return degradeToTransient(persistentHash<Vector<2, Bytes<32>>>([digest, domain]));
   }
 
   /**
@@ -234,14 +231,18 @@ module EcdhMask {
    * @param ekScalar - The recipient's secret scalar (`crypto/ElGamal`'s
    *                   `secretToScalar(EK)`).
    * @param domain - The consumer's domain-separation tag (must match encrypt).
-   * @return The recovered value as a `Field` (equal to the original `value`,
+   * @returns The recovered value as a `Field` (equal to the original `value`,
    *         which is `< 2^248`).
    */
-  export pure circuit decrypt(ciphertext: Ciphertext, ekScalar: JubjubScalar, domain: Bytes<32>): Field {
+  export pure circuit decrypt(ciphertext: Ciphertext,
+                              ekScalar: JubjubScalar,
+                              domain: Bytes<32>
+                              ): Field {
     // `encrypt` never emits an identity ephemeral; one here is a malformed
     // ciphertext whose mask is a public constant, so refuse rather than decrypt.
     assert(ciphertext.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
-           "EcdhMask: identity ephemeral");
+           "EcdhMask: identity ephemeral"
+           );
     const sShared = Ecdh_recoverShared(ciphertext.ephemeralPk, ekScalar);
     const mask = kdf(sShared, domain);
     return ciphertext.ct - mask;

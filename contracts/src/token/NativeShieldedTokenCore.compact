@@ -99,6 +99,9 @@ module NativeShieldedTokenCore {
 
   /**
    * @description Initializes the contract-wide metadata.
+   *
+   * @constraints k=7, rows=108
+   *
    * @dev This MUST be called in the implementing contract's constructor (via
    * the wrapping flavor's `initialize`). Failure to do so can lead to an
    * irreparable contract.
@@ -106,7 +109,7 @@ module NativeShieldedTokenCore {
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(
                    name_: Opaque<"string">,
@@ -124,11 +127,13 @@ module NativeShieldedTokenCore {
    * @description Asserts that the contract has been initialized, throwing an
    * error if not.
    *
+   * @constraints k=6, rows=35
+   *
    * Requirements:
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertInitialized(): [] {
     assert(_isInitialized, "NativeShieldedToken: contract not initialized");
@@ -138,11 +143,13 @@ module NativeShieldedTokenCore {
    * @description Asserts that the contract has not been initialized, throwing
    * an error if it has.
    *
+   * @constraints k=6, rows=37
+   *
    * Requirements:
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "NativeShieldedToken: contract already initialized");
@@ -155,7 +162,7 @@ module NativeShieldedTokenCore {
    *
    * @constraints k=6, rows=34
    *
-   * @return {Boolean} - True once `initialize` has run.
+   * @returns {Boolean} - True once `initialize` has run.
    */
   export circuit isInitialized(): Boolean {
     return _isInitialized;
@@ -170,7 +177,7 @@ module NativeShieldedTokenCore {
    *
    * - Contract is initialized.
    *
-   * @return {Opaque<"string">} - The token name.
+   * @returns {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
     assertInitialized();
@@ -186,7 +193,7 @@ module NativeShieldedTokenCore {
    *
    * - Contract is initialized.
    *
-   * @return {Opaque<"string">} - The token symbol.
+   * @returns {Opaque<"string">} - The token symbol.
    */
   export circuit symbol(): Opaque<"string"> {
     assertInitialized();
@@ -204,7 +211,7 @@ module NativeShieldedTokenCore {
    *
    * - Contract is initialized.
    *
-   * @return {Uint<8>} - The decimals value.
+   * @returns {Uint<8>} - The decimals value.
    */
   export circuit decimals(): Uint<8> {
     assertInitialized();
@@ -222,7 +229,7 @@ module NativeShieldedTokenCore {
    * - Contract is initialized.
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @return {Bytes<32>} - The coin color.
+   * @returns {Bytes<32>} - The coin color.
    */
   export circuit tokenColor(domain: Bytes<32>): Bytes<32> {
     assertInitialized();
@@ -257,20 +264,26 @@ module NativeShieldedTokenCore {
    * recipient: any coin public key, or this contract's own address.
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
-   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
+   * @returns {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
-  export circuit _mint(
-                   domain: Bytes<32>,
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-                   amount: Uint<64>,
-                   nonce: Bytes<32>
-                   ): ShieldedCoinInfo {
+  export circuit _mint(domain: Bytes<32>,
+                       recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                       amount: Uint<64>,
+                       nonce: Bytes<32>
+                       ): ShieldedCoinInfo {
     assertInitialized();
     const self = kernel.self();
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
-    assert(recipient.is_left || recipient.right == self, "NativeShieldedToken: recipient contract must be self");
+    assert(recipient.is_left || recipient.right == self,
+           "NativeShieldedToken: recipient contract must be self"
+           );
 
-    return mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
+    return mintShieldedToken(
+             disclose(domain),
+             disclose(amount),
+             disclose(nonce),
+             disclose(recipient)
+             );
   }
 
   /**
@@ -309,31 +322,33 @@ module NativeShieldedTokenCore {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} refundTo - Where to
    * route the unspent portion (`coin.value - amount`): any coin public key, or
    * this contract's own address.
-   * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
+   * @returns {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
-  export circuit _burn(
-                   domain: Bytes<32>,
-                   coin: ShieldedCoinInfo,
-                   amount: Uint<128>,
-                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
-                   ): Maybe<ShieldedCoinInfo> {
+  export circuit _burn(domain: Bytes<32>,
+                       coin: ShieldedCoinInfo,
+                       amount: Uint<128>,
+                       refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                       ): Maybe<ShieldedCoinInfo> {
     assertInitialized();
     const self = kernel.self();
     assert(coin.color == tokenType(disclose(domain), self), "NativeShieldedToken: wrong token");
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
     assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedToken: invalid refund target");
-    assert(refundTo.is_left || refundTo.right == self, "NativeShieldedToken: refund contract must be self");
+    assert(refundTo.is_left || refundTo.right == self,
+           "NativeShieldedToken: refund contract must be self"
+           );
 
     receiveShielded(disclose(coin));
     const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
 
     if (disclose(sendRes.change.is_some)) {
-      const refundRes = sendImmediateShielded(
-        disclose(sendRes.change.value),
-        disclose(refundTo),
-        disclose(sendRes.change.value.value)
-      );
+      const refundRes =
+              sendImmediateShielded(
+                disclose(sendRes.change.value),
+                disclose(refundTo),
+                disclose(sendRes.change.value.value)
+                );
       return some<ShieldedCoinInfo>(refundRes.sent);
     }
     return none<ShieldedCoinInfo>();
@@ -359,7 +374,7 @@ module NativeShieldedTokenCore {
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
-   * @return {Maybe<ShieldedCoinInfo>} - The change coin retained by the
+   * @returns {Maybe<ShieldedCoinInfo>} - The change coin retained by the
    * contract, or `none` if the coin was burned in full.
    */
   export circuit _burnFromSelf(
@@ -368,7 +383,9 @@ module NativeShieldedTokenCore {
                    amount: Uint<128>
                    ): Maybe<ShieldedCoinInfo> {
     assertInitialized();
-    assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedToken: wrong token");
+    assert(coin.color == tokenType(disclose(domain), kernel.self()),
+           "NativeShieldedToken: wrong token"
+           );
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
 
     const sendRes = sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));

@@ -58,7 +58,7 @@ module Allowlist {
    * @constraints k=8, rows=249
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
-   * @return {Boolean} - True if `account` is a member of the allowlist.
+   * @returns {Boolean} - True if `account` is a member of the allowlist.
    */
   export circuit isAllowed(account: Identifier): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
@@ -80,7 +80,7 @@ module Allowlist {
    * - `account` is a member of the allowlist.
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account that must be allowed.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertAllowed(account: Identifier): [] {
     assert(isAllowed(account), "Allowlist: account not allowed");
@@ -100,7 +100,7 @@ module Allowlist {
    * - `account` is not the zero account.
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to allow.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _allow(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
@@ -114,7 +114,7 @@ module Allowlist {
    * @constraints k=8, rows=223
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to disallow.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _disallow(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);

@@ -679,7 +679,7 @@ describe.skipIf(isLiveBackend())(
       'assert(!_issuedNonces.member(disclose(tag)),',
       '_issuedNonces.insert(disclose(tag));',
       'const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));',
-      'assert(!_nullifiers.member(disclose(nf)),',
+      'assert(!_nullifiers.member(disclose(nf)), "ConfidentialNoteFungibleToken: note already spent");',
       '_nullifiers.insert(disclose(nf));',
       // to the local caller only, across the exported-circuit boundary
       'return disclose(note);',

@@ -182,7 +182,7 @@ module ProposalManager {
    *
    * @returns {Recipient} The typed recipient.
    */
-  export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Recipient {
+  export pure circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Recipient {
     return Recipient { kind: RecipientKind.ShieldedUser, address: key.bytes };
   }
 
@@ -193,7 +193,7 @@ module ProposalManager {
    *
    * @returns {Recipient} The typed recipient.
    */
-  export circuit unshieldedUserRecipient(addr: UserAddress): Recipient {
+  export pure circuit unshieldedUserRecipient(addr: UserAddress): Recipient {
     return Recipient { kind: RecipientKind.UnshieldedUser, address: addr.bytes };
   }
 
@@ -204,7 +204,7 @@ module ProposalManager {
    *
    * @returns {Recipient} The typed recipient.
    */
-  export circuit contractRecipient(addr: ContractAddress): Recipient {
+  export pure circuit contractRecipient(addr: ContractAddress): Recipient {
     return Recipient { kind: RecipientKind.Contract, address: addr.bytes };
   }
 
@@ -220,16 +220,12 @@ module ProposalManager {
    *
    * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The shielded recipient.
    */
-  export circuit toShieldedRecipient(r: Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
+  export pure circuit toShieldedRecipient(r: Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
     if (r.kind == RecipientKind.ShieldedUser) {
-      return left<ZswapCoinPublicKey, ContractAddress>(
-        ZswapCoinPublicKey { bytes: r.address }
-      );
+      return left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: r.address });
     }
     assert(r.kind == RecipientKind.Contract, "ProposalManager: invalid shielded recipient");
-    return right<ZswapCoinPublicKey, ContractAddress>(
-      ContractAddress { bytes: r.address }
-    );
+    return right<ZswapCoinPublicKey, ContractAddress>(ContractAddress { bytes: r.address });
   }
 
   /**
@@ -244,22 +240,20 @@ module ProposalManager {
    *
    * @returns {Either<ContractAddress, UserAddress>} The unshielded recipient.
    */
-  export circuit toUnshieldedRecipient(r: Recipient): Either<ContractAddress, UserAddress> {
+  export pure circuit toUnshieldedRecipient(r: Recipient): Either<ContractAddress, UserAddress> {
     if (r.kind == RecipientKind.Contract) {
-      return left<ContractAddress, UserAddress>(
-        ContractAddress { bytes: r.address }
-      );
+      return left<ContractAddress, UserAddress>(ContractAddress { bytes: r.address });
     }
     assert(r.kind == RecipientKind.UnshieldedUser, "ProposalManager: invalid unshielded recipient");
-    return right<ContractAddress, UserAddress>(
-      UserAddress { bytes: r.address }
-    );
+    return right<ContractAddress, UserAddress>(UserAddress { bytes: r.address });
   }
 
   // ─── Guards ─────────────────────────────────────────────────────
 
   /**
    * @description Asserts that a proposal exists.
+   *
+   * @constraints k=7, rows=58
    *
    * Requirements:
    *
@@ -270,10 +264,7 @@ module ProposalManager {
    * @returns {[]} Empty tuple.
    */
   export circuit assertProposalExists(id: Uint<64>): [] {
-    assert(
-      _proposals.member(disclose(id)),
-      "ProposalManager: proposal not found"
-    );
+    assert(_proposals.member(disclose(id)), "ProposalManager: proposal not found");
   }
 
   /**
@@ -303,14 +294,8 @@ module ProposalManager {
     assertProposalExists(id);
 
     const state = _proposals.lookup(disclose(id)).state;
-    assert(
-      state > cancelledState(),
-      "ProposalManager: proposal not active"
-    );
-    assert(
-      blockTimeLt(state),
-      "ProposalManager: proposal expired"
-    );
+    assert(state > cancelledState(), "ProposalManager: proposal not active");
+    assert(blockTimeLt(state), "ProposalManager: proposal expired");
   }
 
   // ─── Proposal Lifecycle ─────────────────────────────────────────
@@ -367,38 +352,32 @@ module ProposalManager {
    * @returns {Uint<64>} The new proposal ID.
    */
   export circuit _createProposal(
-    to: Recipient,
-    color: Bytes<32>,
-    amount: Uint<128>,
-    expiry: Uint<64>
-  ): Uint<64> {
+                   to: Recipient,
+                   color: Bytes<32>,
+                   amount: Uint<128>,
+                   expiry: Uint<64>
+                   ): Uint<64> {
     assert(amount > 0, "ProposalManager: zero amount");
-    assert(
-      expiry > cancelledState(),
-      "ProposalManager: expiry in reserved range"
-    );
-    assert(
-      blockTimeLt(disclose(expiry)),
-      "ProposalManager: expiry not in the future"
-    );
+    assert(expiry > cancelledState(), "ProposalManager: expiry in reserved range");
+    assert(blockTimeLt(disclose(expiry)), "ProposalManager: expiry not in the future");
 
     _nextProposalId.increment(1);
     const id = _nextProposalId;
     // Defense in depth
     assert(!_proposals.member(id), "ProposalManager: id already used");
 
-    _proposals.insert(id, disclose(Proposal {
-      to: to,
-      color: color,
-      amount: amount,
-      state: expiry
-    }));
+    _proposals.insert(
+      id,
+      disclose(Proposal { to: to, color: color, amount: amount, state: expiry })
+      );
 
     return id;
   }
 
   /**
    * @description Cancels a proposal, retiring it before its expiry.
+   *
+   * @constraints k=9, rows=173
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -416,16 +395,19 @@ module ProposalManager {
     assertProposalActive(id);
 
     const proposal = _proposals.lookup(disclose(id));
-    _proposals.insert(disclose(id), Proposal {
-      to: proposal.to,
-      color: proposal.color,
-      amount: proposal.amount,
-      state: cancelledState()
-    });
+    _proposals.insert(
+      disclose(id),
+      Proposal { to: proposal.to,
+                 color: proposal.color,
+                 amount: proposal.amount,
+                 state: cancelledState() }
+      );
   }
 
   /**
    * @description Marks a proposal as executed.
+   *
+   * @constraints k=9, rows=173
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -443,12 +425,13 @@ module ProposalManager {
     assertProposalActive(id);
 
     const proposal = _proposals.lookup(disclose(id));
-    _proposals.insert(disclose(id), Proposal {
-      to: proposal.to,
-      color: proposal.color,
-      amount: proposal.amount,
-      state: executedState()
-    });
+    _proposals.insert(
+      disclose(id),
+      Proposal { to: proposal.to,
+                 color: proposal.color,
+                 amount: proposal.amount,
+                 state: executedState() }
+      );
   }
 
   // ─── View ───────────────────────────────────────────────────────
@@ -457,6 +440,8 @@ module ProposalManager {
    * @description Returns the full proposal data. The returned `state` is the
    * raw encoded field. See `Proposal` for how to read it, and prefer
    * `getProposalStatus` when the lifecycle stage is what is wanted.
+   *
+   * @constraints k=8, rows=175
    *
    * @param {Uint<64>} id - The proposal ID.
    *
@@ -470,6 +455,8 @@ module ProposalManager {
   /**
    * @description Returns the recipient of a proposal.
    *
+   * @constraints k=8, rows=131
+   *
    * @param {Uint<64>} id - The proposal ID.
    *
    * @returns {Recipient} The recipient.
@@ -482,6 +469,8 @@ module ProposalManager {
   /**
    * @description Returns the amount of a proposal.
    *
+   * @constraints k=7, rows=109
+   *
    * @param {Uint<64>} id - The proposal ID.
    *
    * @returns {Uint<128>} The amount.
@@ -493,6 +482,8 @@ module ProposalManager {
 
   /**
    * @description Returns the token color of a proposal.
+   *
+   * @constraints k=7, rows=110
    *
    * @param {Uint<64>} id - The proposal ID.
    *

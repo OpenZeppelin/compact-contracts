@@ -23,7 +23,7 @@ module Pausable {
    *
    * @constraints k=6, rows=34
    *
-   * @return {Boolean} True if paused.
+   * @returns {Boolean} True if paused.
    */
   export circuit isPaused(): Boolean {
     return _isPaused;
@@ -38,7 +38,7 @@ module Pausable {
    *
    * - Contract must be paused.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertPaused(): [] {
     assert(_isPaused, "Pausable: not paused");
@@ -53,7 +53,7 @@ module Pausable {
    *
    * - Contract must not be paused.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertNotPaused(): [] {
     assert(!_isPaused, "Pausable: paused");
@@ -68,7 +68,7 @@ module Pausable {
    *
    * - Contract must not be paused.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _pause(): [] {
     assertNotPaused();
@@ -84,7 +84,7 @@ module Pausable {
    *
    * - Contract must be paused.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unpause(): [] {
     assertPaused();

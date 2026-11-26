@@ -86,6 +86,9 @@ module NativeShieldedToken {
 
   /**
    * @description Initializes the module's domain and metadata.
+   *
+   * @constraints k=8, rows=208
+   *
    * @dev This MUST be called in the implementing contract's constructor, and it
    * MUST be the only token operation performed there. Failure to call it can
    * lead to an irreparable contract; perform mint, burn, and `tokenColor` only
@@ -95,7 +98,7 @@ module NativeShieldedToken {
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(
                    domainSep: Bytes<32>,
@@ -112,7 +115,7 @@ module NativeShieldedToken {
    *
    * @constraints k=6, rows=34
    *
-   * @return {Boolean} - True once `initialize` has run.
+   * @returns {Boolean} - True once `initialize` has run.
    */
   export circuit isInitialized(): Boolean {
     return Core_isInitialized();
@@ -127,7 +130,7 @@ module NativeShieldedToken {
    *
    * - Contract is initialized.
    *
-   * @return {Opaque<"string">} - The token name.
+   * @returns {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
     return Core_name();
@@ -142,7 +145,7 @@ module NativeShieldedToken {
    *
    * - Contract is initialized.
    *
-   * @return {Opaque<"string">} - The token symbol.
+   * @returns {Opaque<"string">} - The token symbol.
    */
   export circuit symbol(): Opaque<"string"> {
     return Core_symbol();
@@ -157,7 +160,7 @@ module NativeShieldedToken {
    *
    * - Contract is initialized.
    *
-   * @return {Uint<8>} - The decimals value.
+   * @returns {Uint<8>} - The decimals value.
    */
   export circuit decimals(): Uint<8> {
     return Core_decimals();
@@ -173,7 +176,7 @@ module NativeShieldedToken {
    *
    * - Contract is initialized.
    *
-   * @return {Bytes<32>} - The coin color.
+   * @returns {Bytes<32>} - The coin color.
    */
   export circuit tokenColor(): Bytes<32> {
     return Core_tokenColor(_domain);
@@ -205,19 +208,13 @@ module NativeShieldedToken {
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
    * contract's color.
-   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
+   * @returns {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
-  export circuit _mint(
-                   recipient: ZswapCoinPublicKey,
-                   amount: Uint<64>,
-                   nonce: Bytes<32>
-                   ): ShieldedCoinInfo {
-    return Core__mint(
-      _domain,
-      left<ZswapCoinPublicKey, ContractAddress>(recipient),
-      amount,
-      nonce
-    );
+  export circuit _mint(recipient: ZswapCoinPublicKey,
+                       amount: Uint<64>,
+                       nonce: Bytes<32>
+                       ): ShieldedCoinInfo {
+    return Core__mint(_domain, left<ZswapCoinPublicKey, ContractAddress>(recipient), amount, nonce);
   }
 
   /**
@@ -241,18 +238,15 @@ module NativeShieldedToken {
    * @param {Uint<64>} amount - Quantity to mint. Capped at `Uint<64>` by the protocol.
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique for this
    * contract's color.
-   * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
+   * @returns {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
-  export circuit _mintToSelf(
-                   amount: Uint<64>,
-                   nonce: Bytes<32>
-                   ): ShieldedCoinInfo {
+  export circuit _mintToSelf(amount: Uint<64>, nonce: Bytes<32>): ShieldedCoinInfo {
     return Core__mint(
-      _domain,
-      right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
-      amount,
-      nonce
-    );
+             _domain,
+             right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+             amount,
+             nonce
+             );
   }
 
   /**
@@ -287,20 +281,14 @@ module NativeShieldedToken {
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
    * @param {ZswapCoinPublicKey} refundTo - Where to route the unspent
    * portion (`coin.value - amount`).
-   * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
+   * @returns {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
-  export circuit _burn(
-                   coin: ShieldedCoinInfo,
-                   amount: Uint<128>,
-                   refundTo: ZswapCoinPublicKey
-                   ): Maybe<ShieldedCoinInfo> {
-    return Core__burn(
-      _domain,
-      coin,
-      amount,
-      left<ZswapCoinPublicKey, ContractAddress>(refundTo)
-    );
+  export circuit _burn(coin: ShieldedCoinInfo,
+                       amount: Uint<128>,
+                       refundTo: ZswapCoinPublicKey
+                       ): Maybe<ShieldedCoinInfo> {
+    return Core__burn(_domain, coin, amount, left<ZswapCoinPublicKey, ContractAddress>(refundTo));
   }
 
   /**
@@ -322,7 +310,7 @@ module NativeShieldedToken {
    *
    * @param {QualifiedShieldedCoinInfo} coin - The contract-held coin to burn from.
    * @param {Uint<128>} amount - Value to destroy. Must be <= `coin.value`.
-   * @return {Maybe<ShieldedCoinInfo>} - The change coin retained by the
+   * @returns {Maybe<ShieldedCoinInfo>} - The change coin retained by the
    * contract, or `none` if the coin was burned in full.
    */
   export circuit _burnFromSelf(

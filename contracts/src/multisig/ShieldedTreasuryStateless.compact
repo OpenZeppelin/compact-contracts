@@ -41,6 +41,8 @@ module ShieldedTreasuryStateless {
 
   /**
    * @description Receives a shielded coin into the treasury.
+   *
+   * @constraints k=13, rows=5898
    */
   export circuit _deposit(coin: ShieldedCoinInfo): [] {
     receiveShielded(disclose(coin));
@@ -63,6 +65,8 @@ module ShieldedTreasuryStateless {
    * self — `sendShielded` already routes it to self.) No balance or
    * received/sent accounting is tracked on the ledger.
    *
+   * @constraints k=15, rows=23615
+   *
    * @warning The result holds the sent and change coins in plaintext.
    * - Returning it from an entry point is safe: it stays with the caller.
    * - Writing it to the ledger publishes both coins. The compiler will not
@@ -82,11 +86,10 @@ module ShieldedTreasuryStateless {
    *
    * @returns {ShieldedSendResult} The result containing sent coin and any change.
    */
-  export circuit _send(
-    coin: QualifiedShieldedCoinInfo,
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-    amount: Uint<128>
-  ): ShieldedSendResult {
+  export circuit _send(coin: QualifiedShieldedCoinInfo,
+                       recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                       amount: Uint<128>
+                       ): ShieldedSendResult {
     const result = sendShielded(disclose(coin), disclose(recipient), disclose(amount));
 
     // `sendShielded` already emits any change as a fresh, self-owned output.

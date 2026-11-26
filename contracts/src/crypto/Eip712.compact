@@ -97,12 +97,39 @@ module Eip712 {
   pure circuit DOMAIN_TYPEHASH(): Bytes<32> {
     // keccak256("EIP712Domain(string name,string version,bytes32 salt)")
     // = 0x599a80fcaa47b95e2323ab4d34d34e0cc9feda4b843edafcc30c7bdf60ea15bf
-    const typeHash: Vector<32, Uint<8>> = [
-      0x59, 0x9a, 0x80, 0xfc, 0xaa, 0x47, 0xb9, 0x5e,
-      0x23, 0x23, 0xab, 0x4d, 0x34, 0xd3, 0x4e, 0x0c,
-      0xc9, 0xfe, 0xda, 0x4b, 0x84, 0x3e, 0xda, 0xfc,
-      0xc3, 0x0c, 0x7b, 0xdf, 0x60, 0xea, 0x15, 0xbf
-    ];
+    const typeHash: Vector<32, Uint<8>> =
+            [0x59,
+             0x9a,
+             0x80,
+             0xfc,
+             0xaa,
+             0x47,
+             0xb9,
+             0x5e,
+             0x23,
+             0x23,
+             0xab,
+             0x4d,
+             0x34,
+             0xd3,
+             0x4e,
+             0x0c,
+             0xc9,
+             0xfe,
+             0xda,
+             0x4b,
+             0x84,
+             0x3e,
+             0xda,
+             0xfc,
+             0xc3,
+             0x0c,
+             0x7b,
+             0xdf,
+             0x60,
+             0xea,
+             0x15,
+             0xbf];
 
     return typeHash as Bytes<32>;
   }
@@ -122,16 +149,16 @@ module Eip712 {
    * @returns {Bytes<32>} The domain separator.
    */
   export pure circuit domainSeparator(
-    hashedName: Bytes<32>,
-    hashedVersion: Bytes<32>,
-    salt: Bytes<32>
-  ): Bytes<32> {
-    return keccak256<DomainFields>(DomainFields {
-      typeHash: DOMAIN_TYPEHASH(),
-      hashedName: hashedName,
-      hashedVersion: hashedVersion,
-      salt: salt
-    });
+                        hashedName: Bytes<32>,
+                        hashedVersion: Bytes<32>,
+                        salt: Bytes<32>
+                        ): Bytes<32> {
+    return keccak256<DomainFields>(
+             DomainFields { typeHash: DOMAIN_TYPEHASH(),
+                            hashedName: hashedName,
+                            hashedVersion: hashedVersion,
+                            salt: salt }
+             );
   }
 
   /**
@@ -148,19 +175,16 @@ module Eip712 {
    * @param {Bytes<32>} structHash - `keccak256(typeHash || the operation's ABI words)`.
    * @returns {Bytes<32>} The digest to verify signatures against.
    */
-  export pure circuit hashTypedData(
-    separator: Bytes<32>,
-    structHash: Bytes<32>
-  ): Bytes<32> {
+  export pure circuit hashTypedData(separator: Bytes<32>, structHash: Bytes<32>): Bytes<32> {
     // A zero separator is what an uninitialized ledger cell reads as, and a
     // digest built from one still verifies signatures. Fail closed rather than
     // authorize an operation under an unset domain.
     assert(separator != pad(32, ""), "Eip712: domain separator not set");
 
-    return keccak256<TypedDataPreimage>(TypedDataPreimage {
-      prefixBytes: TYPED_DATA_PREFIX(),
-      domainSeparator: separator,
-      structHash: structHash
-    });
+    return keccak256<TypedDataPreimage>(
+             TypedDataPreimage { prefixBytes: TYPED_DATA_PREFIX(),
+                                 domainSeparator: separator,
+                                 structHash: structHash }
+             );
   }
 }

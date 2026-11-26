@@ -96,8 +96,7 @@ module FungibleToken {
    * @type {Map<account, Map<spender, allowance>>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _allowances
    */
-  export ledger _allowances: Map<Identifier,
-                                 Map<Identifier, Uint<128>>>;
+  export ledger _allowances: Map<Identifier, Map<Identifier, Uint<128>>>;
 
   /**
    * @description Total tokens in circulation. `_update` raises it on a mint and
@@ -121,6 +120,9 @@ module FungibleToken {
 
   /**
    * @description Initializes the contract by setting the name, symbol, and decimals.
+   *
+   * @constraints k=7, rows=108
+   *
    * @dev This MUST be called in the implementing contract's constructor. Failure to do so
    * can lead to an irreparable contract.
    *
@@ -128,7 +130,7 @@ module FungibleToken {
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
    * @param {Uint<8>} decimals_ - The number of decimals used to get the user representation.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(
                    name_: Opaque<"string">,
@@ -149,7 +151,7 @@ module FungibleToken {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "FungibleToken: contract not initialized");
@@ -162,7 +164,7 @@ module FungibleToken {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "FungibleToken: contract already initialized");
@@ -177,7 +179,7 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @return {Opaque<"string">} - The token name.
+   * @returns {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
     assertInitialized();
@@ -193,7 +195,7 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @return {Opaque<"string">} - The token name.
+   * @returns {Opaque<"string">} - The token name.
    */
   export circuit symbol(): Opaque<"string"> {
     assertInitialized();
@@ -209,7 +211,7 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @return {Uint<8>} - The account's token balance.
+   * @returns {Uint<8>} - The account's token balance.
    */
   export circuit decimals(): Uint<8> {
     assertInitialized();
@@ -225,7 +227,7 @@ module FungibleToken {
    *
    * - Contract is initialized.
    *
-   * @return {Uint<128>} - The total supply of tokens.
+   * @returns {Uint<128>} - The total supply of tokens.
    */
   export circuit totalSupply(): Uint<128> {
     assertInitialized();
@@ -244,7 +246,7 @@ module FungibleToken {
    * - Contract is initialized.
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account id or contract address to query.
-   * @return {Uint<128>} - The account's token balance.
+   * @returns {Uint<128>} - The account's token balance.
    */
   export circuit balanceOf(account: Identifier): Uint<128> {
     assertInitialized();
@@ -276,13 +278,9 @@ module FungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
-   * @return {Boolean} - As per the IERC20 spec, this MUST return true.
+   * @returns {Boolean} - As per the IERC20 spec, this MUST return true.
    */
-  export circuit transfer(
-                   caller: Caller,
-                   to: Identifier,
-                   value: Uint<128>
-                   ): Boolean {
+  export circuit transfer(caller: Caller, to: Identifier, value: Uint<128>): Boolean {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
@@ -309,13 +307,9 @@ module FungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
-   * @return {Boolean} - As per the IERC20 spec, this MUST return true.
+   * @returns {Boolean} - As per the IERC20 spec, this MUST return true.
    */
-  export circuit _unsafeTransfer(
-                   caller: Caller,
-                   to: Identifier,
-                   value: Uint<128>
-                   ): Boolean {
+  export circuit _unsafeTransfer(caller: Caller, to: Identifier, value: Uint<128>): Boolean {
     assertInitialized();
     const owner = caller.identifier;
     _unsafeUncheckedTransfer(owner, to, value);
@@ -336,17 +330,15 @@ module FungibleToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} owner - The account id or contract address of approver.
    * @param {Either<Bytes<32>, ContractAddress>} spender - The account id or contract address of spender.
-   * @return {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
+   * @returns {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
    */
-  export circuit allowance(
-                   owner: Identifier,
-                   spender: Identifier
-                   ): Uint<128> {
+  export circuit allowance(owner: Identifier, spender: Identifier): Uint<128> {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
-    if (!_allowances.member(disclose(canonOwner)) || !_allowances.lookup(canonOwner).member(disclose(canonSpender))) {
+    if (!_allowances.member(disclose(canonOwner)) ||
+        !_allowances.lookup(canonOwner).member(disclose(canonSpender))) {
       return 0;
     }
 
@@ -366,12 +358,9 @@ module FungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} spender - The account id or ContractAddress that may spend on behalf of the caller.
    * @param {Uint<128>} value - The amount of tokens the `spender` may spend.
-   * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
+   * @returns {Boolean} - Returns a boolean value indicating whether the operation succeeded.
    */
-  export circuit approve(caller: Caller,
-                         spender: Identifier,
-                         value: Uint<128>
-                         ): Boolean {
+  export circuit approve(caller: Caller, spender: Identifier, value: Uint<128>): Boolean {
     assertInitialized();
 
     const owner = caller.identifier;
@@ -402,7 +391,7 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
-   * @return {Boolean} - As per the IERC20 spec, this MUST return true.
+   * @returns {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit transferFrom(
                    caller: Caller,
@@ -438,7 +427,7 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The current owner of the tokens for the transfer, either a user or a contract.
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transfer, either a user or a contract.
    * @param {Uint<128>} value - The amount to transfer.
-   * @return {Boolean} - As per the IERC20 spec, this MUST return true.
+   * @returns {Boolean} - As per the IERC20 spec, this MUST return true.
    */
   export circuit _unsafeTransferFrom(
                    caller: Caller,
@@ -476,13 +465,9 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The owner of the tokens to transfer.
    * @param {Either<Bytes<32>, ContractAddress>} to - The receipient of the transferred tokens.
    * @param {Uint<128>} value - The amount of tokens to transfer.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit _transfer(
-                   fromAddress: Identifier,
-                   to: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _transfer(fromAddress: Identifier, to: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
@@ -508,7 +493,7 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The owner of the tokens to transfer.
    * @param {Either<Bytes<32>, ContractAddress>} to - The receipient of the transferred tokens.
    * @param {Uint<128>} value - The amount of tokens to transfer.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeUncheckedTransfer(
                    fromAddress: Identifier,
@@ -536,12 +521,9 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The original owner of the tokens moved (which is 0 if tokens are minted).
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the tokens moved (which is 0 if tokens are burned).
    * @param {Uint<128>} value - The amount of tokens moved from `fromAddress` to `to`.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  circuit _update(fromAddress: Identifier,
-                  to: Identifier,
-                  value: Uint<128>
-                  ): [] {
+  circuit _update(fromAddress: Identifier, to: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
@@ -585,7 +567,7 @@ module FungibleToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The recipient of tokens minted.
    * @param {Uint<128>} value - The amount of tokens minted.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _mint(account: Identifier, value: Uint<128>): [] {
     assertInitialized();
@@ -611,12 +593,9 @@ module FungibleToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The recipient of tokens minted.
    * @param {Uint<128>} value - The amount of tokens minted.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit _unsafeMint(
-                   account: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _unsafeMint(account: Identifier, value: Uint<128>): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(account), "FungibleToken: invalid receiver");
     _update(Utils_zeroAccount(), account, value);
@@ -636,7 +615,7 @@ module FungibleToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The target owner of tokens to burn.
    * @param {Uint<128>} value - The amount of tokens to burn.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _burn(account: Identifier, value: Uint<128>): [] {
     assertInitialized();
@@ -660,13 +639,9 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} owner - The owner of the tokens.
    * @param {Either<Bytes<32>, ContractAddress>} spender - The spender of the tokens.
    * @param {Uint<128>} value - The amount of tokens `spender` may spend on behalf of `owner`.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit _approve(
-                   owner: Identifier,
-                   spender: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _approve(owner: Identifier, spender: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
@@ -676,10 +651,7 @@ module FungibleToken {
 
     if (!_allowances.member(disclose(canonOwner))) {
       // If owner doesn't exist, create and insert a new sub-map directly
-      _allowances.insert(
-        disclose(canonOwner),
-        default<Map<Identifier, Uint<128>>>
-        );
+      _allowances.insert(disclose(canonOwner), default<Map<Identifier, Uint<128>>>);
     }
     _allowances.lookup(canonOwner).insert(disclose(canonSpender), disclose(value));
   }
@@ -698,13 +670,9 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} owner - The owner of the tokens.
    * @param {Either<Bytes<32>, ContractAddress>} spender - The spender of the tokens.
    * @param {Uint<128>} value - The amount of token allowance to spend.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit _spendAllowance(
-                   owner: Identifier,
-                   spender: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _spendAllowance(owner: Identifier, spender: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);

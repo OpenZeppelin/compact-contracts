@@ -186,14 +186,27 @@ module ShieldedAccessControl {
   import "../identifier/extensions/IdentifierCommitment" prefix IdentifierCommitment_;
   import "../utils/Utils" prefix Utils_;
 
+  /**
+   * @description The kind of a role update: `Grant` or `Revoke`.
+   */
   export enum UpdateType {
     Grant,
     Revoke
   };
 
   // TODO: Standardize types across contracts https://github.com/OpenZeppelin/compact-contracts/issues/368
+  /**
+   * A role commitment, `SHA256(role | accountCommitment | instanceSalt |
+   * commitmentDomain)`, stored as a leaf of `_operatorRoles`.
+   */
   export new type RoleCommitment = Bytes<32>;
+  /**
+   * A role identifier. `DEFAULT_ADMIN_ROLE` is all zero bytes.
+   */
   export new type RoleIdentifier = Bytes<32>;
+  /**
+   * A role nullifier, `SHA256(roleCommitment | nullifierDomain)`.
+   */
   export new type RoleNullifier = Bytes<32>;
 
   /**
@@ -257,7 +270,7 @@ module ShieldedAccessControl {
    *
    * @param {RoleCommitment} roleCommitment - A commitment created by the following hash: SHA256( role | accountCommitment | instanceSalt | commitmentDomain).
    *
-   * @return {MerkleTreePath<20, RoleCommitment>} - The Merkle tree path to `roleCommitment` in the `_operatorRoles` Merkle tree
+   * @returns {MerkleTreePath<20, RoleCommitment>} - The Merkle tree path to `roleCommitment` in the `_operatorRoles` Merkle tree
    */
   witness wit_getRoleCommitmentPath(
             roleCommitment: RoleCommitment
@@ -266,6 +279,8 @@ module ShieldedAccessControl {
   /**
    * @description Initializes the contract by storing the `instanceSalt` that acts as a privacy additive
    * for preventing duplicate commitments among other contracts implementing ShieldedAccessControl.
+   *
+   * @constraints k=8, rows=155
    *
    * @warning The `instanceSalt` must be calculated prior to contract deployment using a cryptographically
    * secure random number generator e.g. crypto.getRandomValues() to maintain strong privacy guarantees
@@ -294,7 +309,7 @@ module ShieldedAccessControl {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "ShieldedAccessControl: contract not initialized");
@@ -307,7 +322,7 @@ module ShieldedAccessControl {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "ShieldedAccessControl: contract already initialized");
@@ -347,15 +362,13 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    * @param {RoleIdentifier} role - The role identifier.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
-  export circuit assertOnlyRole(
-                   caller: Caller,
-                   blinding: Blinding,
-                   role: RoleIdentifier
-                   ): [] {
+  export circuit assertOnlyRole(caller: Caller, blinding: Blinding, role: RoleIdentifier): [] {
     assertInitialized();
-    assert(_uncheckedCanProveRole(caller, blinding, role), "ShieldedAccessControl: unauthorized account");
+    assert(_uncheckedCanProveRole(caller, blinding, role),
+           "ShieldedAccessControl: unauthorized account"
+           );
   }
 
   /**
@@ -382,13 +395,9 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    * @param {RoleIdentifier} role - The role identifier.
    *
-   * @return {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
+   * @returns {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
    */
-  export circuit canProveRole(
-                   caller: Caller,
-                   blinding: Blinding,
-                   role: RoleIdentifier
-                   ): Boolean {
+  export circuit canProveRole(caller: Caller, blinding: Blinding, role: RoleIdentifier): Boolean {
     assertInitialized();
     return _uncheckedCanProveRole(caller, blinding, role);
   }
@@ -418,13 +427,9 @@ module ShieldedAccessControl {
    * @param {Bytes<32>} blinding - The caller's blinding factor.
    * @param {RoleIdentifier} role - The role identifier.
    *
-   * @return {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
+   * @returns {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
    */
-  circuit _uncheckedCanProveRole(
-            caller: Caller,
-            blinding: Blinding,
-            role: RoleIdentifier
-            ): Boolean {
+  circuit _uncheckedCanProveRole(caller: Caller, blinding: Blinding, role: RoleIdentifier): Boolean {
     return _validateRole(role, _computeAccountCommitment(caller, blinding));
   }
 
@@ -458,7 +463,7 @@ module ShieldedAccessControl {
    * @param {IdentifierCommitment} accountCommitment - The holder's account commitment, computed off-chain by the
    * grantee with {computeAccountCommitment}.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit grantRole(
                    caller: Caller,
@@ -500,7 +505,7 @@ module ShieldedAccessControl {
    * @param {RoleIdentifier} role - The role identifier.
    * @param {IdentifierCommitment} accountCommitment - The account commitment.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _grantRole(role: RoleIdentifier, accountCommitment: IdentifierCommitment): [] {
     assertInitialized();
@@ -539,7 +544,7 @@ module ShieldedAccessControl {
    * @param {RoleIdentifier} role - The role identifier.
    * @param {IdentifierCommitment} accountCommitmentConfirmation - The caller's account commitment, must match the one computed from `caller` and `blinding`.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit renounceRole(
                    caller: Caller,
@@ -586,7 +591,7 @@ module ShieldedAccessControl {
    * @param {IdentifierCommitment} accountCommitment - The holder's account commitment, computed off-chain by the
    * grantee with {computeAccountCommitment}.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit revokeRole(
                    caller: Caller,
@@ -624,7 +629,7 @@ module ShieldedAccessControl {
    * @param {RoleIdentifier} role - The role identifier.
    * @param {IdentifierCommitment} accountCommitment - The account commitment.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _revokeRole(role: RoleIdentifier, accountCommitment: IdentifierCommitment): [] {
     assertInitialized();
@@ -652,7 +657,7 @@ module ShieldedAccessControl {
    * @param {IdentifierCommitment} accountCommitment - The account commitment.
    * @param {UpdateType} updateType - Whether to grant or revoke.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit _updateRole(
             role: RoleIdentifier,
@@ -690,7 +695,7 @@ module ShieldedAccessControl {
    *
    * @param {RoleIdentifier} role - The role identifier.
    *
-   * @return {RoleIdentifier} roleAdmin - The admin role that controls `role`.
+   * @returns {RoleIdentifier} roleAdmin - The admin role that controls `role`.
    */
   export circuit getRoleAdmin(role: RoleIdentifier): RoleIdentifier {
     if (_adminRoles.member(disclose(role))) {
@@ -716,7 +721,7 @@ module ShieldedAccessControl {
    * @param {RoleIdentifier} role - The role identifier.
    * @param {RoleIdentifier} adminId - The admin identifier for `role`.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _setRoleAdmin(role: RoleIdentifier, adminId: RoleIdentifier): [] {
     assertInitialized();
@@ -748,7 +753,7 @@ module ShieldedAccessControl {
    * @param {RoleIdentifier} role - The role identifier.
    * @param {IdentifierCommitment} accountCommitment - The account commitment.
    *
-   * @return {Boolean} isValidRole - A boolean indicating whether `accountCommitment` has a valid role
+   * @returns {Boolean} isValidRole - A boolean indicating whether `accountCommitment` has a valid role
    */
   circuit _validateRole(role: RoleIdentifier, accountCommitment: IdentifierCommitment): Boolean {
     const roleCommitment = computeRoleCommitment(role, accountCommitment);
@@ -890,6 +895,6 @@ module ShieldedAccessControl {
              pad(32, "ShieldedAccessControl:account"),
              account,
              blinding as Bytes<32>
-           );
+             );
   }
 }

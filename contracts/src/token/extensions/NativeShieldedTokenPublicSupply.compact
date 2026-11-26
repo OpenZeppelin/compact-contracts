@@ -83,7 +83,7 @@ module NativeShieldedTokenPublicSupply {
    * @constraints k=9, rows=165
    *
    * @param {Uint<64>} amount - The minted amount.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _addMinted(amount: Uint<64>): [] {
     Core__addMinted(key(), amount);
@@ -97,7 +97,7 @@ module NativeShieldedTokenPublicSupply {
    * @constraints k=9, rows=216
    *
    * @param {Uint<128>} amount - The burned amount.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _addBurned(amount: Uint<128>): [] {
     Core__addBurned(key(), amount);
@@ -108,7 +108,7 @@ module NativeShieldedTokenPublicSupply {
    *
    * @constraints k=7, rows=58
    *
-   * @return {Uint<128>} - The total amount minted.
+   * @returns {Uint<128>} - The total amount minted.
    */
   export circuit totalMinted(): Uint<128> {
     return Core_totalMinted(key());
@@ -121,7 +121,7 @@ module NativeShieldedTokenPublicSupply {
    *
    * @constraints k=7, rows=58
    *
-   * @return {Uint<128>} - The total amount burned through the contract.
+   * @returns {Uint<128>} - The total amount burned through the contract.
    */
   export circuit totalBurned(): Uint<128> {
     return Core_totalBurned(key());
@@ -134,7 +134,7 @@ module NativeShieldedTokenPublicSupply {
    *
    * @constraints k=9, rows=112
    *
-   * @return {Uint<128>} - The upper bound on tokens in existence.
+   * @returns {Uint<128>} - The upper bound on tokens in existence.
    */
   export circuit totalSupply(): Uint<128> {
     return Core_totalSupply(key());

@@ -75,6 +75,8 @@ module ForwarderShielded {
    * Called once from the preset constructor. The coin public key is
    * stored in the `left` arm of the generic `_parent` ledger field.
    *
+   * @constraints k=8, rows=160
+   *
    * Requirements:
    *
    * - Contract must not be initialized.

@@ -55,6 +55,8 @@ module ForwarderPrivate {
    * Called once from the preset constructor. The commitment is
    * immutable after init.
    *
+   * @constraints k=8, rows=155
+   *
    * Requirements:
    *
    * - Contract must not be initialized.
@@ -143,32 +145,30 @@ module ForwarderPrivate {
    * @returns {ShieldedSendResult} The result containing the sent coin
    * and any change.
    */
-  export circuit _drain(
-    coin: QualifiedShieldedCoinInfo,
-    parent: ZswapCoinPublicKey,
-    opSecret: Bytes<32>,
-    value: Uint<128>
-  ): ShieldedSendResult {
+  export circuit _drain(coin: QualifiedShieldedCoinInfo,
+                        parent: ZswapCoinPublicKey,
+                        opSecret: Bytes<32>,
+                        value: Uint<128>
+                        ): ShieldedSendResult {
     assertInitialized();
 
     // Reject a zero parent before the commitment gate.
     assert(!Utils_isKeyZero(parent), "ForwarderPrivate: zero parent");
 
     // Commitment gate. The preimage is the parent key's 32 bytes and `opSecret`.
-    assert(
-      _calculateParentCommitment(parent.bytes, opSecret) == _parentCommitment,
-      "ForwarderPrivate: invalid parent"
-    );
+    assert(_calculateParentCommitment(parent.bytes, opSecret) == _parentCommitment,
+           "ForwarderPrivate: invalid parent"
+           );
 
     // Send to the parent coin public key (the `left` arm). `disclose` reveals
     // nothing: a coin-public-key recipient is encrypted in the Zswap output, so
     // the parent never appears on the public transcript. A contract recipient
     // is intentionally unsupported — it would publish the address in cleartext.
     const result = sendShielded(
-      disclose(coin),
-      left<ZswapCoinPublicKey, ContractAddress>(disclose(parent)),
-      disclose(value)
-    );
+                     disclose(coin),
+                     left<ZswapCoinPublicKey, ContractAddress>(disclose(parent)),
+                     disclose(value)
+                     );
 
     // `sendShielded` already emits any change as a fresh output owned by this
     // contract (dwelling at the contract address for future drains). `_drain`
@@ -201,12 +201,12 @@ module ForwarderPrivate {
    * @returns {Bytes<32>} `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret])`.
    */
   export pure circuit _calculateParentCommitment(
-    parentAddr: Bytes<32>,
-    opSecret: Bytes<32>
-  ): Bytes<32> {
+                        parentAddr: Bytes<32>,
+                        opSecret: Bytes<32>
+                        ): Bytes<32> {
     return persistentHash<Vector<3, Bytes<32>>>(
-      [pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret]
-    );
+             [pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret]
+             );
   }
 
   // ─── Init guards ────────────────────────────────────────────────
@@ -218,7 +218,7 @@ module ForwarderPrivate {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "ForwarderPrivate: contract not initialized");
@@ -231,7 +231,7 @@ module ForwarderPrivate {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "ForwarderPrivate: contract already initialized");

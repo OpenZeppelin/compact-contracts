@@ -39,7 +39,7 @@ The items below are the hard gates your contribution must clear:
   with the commands in [the workflow below](#a-typical-workflow).
 - **Conventions**: follow [`GUIDELINES.md`](GUIDELINES.md).
 - **Documentation**: add inline documentation for every public API,
-  formatted per [`GUIDELINES.md`](GUIDELINES.md#documentation).
+  formatted per [`GUIDELINES.md`](GUIDELINES.md#documentation) and checked with `yarn lint:compact`.
 
 ## Commit and PR conventions
 
@@ -127,7 +127,15 @@ We may close low-effort AI output without further explanation.
    yarn test:coverage
    yarn lint:fix
    yarn lint
+   yarn lint:compact:fix
+   yarn lint:compact
    ```
+
+   `yarn lint:compact` checks the Compact doc comments against the `[lint]` table in
+   `compact.toml` and runs `compact format --check`. `lint:compact:fix` writes missing
+   doc skeletons with `TODO` placeholders and `@constraints k=?, rows=?` lines.
+   Replace each `TODO` by hand, then measure the constraints with
+   `yarn compact-linter fill-constraints <file>`.
 
    Integration and live suites, and how the live suite runs in CI,
    are described in [`TESTING.md`](TESTING.md).

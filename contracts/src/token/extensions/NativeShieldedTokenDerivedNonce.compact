@@ -61,7 +61,7 @@ module NativeShieldedTokenDerivedNonce {
    *
    * @constraints k=9, rows=250
    *
-   * @return {Bytes<32>} - The next derived coin nonce.
+   * @returns {Bytes<32>} - The next derived coin nonce.
    */
   export circuit _deriveNonce(): Bytes<32> {
     _counter.increment(1);

@@ -22,6 +22,7 @@ pragma language_version >= 0.28.0;
  */
 
 import CompactStandardLibrary;
+
 import "../ForwarderPrivate" prefix ForwarderPrivate_;
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
@@ -42,6 +43,8 @@ constructor(parentCommitment: Bytes<32>) {
  * @description Receives a shielded coin into the forwarder's custody.
  * No ledger write — the coin sits at the contract address until drained.
  *
+ * @constraints k=13, rows=5909
+ *
  * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
  *
  * @returns {[]} Empty tuple.
@@ -60,6 +63,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
  * send to a contract publishes that contract's address in cleartext, which
  * would defeat the private-parent guarantee.
+ *
+ * @constraints k=15, rows=21754
  *
  * Requirements:
  *
@@ -85,17 +90,18 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * @returns {ShieldedSendResult} The result containing the sent coin and
  * any change.
  */
-export circuit drain(
-  coin: QualifiedShieldedCoinInfo,
-  parent: ZswapCoinPublicKey,
-  opSecret: Bytes<32>,
-  value: Uint<128>
-): ShieldedSendResult {
+export circuit drain(coin: QualifiedShieldedCoinInfo,
+                     parent: ZswapCoinPublicKey,
+                     opSecret: Bytes<32>,
+                     value: Uint<128>
+                     ): ShieldedSendResult {
   return ForwarderPrivate__drain(coin, parent, opSecret, value);
 }
 
 /**
  * @description Returns the stored parent commitment.
+ *
+ * @constraints k=6, rows=57
  *
  * @returns {Bytes<32>} The commitment set at deploy.
  */
@@ -117,9 +123,6 @@ export circuit getParentCommitment(): Bytes<32> {
  *
  * @returns {Bytes<32>} The commitment `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret])`.
  */
-export pure circuit calculateParentCommitment(
-  parentAddr: Bytes<32>,
-  opSecret: Bytes<32>
-): Bytes<32> {
+export pure circuit calculateParentCommitment(parentAddr: Bytes<32>, opSecret: Bytes<32>): Bytes<32> {
   return ForwarderPrivate__calculateParentCommitment(parentAddr, opSecret);
 }

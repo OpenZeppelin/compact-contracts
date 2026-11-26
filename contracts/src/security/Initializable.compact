@@ -41,7 +41,7 @@ module Initializable {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(): [] {
     assertNotInitialized();
@@ -57,7 +57,7 @@ module Initializable {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertInitialized(): [] {
     assert(_isInitialized, "Initializable: contract not initialized");
@@ -72,7 +72,7 @@ module Initializable {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "Initializable: contract already initialized");

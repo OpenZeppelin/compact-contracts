@@ -123,7 +123,7 @@ module Ownable {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "Ownable: contract not initialized");
@@ -136,7 +136,7 @@ module Ownable {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "Ownable: contract already initialized");
@@ -178,10 +178,7 @@ module Ownable {
    * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit transferOwnership(
-                   caller: Caller,
-                   newOwner: Identifier
-                   ): [] {
+  export circuit transferOwnership(caller: Caller, newOwner: Identifier): [] {
     assertInitialized();
     const isContractAddr = !newOwner.is_left;
     assert(!isContractAddr, "Ownable: unsafe ownership transfer");
@@ -208,10 +205,7 @@ module Ownable {
    * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit _unsafeTransferOwnership(
-                   caller: Caller,
-                   newOwner: Identifier
-                   ): [] {
+  export circuit _unsafeTransferOwnership(caller: Caller, newOwner: Identifier): [] {
     assertInitialized();
     assertOnlyOwner(caller);
     assert(!Utils_isTargetZero(newOwner), "Ownable: invalid new owner");
@@ -239,9 +233,9 @@ module Ownable {
 
     // We use `left` here because `assertOnlyOwner` would return a misleading
     // error msg (this library has not yet migrated to c2c)
-    const zero = Either<Bytes<32>, ContractAddress> {
-      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
-    };
+    const zero = Either<Bytes<32>, ContractAddress> { is_left: true,
+                                                      left: default<Bytes<32>>,
+                                                      right: default<ContractAddress> };
     _unsafeUncheckedTransferOwnership(zero);
   }
 
@@ -263,10 +257,9 @@ module Ownable {
   export circuit assertOnlyOwner(caller: Caller): [] {
     assertInitialized();
     if (_owner.is_left) {
-      assert(
-        caller.identifier == _owner && !Utils_isTargetZero(caller.identifier),
-        "Ownable: caller is not the owner"
-      );
+      assert(caller.identifier == _owner && !Utils_isTargetZero(caller.identifier),
+             "Ownable: caller is not the owner"
+             );
     } else {
       assert(false, "Ownable: contract address owner authentication is not yet supported");
     }
@@ -314,9 +307,7 @@ module Ownable {
    * @param {Either<Bytes<32>, ContractAddress>} newOwner - The new owner.
    * @returns {[]} Empty tuple.
    */
-  export circuit _unsafeUncheckedTransferOwnership(
-                   newOwner: Identifier
-                   ): [] {
+  export circuit _unsafeUncheckedTransferOwnership(newOwner: Identifier): [] {
     assertInitialized();
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(newOwner);
     _owner = disclose(canonAcct);

@@ -61,6 +61,8 @@ module UnshieldedTreasury {
    * operation creates a zero-valued `_balances` entry, which
    * `getTokenBalance` reports the same as absence.
    *
+   * @constraints k=9, rows=304
+   *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
    * authorization policy.
@@ -92,6 +94,8 @@ module UnshieldedTreasury {
   /**
    * @description Sends unshielded tokens from the treasury.
    *
+   * @constraints k=10, rows=553
+   *
    * @warning Recipients are not validated. An unspendable recipient (such as a
    * zero address) is accepted and permanently removes the funds from the
    * contract. This is not a sanctioned burn — no unshielded equivalent of
@@ -119,11 +123,10 @@ module UnshieldedTreasury {
    *
    * @returns {[]} Empty tuple.
    */
-  export circuit _send(
-    recipient: Either<ContractAddress, UserAddress>,
-    color: Bytes<32>,
-    amount: Uint<128>
-  ): [] {
+  export circuit _send(recipient: Either<ContractAddress, UserAddress>,
+                       color: Bytes<32>,
+                       amount: Uint<128>
+                       ): [] {
     assert(amount != 0, "UnshieldedTreasury: zero amount");
 
     const bal = getTokenBalance(color);
@@ -137,6 +140,8 @@ module UnshieldedTreasury {
 
   /**
    * @description Returns the balance for a given token color.
+   *
+   * @constraints k=8, rows=146
    *
    * @param {Bytes<32>} color - The token type identifier.
    *

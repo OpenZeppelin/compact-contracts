@@ -90,6 +90,8 @@ module ShieldedTreasury {
    * events are supported. They are not useful as privacy decoys, this
    * treasury's holdings are public (see the module header).
    *
+   * @constraints k=16, rows=34619
+   *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
    * authorization policy.
@@ -117,10 +119,7 @@ module ShieldedTreasury {
       _coins.insertCoin(coinColor, disclose(coin), Utils_selfAsRecipient());
     }
 
-    _received.insert(
-      coinColor,
-      disclose(currentReceived + coin.value as Uint<128>)
-    );
+    _received.insert(coinColor, disclose(currentReceived + coin.value as Uint<128>));
   }
 
   // ─── Send ───────────────────────────────────────────────────────
@@ -135,6 +134,8 @@ module ShieldedTreasury {
    * the UTXO map for the next spend. The returned `result.change` therefore
    * belongs to the treasury and must not be re-spent by the caller (doing
    * so would double-spend the recorded coin).
+   *
+   * @constraints k=15, rows=29320
    *
    * @notice The returned `ShieldedSendResult` carries the sent and change coins
    * in plaintext, so sinking it (returning it from an entry point, writing it
@@ -158,11 +159,10 @@ module ShieldedTreasury {
    *
    * @returns {ShieldedSendResult} The result containing sent coin and any change.
    */
-  export circuit _send(
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-    color: Bytes<32>,
-    amount: Uint<128>
-  ): ShieldedSendResult {
+  export circuit _send(recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                       color: Bytes<32>,
+                       amount: Uint<128>
+                       ): ShieldedSendResult {
     assert(_coins.member(disclose(color)), "ShieldedTreasury: no balance");
 
     const coin = _coins.lookup(disclose(color));
@@ -184,10 +184,7 @@ module ShieldedTreasury {
       _coins.remove(disclose(color));
     }
 
-    _sent.insert(
-      disclose(color),
-      disclose(currentSent + amount as Uint<128>)
-    );
+    _sent.insert(disclose(color), disclose(currentSent + amount as Uint<128>));
 
     return result;
   }
@@ -197,6 +194,8 @@ module ShieldedTreasury {
   /**
    * @description Returns the current token balance for a color.
    * Reads the actual coin value from the UTXO map.
+   *
+   * @constraints k=8, rows=159
    *
    * @param {Bytes<32>} color - The token color.
    *
@@ -214,6 +213,8 @@ module ShieldedTreasury {
   /**
    * @description Returns the cumulative received total for a color.
    *
+   * @constraints k=8, rows=146
+   *
    * @param {Bytes<32>} color - The token color.
    *
    * @returns {Uint<128>} Total received.
@@ -227,6 +228,8 @@ module ShieldedTreasury {
 
   /**
    * @description Returns the cumulative sent total for a color.
+   *
+   * @constraints k=8, rows=146
    *
    * @param {Bytes<32>} color - The token color.
    *
@@ -243,6 +246,8 @@ module ShieldedTreasury {
    * @description Returns the difference between cumulative received
    * and cumulative sent totals for a color. Should equal
    * `getTokenBalance` if accounting is consistent.
+   *
+   * @constraints k=9, rows=201
    *
    * @notice The subtraction is unguarded. `_send` cannot drive the sent total
    * past the received total. Change re-insertion never increments `_received`
