@@ -136,6 +136,7 @@ module Secp256k1EcdsaMultisig<#t> {
    * Requirements:
    *
    * - Can only be called once.
+   * - `instanceSalt` is not zero.
    * - `instanceSalt` should be cryptographically random.
    * - `signerCommitments` must not contain duplicates.
    * - `n` must be at least `t`.
@@ -149,6 +150,7 @@ module Secp256k1EcdsaMultisig<#t> {
     signerCommitments: Vector<n, Bytes<32>>
   ): [] {
     assert(Signer_getSignerCount() == 0, "Secp256k1EcdsaMultisig: signers already registered");
+    assert(instanceSalt != default<Bytes<32>>, "Secp256k1EcdsaMultisig: invalid salt");
     _instanceSalt = disclose(instanceSalt);
 
     for (const commitment of signerCommitments) {

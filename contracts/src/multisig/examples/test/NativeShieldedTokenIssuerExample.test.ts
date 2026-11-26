@@ -100,6 +100,19 @@ describe('NativeShieldedTokenIssuerExample', () => {
     expect(await c.getThreshold()).toEqual(2n);
   });
 
+  it('rejects a zero instance salt', async () => {
+    await expect(
+      ExampleSimulator.create([
+        new Uint8Array(32),
+        TOKEN_DOMAIN,
+        TOKEN_NAME,
+        TOKEN_SYMBOL,
+        TOKEN_DECIMALS,
+        COMMITMENTS,
+      ]),
+    ).rejects.toThrow('Secp256k1EcdsaMultisig: invalid salt');
+  });
+
   it('surfaces the preset state in ledger()', async () => {
     const state = await ex.getPublicState();
     expect(state._counter).toStrictEqual(0n);

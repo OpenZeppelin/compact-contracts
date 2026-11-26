@@ -62,6 +62,7 @@ export {
  * Requirements:
  *
  * - `signerCommitments` must not contain duplicates.
+ * - `instanceSalt` is not zero.
  * - `instanceSalt` should be cryptographically random.
  *
  * @param {Bytes<32>} instanceSalt - Random salt for signer commitment derivation.
