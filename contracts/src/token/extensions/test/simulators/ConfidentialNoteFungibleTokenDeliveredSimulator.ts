@@ -22,7 +22,10 @@ import {
   type DeliveryWallet,
 } from '../witnesses/ConfidentialNoteFungibleTokenDeliveryWitnesses.js';
 
-/** The core's four witnesses plus delivery's one, over the core's private state. */
+/**
+ * The core's witnesses, then delivery's, over the core's private state. Both
+ * modules read `wit_RandPrfExpandSeed`, so the delivery wallet's seed answers.
+ */
 const ConfidentialNoteFungibleTokenDeliveredWitnesses = (
   noteWallet: NoteWallet,
   deliveryWallet: DeliveryWallet,

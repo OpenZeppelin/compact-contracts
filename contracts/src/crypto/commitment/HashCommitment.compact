@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/commitment/HashCommitment.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module HashCommitment
+ * @description Hash commitment. `commit` binds a tagged message under secret
+ * randomness and hides it until both are revealed.
+ *
+ * ```compact
+ * import "../crypto/commitment/HashCommitment" prefix HashCommitment_;
+ *
+ * export pure circuit commitBid(
+ *   amount: Uint<128>,
+ *   rand: Bytes<32>
+ * ): Bytes<32> {
+ *   return HashCommitment_commit<Uint<128>>(pad(32, "MyModule:bid"), amount, rand);
+ * }
+ * ```
+ *
+ * @see https://eprint.iacr.org/2014/349 Ben-Sasson et al., Zerocash: Decentralized Anonymous Payments from Bitcoin (IEEE S&P 2014)
+ *
+ * @dev Structure:
+ * Zerocash writes a commitment to message `m` under randomness `r` as
+ * `COMM_r(m)`, opened by revealing both, and instantiates it with SHA-256.
+ * Here `{domain, message}` is `m` and `randomness` is `r`. The tag is an
+ * argument, so each caller keeps its own commitment space.
+ *
+ * @dev Layout:
+ * `persistentCommit` over `{domain, message}` with `randomness`. The hash
+ * covers `randomness`, `domain`, then the bytes of the fields of `message`
+ * in order, and it is wire format. Struct names, nesting and field
+ * boundaries are not hashed.
+ *
+ * @notice Assumption:
+ * `persistentCommit` is binding, and hides its input while `randomness` is
+ * unknown.
+ *
+ * @notice Caller duties:
+ * - One tag per purpose, and one message type per tag. Under one tag, two
+ *   message types whose fields concatenate to the same bytes commit to the
+ *   same digest.
+ * - Hiding needs `randomness` with the entropy of 32 bytes from a CSPRNG,
+ *   fresh per commitment. A guessable one lets an observer test candidate
+ *   messages, and a repeated message and randomness repeat the digest.
+ * - Binding needs nothing from `randomness`.
+ *
+ * @dev No ledger state, no witnesses, no asserts.
+ */
+module HashCommitment {
+  import CompactStandardLibrary;
+
+  /**
+   * @description The committed value, in wire-format order.
+   * @type {Bytes<32>} domain - The purpose tag.
+   * @type {M} message - The committed message.
+   */
+  struct Tagged<M> {
+    domain: Bytes<32>;
+    message: M;
+  }
+
+  /**
+   * @description `persistentCommit` over `{domain, message}` with
+   * `randomness`.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {M} message - The committed message.
+   * @param {Bytes<32>} randomness - The hiding randomness.
+   * @return {Bytes<32>} - The commitment.
+   */
+  export pure circuit commit<M>(
+                        domain: Bytes<32>,
+                        message: M,
+                        randomness: Bytes<32>
+                        ): Bytes<32> {
+    return persistentCommit<Tagged<M>>(
+      Tagged<M> { domain: domain, message: message },
+      randomness
+    );
+  }
+}

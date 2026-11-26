@@ -1,0 +1,87 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (crypto/randomness/RandPrfExpand.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module RandPrfExpand
+ * @description Per-call randomness. `derive` expands the caller's secret
+ * seed into one of several independent 32-byte values.
+ *
+ * ```compact
+ * import "../crypto/randomness/RandPrfExpand" prefix RandPrfExpand_;
+ *
+ * circuit nonceFor(recipient: Bytes<32>): Field {
+ *   return degradeToTransient(RandPrfExpand_derive<Bytes<32>>(
+ *     pad(32, "MyModule:rand"),
+ *     pad(32, "MyModule:nonce"),
+ *     recipient
+ *   ));
+ * }
+ * ```
+ *
+ * @dev Structure:
+ * `PrfExpand.expand` keyed by the seed `wit_RandPrfExpandSeed` returns.
+ * Every module of a contract draws from this one witness, and its own
+ * `domain` keeps its values apart from the others'.
+ *
+ * @notice Security:
+ * - A zero seed is rejected: it is the value of an unset 32-byte field.
+ * - No circuit can tell a guessable seed from a random one. That rests on
+ *   the client.
+ *
+ * @notice Caller duties:
+ * - `PrfExpand`'s: one `domain` per purpose, one `slot` per output, and a
+ *   `context` that scopes a repeated seed.
+ * - A derived value is as secret as the seed. Publish it only behind a
+ *   one-way step.
+ *
+ * @notice Client-side duties:
+ * - Implement `wit_RandPrfExpandSeed`: 32 bytes from a CSPRNG, secret, and
+ *   fresh for each circuit call.
+ * - The witness runs once per derived value. Within one circuit call it may
+ *   return the same seed every time.
+ *
+ * @dev No ledger state.
+ */
+module RandPrfExpand {
+  import CompactStandardLibrary;
+
+  import "../prf/PrfExpand" prefix PrfExpand_;
+
+  /**
+   * @witness wit_RandPrfExpandSeed
+   * @description Returns the seed `derive` expands.
+   *
+   * @returns {Bytes<32>} seed - A 32-byte cryptographically secure random
+   * value, secret and fresh for each circuit call.
+   */
+  witness wit_RandPrfExpandSeed(): Bytes<32>;
+
+  /**
+   * @description `PrfExpand.expand(domain, slot, context, seed)` under the
+   * caller's seed.
+   *
+   * @constraints depends on T:
+   * - Bytes<32>: k=13, rows=6023
+   * - Field: k=13, rows=6072
+   *
+   * Requirements:
+   *
+   * - The seed is not zero.
+   *
+   * @param {Bytes<32>} domain - The purpose tag.
+   * @param {Bytes<32>} slot - The per-output tag.
+   * @param {T} context - What the value is bound to.
+   * @return {Bytes<32>} - The derived value.
+   */
+  export circuit derive<T>(
+                   domain: Bytes<32>,
+                   slot: Bytes<32>,
+                   context: T
+                   ): Bytes<32> {
+    const seed = wit_RandPrfExpandSeed();
+    assert(seed != default<Bytes<32>>, "RandPrfExpand: zero seed");
+    return PrfExpand_expand<T>(domain, slot, context, seed);
+  }
+}

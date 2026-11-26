@@ -208,9 +208,9 @@ describe('ConfidentialNoteFungibleTokenDelivery: recoverNote', () => {
 // ---------------------------------------------------------------------------
 
 /**
- * The ephemeral is `Hf(tag, seed, slot, nonce, encPk)`, so with the seed
- * pinned the nonce, the slot and the key are the inputs left to separate two
- * entries.
+ * The ephemeral is `RandPrfExpand.derive(tag, slot, [nonce, encPk, value])`,
+ * so with the seed pinned the slot, the nonce, the key and the value are the
+ * inputs left to separate two entries.
  */
 describe('ConfidentialNoteFungibleTokenDelivery: pads under a reused seed', () => {
   beforeEach(async () => {
@@ -432,8 +432,8 @@ describe('ConfidentialNoteFungibleTokenDelivery: composed with the core', () => 
     ]);
   });
 
-  // The output nonces bind the spent nullifier and the mint recipient, so a
-  // reused seed still gives every entry its own ephemeral.
+  // The output nonces bind the mint recipient or the spent nonce, so a reused
+  // seed still gives every entry its own ephemeral.
   it('should keep every ephemeral distinct under a reused seed', async () => {
     delivered = await deployReusingSeeds();
     spendAs(ALICE_SK, unspent(await scan(EK_ALICE, ALICE)));
@@ -502,7 +502,7 @@ describe('ConfidentialNoteFungibleTokenDelivery: composed with the core', () => 
   });
 
   // The planted path is the leaf's real one, so the witness answers and the
-  // refusal is the circuit's own leaf check.
+  // refusal is the circuit's own root check.
   it('should not let the key holder spend a wrong-key note even with its real leaf path', async () => {
     await delivered.mint(ALICE, ENC_BOB, 50n);
     const state = await delivered.getPublicState();
@@ -516,7 +516,7 @@ describe('ConfidentialNoteFungibleTokenDelivery: composed with the core', () => 
     );
     await expectRejection(
       delivered.burn(ENC_BOB, 50n),
-      'ConfidentialNoteFungibleToken: path does not match input commitment',
+      'ConfidentialNoteFungibleToken: input root not recognized',
     );
   });
 });
