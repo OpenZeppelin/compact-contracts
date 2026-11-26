@@ -1,0 +1,34 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenFreeze extension in
+// isolation: `_freeze` and `_unfreeze` are re-exported ungated, so anyone can
+// freeze any note. Nothing here is committed or spent. DO NOT deploy this
+// mock.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
+import "../../ConfidentialNoteFungibleTokenFreeze" prefix Freeze_;
+
+export { Utils_Note };
+
+export { Freeze__frozen };
+
+export circuit isFrozen(nf: Bytes<32>): Boolean {
+  return Freeze_isFrozen(nf);
+}
+
+export circuit assertNotFrozen(note: Utils_Note): [] {
+  return Freeze_assertNotFrozen(note);
+}
+
+export circuit _freeze(nf: Bytes<32>): [] {
+  return Freeze__freeze(nf);
+}
+
+export circuit _unfreeze(nf: Bytes<32>): [] {
+  return Freeze__unfreeze(nf);
+}
+
+export pure circuit nullifierOf(note: Utils_Note): Bytes<32> {
+  return Utils_nullifierOf(note);
+}
