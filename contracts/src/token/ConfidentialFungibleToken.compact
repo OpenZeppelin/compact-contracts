@@ -27,6 +27,17 @@ pragma language_version >= 0.28.0;
  * the authenticator's account derivation, for example
  * `AuthPrfPseudonym.deriveIdentifier`.
  *
+ * Sharing is safe against observers of the published account identifier only:
+ * whoever holds a shared secret can also decrypt the account's memos. It also
+ * voids the two-secret authority split that `sweep` and `clearMemos` rely on.
+ * Both require `wit_ConfidentialTokenEK` so that the account secret alone
+ * cannot prune the memos and then sweep to freeze an account. That holds only
+ * while the two secrets are independent: if both witnesses return the same
+ * value, whoever holds one holds both and the guard no longer applies. A
+ * wallet that wants this protection MUST keep the two secrets independent.
+ * Values derived from one master secret through one-way, domain-separated
+ * derivations stay independent while the master secret stays private.
+ *
  * @notice Supply. The mint/burn building blocks (`_mint`/`_burn`/`_burnFrom`)
  * live here; total-supply tracking is an optional add-on
  * (`extensions/ConfidentialFungibleTokenPublicSupply`) a composing contract pairs
