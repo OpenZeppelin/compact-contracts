@@ -214,6 +214,8 @@ module NativeShieldedStatelessTreasury<#t> {
    * @description Registers the signer set at threshold `t` and fixes the
    * EIP-712 domain separator.
    *
+   * @constraints k=14, rows=13291
+   *
    * @notice Call from the implementing contract's constructor only. It writes
    * the `sealed` `_domainSeparator`, so implementing contracts MUST NOT expose
    * `initialize` as a post-deploy circuit.

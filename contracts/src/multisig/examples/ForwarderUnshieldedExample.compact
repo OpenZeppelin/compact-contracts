@@ -44,6 +44,8 @@ constructor(parent: UserAddress) {
  * @description Receives an unshielded amount of `color` and atomically
  * forwards it to the configured parent.
  *
+ * @constraints k=9, rows=344
+ *
  * @param {Bytes<32>} color - The token color.
  * @param {Uint<128>} amount - The amount to deposit.
  *
@@ -56,6 +58,8 @@ export circuit deposit(color: Bytes<32>, amount: Uint<128>): [] {
 /**
  * @description Returns the configured parent recipient as stored on the
  * ledger (the generic `Either`; the `right` arm holds the user address).
+ *
+ * @constraints k=7, rows=88
  *
  * @returns {Either<ContractAddress, UserAddress>} The parent recipient
  * set at deploy.

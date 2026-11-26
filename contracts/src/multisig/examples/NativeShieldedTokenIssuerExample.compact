@@ -89,10 +89,20 @@ constructor(instanceSalt: Bytes<32>,
     );
 }
 
+/**
+ * @description Computes a signer commitment from a secp256k1 public key, as
+ * `persistentHash(pkX, pkY, salt, "Secp256k1EcdsaMultisig:signer")`.
+ */
 export pure circuit _calculateSignerId(pk: Secp256k1Point, salt: Bytes<32>): Bytes<32> {
   return NativeShieldedTokenIssuer__calculateSignerId(pk, salt);
 }
 
+/**
+ * @description Mints a new shielded coin of this contract's token to
+ * `recipient`, authorized by threshold signatures.
+ *
+ * @constraints k=17, rows=126141
+ */
 export circuit mint(amount: Uint<64>,
                     recipient: ZswapCoinPublicKey,
                     pubkeys: Vector<2, Secp256k1Point>,
@@ -101,6 +111,13 @@ export circuit mint(amount: Uint<64>,
   return NativeShieldedTokenIssuer_mint(amount, recipient, pubkeys, signatures);
 }
 
+/**
+ * @description Mints a new shielded coin of this contract's token to the
+ * contract itself, claimed in the same call, authorized by threshold
+ * signatures.
+ *
+ * @constraints k=17, rows=121920
+ */
 export circuit mintToSelf(
                  amount: Uint<64>,
                  pubkeys: Vector<2, Secp256k1Point>,
@@ -109,6 +126,13 @@ export circuit mintToSelf(
   return NativeShieldedTokenIssuer_mintToSelf(amount, pubkeys, signatures);
 }
 
+/**
+ * @description Burns `amount` from a holder's coin, authorized by threshold
+ * signatures. The holder's transaction pays `coin` in; the contract receives it
+ * and burns it in the same call. Any change goes to `refundTo`.
+ *
+ * @constraints k=18, rows=152672
+ */
 export circuit burn(coin: ShieldedCoinInfo,
                     amount: Uint<128>,
                     refundTo: ZswapCoinPublicKey,
@@ -118,6 +142,12 @@ export circuit burn(coin: ShieldedCoinInfo,
   return NativeShieldedTokenIssuer_burn(coin, amount, refundTo, pubkeys, signatures);
 }
 
+/**
+ * @description Burns `amount` from a coin this contract holds, authorized by
+ * threshold signatures.
+ *
+ * @constraints k=18, rows=141953
+ */
 export circuit burnFromSelf(
                  coin: QualifiedShieldedCoinInfo,
                  amount: Uint<128>,
@@ -127,34 +157,75 @@ export circuit burnFromSelf(
   return NativeShieldedTokenIssuer_burnFromSelf(coin, amount, pubkeys, signatures);
 }
 
+/**
+ * @description Returns the counter the next operation's digest will bind to.
+ *
+ * @constraints k=6, rows=34
+ */
 export circuit getNonce(): Uint<64> {
   return NativeShieldedTokenIssuer_getNonce();
 }
 
+/**
+ * @description Returns the token name.
+ *
+ * @constraints k=6, rows=45
+ */
 export circuit name(): Opaque<"string"> {
   return NativeShieldedTokenIssuer_name();
 }
 
+/**
+ * @description Returns the token symbol.
+ *
+ * @constraints k=6, rows=45
+ */
 export circuit symbol(): Opaque<"string"> {
   return NativeShieldedTokenIssuer_symbol();
 }
 
+/**
+ * @description Returns the token decimals.
+ *
+ * @constraints k=6, rows=45
+ */
 export circuit decimals(): Uint<8> {
   return NativeShieldedTokenIssuer_decimals();
 }
 
+/**
+ * @description Returns this contract's token color, `tokenType(tokenDomain,
+ * kernel.self())`.
+ *
+ * @constraints k=13, rows=3847
+ */
 export circuit tokenColor(): Bytes<32> {
   return NativeShieldedTokenIssuer_tokenColor();
 }
 
+/**
+ * @description Returns the number of registered signers.
+ *
+ * @constraints k=6, rows=34
+ */
 export circuit getSignerCount(): Uint<8> {
   return NativeShieldedTokenIssuer_getSignerCount();
 }
 
+/**
+ * @description Returns the approval threshold.
+ *
+ * @constraints k=6, rows=34
+ */
 export circuit getThreshold(): Uint<8> {
   return NativeShieldedTokenIssuer_getThreshold();
 }
 
+/**
+ * @description Returns whether the given commitment is a registered signer.
+ *
+ * @constraints k=8, rows=129
+ */
 export circuit isSigner(commitment: Bytes<32>): Boolean {
   return NativeShieldedTokenIssuer_isSigner(commitment);
 }

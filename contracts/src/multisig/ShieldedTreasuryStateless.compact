@@ -41,6 +41,8 @@ module ShieldedTreasuryStateless {
 
   /**
    * @description Receives a shielded coin into the treasury.
+   *
+   * @constraints k=13, rows=5898
    */
   export circuit _deposit(coin: ShieldedCoinInfo): [] {
     receiveShielded(disclose(coin));
@@ -62,6 +64,8 @@ module ShieldedTreasuryStateless {
    * (Re-spending change is only meaningful when it goes somewhere other than
    * self — `sendShielded` already routes it to self.) No balance or
    * received/sent accounting is tracked on the ledger.
+   *
+   * @constraints k=15, rows=23615
    *
    * @warning The result holds the sent and change coins in plaintext.
    * - Returning it from an entry point is safe: it stays with the caller.

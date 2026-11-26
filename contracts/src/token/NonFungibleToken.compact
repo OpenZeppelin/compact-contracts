@@ -139,6 +139,8 @@ module NonFungibleToken {
    * This MUST be called in the implementing contract's constructor.
    * Failure to do so can lead to an irreparable contract.
    *
+   * @constraints k=7, rows=93
+   *
    *
    * Requirements:
    *
@@ -146,7 +148,7 @@ module NonFungibleToken {
    *
    * @param {Opaque<"string">} name_ - The name of the token.
    * @param {Opaque<"string">} symbol_ - The symbol of the token.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(name_: Opaque<"string">, symbol_: Opaque<"string">): [] {
     assertNotInitialized();
@@ -162,7 +164,7 @@ module NonFungibleToken {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "NonFungibleToken: contract not initialized");
@@ -175,7 +177,7 @@ module NonFungibleToken {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "NonFungibleToken: contract already initialized");
@@ -191,7 +193,7 @@ module NonFungibleToken {
    * - The contract is initialized.
    *
    * @param {Either<Bytes<32>, ContractAddress>} owner - The account to query.
-   * @return {Uint<128>} - The number of tokens in `owner`'s account.
+   * @returns {Uint<128>} - The number of tokens in `owner`'s account.
    */
   export circuit balanceOf(owner: Identifier): Uint<128> {
     assertInitialized();
@@ -215,7 +217,7 @@ module NonFungibleToken {
    * - The `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The identifier for a token.
-   * @return {Either<Bytes<32>, ContractAddress>} - The account that owns the token.
+   * @returns {Either<Bytes<32>, ContractAddress>} - The account that owns the token.
    */
   export circuit ownerOf(tokenId: Uint<128>): Identifier {
     assertInitialized();
@@ -231,7 +233,7 @@ module NonFungibleToken {
    *
    * - The contract is initialized.
    *
-   * @return {Opaque<"string">} - The token name.
+   * @returns {Opaque<"string">} - The token name.
    */
   export circuit name(): Opaque<"string"> {
     assertInitialized();
@@ -247,7 +249,7 @@ module NonFungibleToken {
    *
    * - The contract is initialized.
    *
-   * @return {Opaque<"string">} - The token symbol.
+   * @returns {Opaque<"string">} - The token symbol.
    */
   export circuit symbol(): Opaque<"string"> {
     assertInitialized();
@@ -271,7 +273,7 @@ module NonFungibleToken {
    * It's up to the implementation to decide on how to handle this.
    *
    * @param {Uint<128>} tokenId - The identifier for a token.
-   * @return {Opaque<"string">} - the token id's URI.
+   * @returns {Opaque<"string">} - the token id's URI.
    */
   export circuit tokenURI(tokenId: Uint<128>): Opaque<"string"> {
     assertInitialized();
@@ -298,7 +300,7 @@ module NonFungibleToken {
    *
    * @param {Uint<128>} tokenId - The identifier of the token.
    * @param {Opaque<"string">} tokenURI - The URI of `tokenId`.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _setTokenURI(tokenId: Uint<128>, tokenURI: Opaque<"string">): [] {
     assertInitialized();
@@ -325,7 +327,7 @@ module NonFungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} to - The account receiving the approval
    * @param {Uint<128>} tokenId - The token `to` may be permitted to transfer
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit approve(caller: Caller, to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
@@ -345,7 +347,7 @@ module NonFungibleToken {
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token an account may be approved to manage
-   * @return {Either<Bytes<32>, ContractAddress>} - The account approved to manage the token
+   * @returns {Either<Bytes<32>, ContractAddress>} - The account approved to manage the token
    */
   export circuit getApproved(tokenId: Uint<128>): Identifier {
     assertInitialized();
@@ -368,7 +370,7 @@ module NonFungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Either<Bytes<32>, ContractAddress>} operator - An operator to manage the caller's tokens
    * @param {Boolean} approved - A boolean determining if `operator` may manage all tokens of the caller
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit setApprovalForAll(caller: Caller, operator: Identifier, approved: Boolean): [] {
     assertInitialized();
@@ -387,7 +389,7 @@ module NonFungibleToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} owner - The owner of a token
    * @param {Either<Bytes<32>, ContractAddress>} operator - An account that may operate on `owner`'s tokens
-   * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
+   * @returns {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
    */
   export circuit isApprovedForAll(owner: Identifier, operator: Identifier): Boolean {
     assertInitialized();
@@ -422,7 +424,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The source account from which the token is being transferred
    * @param {Either<Bytes<32>, ContractAddress>} to - The target account to transfer token to
    * @param {Uint<128>} tokenId - The token being transferred
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit transferFrom(
                    caller: Caller,
@@ -460,7 +462,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The source account from which the token is being transferred
    * @param {Either<Bytes<32>, ContractAddress>} to - The target account to transfer token to
    * @param {Uint<128>} tokenId - The token being transferred
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeTransferFrom(
                    caller: Caller,
@@ -493,7 +495,7 @@ module NonFungibleToken {
    * - The contract is initialized.
    *
    * @param {Uint<128>} tokenId - The target token of the owner query
-   * @return {Either<Bytes<32>, ContractAddress>} - The owner of the token
+   * @returns {Either<Bytes<32>, ContractAddress>} - The owner of the token
    */
   export circuit _ownerOf(tokenId: Uint<128>): Identifier {
     assertInitialized();
@@ -514,7 +516,7 @@ module NonFungibleToken {
    * - The contract is initialized.
    *
    * @param {Uint<128>} tokenId - The token to query
-   * @return {Either<Bytes<32>, ContractAddress>} - An account approved to spend `tokenId`
+   * @returns {Either<Bytes<32>, ContractAddress>} - An account approved to spend `tokenId`
    */
   export circuit _getApproved(tokenId: Uint<128>): Identifier {
     assertInitialized();
@@ -540,7 +542,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} owner - Owner of the token
    * @param {Either<Bytes<32>, ContractAddress>} spender - Account that wishes to spend `tokenId`
    * @param {Uint<128>} tokenId - Token to spend
-   * @return {Boolean} - A boolean determining if `spender` may manage `tokenId`
+   * @returns {Boolean} - A boolean determining if `spender` may manage `tokenId`
    */
   export circuit _isAuthorized(owner: Identifier, spender: Identifier, tokenId: Uint<128>): Boolean {
     assertInitialized();
@@ -569,7 +571,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} owner - Owner of the token
    * @param {Either<Bytes<32>, ContractAddress>} spender - Account operating on `tokenId`
    * @param {Uint<128>} tokenId - The token to spend
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _checkAuthorized(owner: Identifier, spender: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
@@ -592,7 +594,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The intended recipient of the token transfer
    * @param {Uint<128>} tokenId - The token being transferred
    * @param {Either<Bytes<32>, ContractAddress>} auth - An account authorized to transfer the token
-   * @return {Either<Bytes<32>, ContractAddress>} - Owner of the token before it was transferred
+   * @returns {Either<Bytes<32>, ContractAddress>} - Owner of the token before it was transferred
    */
   circuit _update(to: Identifier, tokenId: Uint<128>, auth: Identifier): Identifier {
     assertInitialized();
@@ -641,7 +643,7 @@ module NonFungibleToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _mint(to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
@@ -669,7 +671,7 @@ module NonFungibleToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} to - The account receiving `tokenId`
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeMint(to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
@@ -693,7 +695,7 @@ module NonFungibleToken {
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token to burn
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _burn(tokenId: Uint<128>): [] {
     assertInitialized();
@@ -722,7 +724,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The source account of the token transfer
    * @param {Either<Bytes<32>, ContractAddress>} to - The target account of the token transfer
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _transfer(fromAddress: Identifier, to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
@@ -753,7 +755,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The source account of the token transfer
    * @param {Either<Bytes<32>, ContractAddress>} to - The target account of the token transfer
    * @param {Uint<128>} tokenId - The token to transfer
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeTransfer(fromAddress: Identifier, to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
@@ -785,7 +787,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The target account to approve
    * @param {Uint<128>} tokenId - The token to approve
    * @param {Either<Bytes<32>, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner of the token
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _approve(to: Identifier, tokenId: Uint<128>, auth: Identifier): [] {
     _unsafeApprove(to, tokenId, auth, true);
@@ -820,7 +822,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to approve
    * @param {Either<Bytes<32>, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner of the token
    * @param {Boolean} isExistenceRequired - Whether `tokenId` must exist
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeApprove(
                    to: Identifier,
@@ -865,7 +867,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} owner - Owner of a token
    * @param {Either<Bytes<32>, ContractAddress>} operator - The account to approve
    * @param {Boolean} approved - A boolean determining if `operator` may operate on all of `owner` tokens
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _setApprovalForAll(owner: Identifier, operator: Identifier, approved: Boolean): [] {
     assertInitialized();
@@ -894,7 +896,7 @@ module NonFungibleToken {
    * - `tokenId` must exist.
    *
    * @param {Uint<128>} tokenId - The token that should be owned
-   * @return {Either<Bytes<32>, ContractAddress>} - The owner of `tokenId`
+   * @returns {Either<Bytes<32>, ContractAddress>} - The owner of `tokenId`
    */
   export circuit _requireOwned(tokenId: Uint<128>): Identifier {
     assertInitialized();

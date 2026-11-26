@@ -133,7 +133,7 @@ module Identifier {
    * module that accepts one kind asserts on `kind` itself.
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account.
-   * @return {UnpackedIdentifier} - `Key` with the `left`, or `Contract` with
+   * @returns {UnpackedIdentifier} - `Key` with the `left`, or `Contract` with
    * the bytes of the `right`.
    */
   export pure circuit unpack(account: Identifier): UnpackedIdentifier {

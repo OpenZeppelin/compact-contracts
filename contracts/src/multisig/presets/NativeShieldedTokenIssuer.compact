@@ -272,6 +272,8 @@ module NativeShieldedTokenIssuer<#t> {
    * @description Registers the signer set at threshold `t`, initializes the
    * token metadata and domain, and fixes the EIP-712 domain separator.
    *
+   * @constraints k=14, rows=13475
+   *
    * @notice Call from the implementing contract's constructor only. It writes
    * the token module's `sealed` domain and `_domainSeparator`, so
    * implementing contracts MUST NOT expose it as a post-deploy circuit.

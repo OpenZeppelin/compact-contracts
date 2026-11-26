@@ -43,6 +43,8 @@ constructor(parentCommitment: Bytes<32>) {
  * @description Receives a shielded coin into the forwarder's custody.
  * No ledger write — the coin sits at the contract address until drained.
  *
+ * @constraints k=13, rows=5909
+ *
  * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
  *
  * @returns {[]} Empty tuple.
@@ -61,6 +63,8 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * The parent is a `ZswapCoinPublicKey`, never a `ContractAddress`: a shielded
  * send to a contract publishes that contract's address in cleartext, which
  * would defeat the private-parent guarantee.
+ *
+ * @constraints k=15, rows=21754
  *
  * Requirements:
  *
@@ -96,6 +100,8 @@ export circuit drain(coin: QualifiedShieldedCoinInfo,
 
 /**
  * @description Returns the stored parent commitment.
+ *
+ * @constraints k=6, rows=57
  *
  * @returns {Bytes<32>} The commitment set at deploy.
  */

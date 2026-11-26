@@ -46,6 +46,8 @@ constructor(parent: ZswapCoinPublicKey) {
  * The depositor must encrypt the forwarded output to the parent's
  * encryption public key (see the `ForwarderShielded` header).
  *
+ * @constraints k=15, rows=23197
+ *
  * @param {ShieldedCoinInfo} coin - The incoming shielded coin.
  *
  * @returns {ShieldedSendResult} The coin sent to the parent, with no change.
@@ -57,6 +59,8 @@ export circuit deposit(coin: ShieldedCoinInfo): ShieldedSendResult {
 /**
  * @description Returns the configured parent recipient as stored on the
  * ledger (the generic `Either`; the `left` arm holds the coin public key).
+ *
+ * @constraints k=7, rows=88
  *
  * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The parent
  * recipient set at deploy.

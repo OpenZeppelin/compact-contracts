@@ -75,7 +75,7 @@ module NativeShieldedTokenPublicSupplyCore {
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {Uint<64>} amount - The minted amount.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _addMinted(domain: Bytes<32>, amount: Uint<64>): [] {
     const current = totalMinted(domain);
@@ -97,7 +97,7 @@ module NativeShieldedTokenPublicSupplyCore {
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
    * @param {Uint<128>} amount - The burned amount.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _addBurned(domain: Bytes<32>, amount: Uint<128>): [] {
     const minted = totalMinted(domain);
@@ -118,7 +118,7 @@ module NativeShieldedTokenPublicSupplyCore {
    * @constraints k=7, rows=58
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @return {Uint<128>} - The total amount minted.
+   * @returns {Uint<128>} - The total amount minted.
    */
   export circuit totalMinted(domain: Bytes<32>): Uint<128> {
     if (!_totalMinted.member(disclose(domain))) {
@@ -135,7 +135,7 @@ module NativeShieldedTokenPublicSupplyCore {
    * @constraints k=7, rows=58
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @return {Uint<128>} - The total amount burned through the contract.
+   * @returns {Uint<128>} - The total amount burned through the contract.
    */
   export circuit totalBurned(domain: Bytes<32>): Uint<128> {
     if (!_totalBurned.member(disclose(domain))) {
@@ -157,7 +157,7 @@ module NativeShieldedTokenPublicSupplyCore {
    * @constraints k=9, rows=112
    *
    * @param {Bytes<32>} domain - 32-byte token discriminator.
-   * @return {Uint<128>} - The upper bound on tokens in existence.
+   * @returns {Uint<128>} - The upper bound on tokens in existence.
    */
   export circuit totalSupply(domain: Bytes<32>): Uint<128> {
     const minted = totalMinted(domain);

@@ -73,6 +73,8 @@ module ForwarderUnshielded {
    * Called once from the preset constructor. The user address is stored
    * in the `right` arm of the generic `_parent` ledger field.
    *
+   * @constraints k=8, rows=160
+   *
    * Requirements:
    *
    * - Contract must not be initialized.

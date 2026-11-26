@@ -120,7 +120,7 @@ module Ecdh {
    *
    * @param recipientPk - The recipient's Jubjub public key (`g^ek`).
    * @param e - A fresh ephemeral scalar.
-   * @return `{ ephemeralPk = g^e, sShared = recipientPk^e }`.
+   * @returns `{ ephemeralPk = g^e, sShared = recipientPk^e }`.
    */
   export pure circuit deriveShared(recipientPk: JubjubPoint, e: JubjubScalar): SharedSecret {
     const identity = ecMulGenerator(0 as JubjubScalar);
@@ -145,7 +145,7 @@ module Ecdh {
    *
    * @param ephemeralPk - The sender's published `g^e`.
    * @param ekScalar - The recipient's secret scalar.
-   * @return The ECDH shared secret point.
+   * @returns The ECDH shared secret point.
    */
   export pure circuit recoverShared(ephemeralPk: JubjubPoint, ekScalar: JubjubScalar): JubjubPoint {
     return ecMul(ephemeralPk, ekScalar);

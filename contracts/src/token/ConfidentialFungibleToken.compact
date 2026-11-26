@@ -556,6 +556,8 @@ module ConfidentialFungibleToken {
    * @description Initializes the token's name, symbol, and decimals. Intended to
    * be called once, from the deploying contract's constructor.
    *
+   * @constraints k=7, rows=108
+   *
    * Requirements:
    *
    * - Contract is not already initialized.
@@ -563,7 +565,7 @@ module ConfidentialFungibleToken {
    * @param {Opaque<"string">} name_ - The token name.
    * @param {Opaque<"string">} symbol_ - The token symbol.
    * @param {Uint<8>} decimals_ - The number of display decimals.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(
                    name_: Opaque<"string">,
@@ -593,7 +595,7 @@ module ConfidentialFungibleToken {
    * - Contract is initialized.
    *
    * @param {Bytes<32>} account - The account to query.
-   * @return {ElGamal_Ciphertext} - The encrypted balance.
+   * @returns {ElGamal_Ciphertext} - The encrypted balance.
    */
   export circuit balanceOf(account: Bytes<32>): ElGamal_Ciphertext {
     assertInitialized();
@@ -619,7 +621,7 @@ module ConfidentialFungibleToken {
    * - Contract is initialized.
    *
    * @param {Bytes<32>} account - The account to query.
-   * @return {ElGamal_Ciphertext} - The encrypted pending balance.
+   * @returns {ElGamal_Ciphertext} - The encrypted pending balance.
    */
   export circuit pendingOf(account: Bytes<32>): ElGamal_Ciphertext {
     assertInitialized();
@@ -647,7 +649,7 @@ module ConfidentialFungibleToken {
    *
    * @param {Bytes<32>} owner - The account that granted the allowance.
    * @param {Bytes<32>} spender - The approved spender.
-   * @return {EscrowEntry} - The encrypted escrow entry (encrypted-zero if none).
+   * @returns {EscrowEntry} - The encrypted escrow entry (encrypted-zero if none).
    */
   export circuit allowance(owner: Bytes<32>, spender: Bytes<32>): EscrowEntry {
     if (!_escrow.member(disclose(owner)) ||
@@ -667,7 +669,7 @@ module ConfidentialFungibleToken {
    * @constraints k=8, rows=129
    *
    * @param {Bytes<32>} account - The account to query.
-   * @return {Boolean} - True if `account` is registered.
+   * @returns {Boolean} - True if `account` is registered.
    */
   export circuit isRegistered(account: Bytes<32>): Boolean {
     return _encryptionKeys.member(disclose(account));
@@ -709,7 +711,7 @@ module ConfidentialFungibleToken {
    *
    * @param {Caller} caller - The authenticated caller.
    * @param {JubjubPoint} pk - The caller's encryption public key.
-   * @return {Bytes<32>} - The registered (caller's) accountId.
+   * @returns {Bytes<32>} - The registered (caller's) accountId.
    */
   export circuit registerWithKey(caller: Caller, pk: JubjubPoint): Bytes<32> {
     ElGamal_assertKeyPair(pk, wit_ConfidentialTokenEK());
@@ -730,7 +732,7 @@ module ConfidentialFungibleToken {
    *
    * @param {Caller} caller - The authenticated caller.
    * @param {JubjubPoint} pk - The caller's encryption public key.
-   * @return {Bytes<32>} - The registered (caller's) accountId.
+   * @returns {Bytes<32>} - The registered (caller's) accountId.
    */
   circuit _register(caller: Caller, pk: JubjubPoint): Bytes<32> {
     assertInitialized();
@@ -814,7 +816,7 @@ module ConfidentialFungibleToken {
    *
    * @param {Caller} caller - The authenticated caller.
    * @param {Uint<128>} value - The amount to debit.
-   * @return {Bytes<32>} - The caller's accountId.
+   * @returns {Bytes<32>} - The caller's accountId.
    */
   circuit _debit(caller: Caller, value: Uint<128>): Bytes<32> {
     assertInitialized();
@@ -943,7 +945,7 @@ module ConfidentialFungibleToken {
    *
    * @param {Bytes<32>} account - The recipient of the minted tokens.
    * @param {Uint<128>} value - The amount to mint.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _mint(account: Bytes<32>, value: Uint<128>): [] {
     _credit(account, value);
@@ -966,7 +968,7 @@ module ConfidentialFungibleToken {
    *
    * @param {Caller} caller - The authenticated caller.
    * @param {Uint<128>} value - The amount to burn.
-   * @return {Bytes<32>} - The caller's accountId.
+   * @returns {Bytes<32>} - The caller's accountId.
    */
   export circuit _burn(caller: Caller, value: Uint<128>): Bytes<32> {
     return _debit(caller, value);
@@ -996,7 +998,7 @@ module ConfidentialFungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} to - The recipient account.
    * @param {Uint<128>} value - The amount to transfer.
-   * @return {Bytes<32>} - The caller's (sender's) accountId.
+   * @returns {Bytes<32>} - The caller's (sender's) accountId.
    */
   export circuit transfer(caller: Caller, to: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
@@ -1041,7 +1043,7 @@ module ConfidentialFungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} to - The recipient account id.
    * @param {Uint<128>} value - The amount to move.
-   * @return {Bytes<32>} - The caller's accountId (for caller-side gating).
+   * @returns {Bytes<32>} - The caller's accountId (for caller-side gating).
    */
   export circuit _move(caller: Caller, to: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
@@ -1072,7 +1074,7 @@ module ConfidentialFungibleToken {
    * - The caller holds the encryption secret registered for their account.
    *
    * @param {Caller} caller - The authenticated caller.
-   * @return {Bytes<32>} - The caller's accountId.
+   * @returns {Bytes<32>} - The caller's accountId.
    */
   export circuit sweep(caller: Caller): Bytes<32> {
     assertInitialized();
@@ -1113,7 +1115,7 @@ module ConfidentialFungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} spender - The account being approved.
    * @param {Uint<128>} value - The allowance amount.
-   * @return {Bytes<32>} - The caller's (approver's) accountId.
+   * @returns {Bytes<32>} - The caller's (approver's) accountId.
    */
   export circuit approve(caller: Caller, spender: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
@@ -1188,7 +1190,7 @@ module ConfidentialFungibleToken {
    * @param {Bytes<32>} fromAddress - The owner whose escrow is drawn on.
    * @param {Bytes<32>} to - The recipient account.
    * @param {Uint<128>} value - The amount to transfer.
-   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   * @returns {Bytes<32>} - The caller's (spender's) accountId.
    */
   export circuit transferFrom(
                    caller: Caller,
@@ -1244,7 +1246,7 @@ module ConfidentialFungibleToken {
    * - The caller has a memo list.
    * - `expectedEpoch` equals the caller's current credit epoch.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit clearMemos(caller: Caller, expectedEpoch: Uint<64>): [] {
     assertInitialized();
@@ -1286,7 +1288,7 @@ module ConfidentialFungibleToken {
    * - `caller` is not a contract.
    *
    * @param {Caller} caller - The authenticated caller.
-   * @return {Bytes<32>} - The bytes of the caller's key identifier.
+   * @returns {Bytes<32>} - The bytes of the caller's key identifier.
    */
   circuit _callerId(caller: Caller): Bytes<32> {
     const id = Identifier_unpack(caller.identifier);
@@ -1442,7 +1444,7 @@ module ConfidentialFungibleToken {
    * @param {Caller} caller - The authenticated caller.
    * @param {Bytes<32>} fromAddress - The owner whose escrow is consumed.
    * @param {Uint<128>} value - The amount to burn.
-   * @return {Bytes<32>} - The caller's (spender's) accountId.
+   * @returns {Bytes<32>} - The caller's (spender's) accountId.
    */
   export circuit _burnFrom(caller: Caller, fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
     return _spendEscrow(caller, fromAddress, value);
@@ -1523,7 +1525,7 @@ module ConfidentialFungibleToken {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "ConfidentialFungibleToken: contract not initialized");
@@ -1536,7 +1538,7 @@ module ConfidentialFungibleToken {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "ConfidentialFungibleToken: contract already initialized");

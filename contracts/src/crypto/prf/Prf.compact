@@ -65,7 +65,7 @@ module Prf {
    * @param {T} input - The input the output is bound to.
    * @param {K} key - The PRF key, a secret. A caller passes a secret key,
    * a seed or a nonce here.
-   * @return {Bytes<32>} - The digest.
+   * @returns {Bytes<32>} - The digest.
    */
   export pure circuit evaluate<T, K>(input: T, key: K): Bytes<32> {
     return persistentHash<Preimage<T, K>>(Preimage<T, K> { input: input, key: key });

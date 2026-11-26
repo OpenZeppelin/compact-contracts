@@ -110,6 +110,8 @@ module ZOwnableNativeShieldedToken {
   /**
    * @description Sets the owner and the token's domain and metadata.
    *
+   * @constraints k=13, rows=6276
+   *
    * @notice Call from the implementing contract's constructor only. It writes
    * sealed fields, so implementing contracts MUST NOT expose it as a
    * post-deploy circuit.

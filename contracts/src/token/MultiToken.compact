@@ -156,7 +156,7 @@ module MultiToken {
    * - Must be called in the contract's constructor.
    *
    * @param {Opaque<"string">} uri_ - The base URI for all token URIs.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(uri_: Opaque<"string">): [] {
     assertNotInitialized();
@@ -171,7 +171,7 @@ module MultiToken {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "MultiToken: contract not initialized");
@@ -184,7 +184,7 @@ module MultiToken {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "MultiToken: contract already initialized");
@@ -204,7 +204,7 @@ module MultiToken {
    * - Contract is initialized.
    *
    * @param {Uint<128>} id - The token identifier to query.
-   * @return {Opaque<"string">} - The base URI for all tokens.
+   * @returns {Opaque<"string">} - The base URI for all tokens.
    */
   export circuit uri(id: Uint<128>): Opaque<"string"> {
     assertInitialized();
@@ -222,7 +222,7 @@ module MultiToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account balance to query.
    * @param {Uint<128>} id - The token identifier to query.
-   * @return {Uint<128>} - The quantity of `id` tokens that `account` owns.
+   * @returns {Uint<128>} - The quantity of `id` tokens that `account` owns.
    */
   export circuit balanceOf(account: Identifier, id: Uint<128>): Uint<128> {
     assertInitialized();
@@ -249,7 +249,7 @@ module MultiToken {
    * for the caller's assets.
    * @param {Boolean} approved - The boolean value determining if the operator may or may not handle the
    * caller's assets.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit setApprovalForAll(caller: Caller, operator: Identifier, approved: Boolean): [] {
     assertInitialized();
@@ -268,7 +268,7 @@ module MultiToken {
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The queried possessor of assets.
    * @param {Either<Bytes<32>, ContractAddress>} operator - The queried handler of `account`'s assets.
-   * @return {Boolean} - Whether or not `operator` has permission to handle `account`'s assets.
+   * @returns {Boolean} - Whether or not `operator` has permission to handle `account`'s assets.
    */
   export circuit isApprovedForAll(account: Identifier, operator: Identifier): Boolean {
     assertInitialized();
@@ -307,7 +307,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit transferFrom(
                    caller: Caller,
@@ -344,7 +344,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _transfer(
                    fromAddress: Identifier,
@@ -372,7 +372,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The destination of the transfer.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit _update(fromAddress: Identifier, to: Identifier, id: Uint<128>, value: Uint<128>): [] {
     assertInitialized();
@@ -429,7 +429,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeTransferFrom(
                    caller: Caller,
@@ -472,7 +472,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the transferred assets.
    * @param {Uint<128>} id - The unique identifier of the asset type.
    * @param {Uint<128>} value - The quantity of `id` tokens to transfer.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeTransfer(
                    fromAddress: Identifier,
@@ -508,7 +508,7 @@ module MultiToken {
    * - Contract is initialized.
    *
    * @param {Opaque<"string">} newURI - The new base URI for all tokens.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _setURI(newURI: Opaque<"string">): [] {
     assertInitialized();
@@ -533,7 +533,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the minted tokens.
    * @param {Uint<128>} id - The unique identifier for the token type.
    * @param {Uint<128>} value - The quantity of `id` tokens that are minted to `to`.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _mint(to: Identifier, id: Uint<128>, value: Uint<128>): [] {
     const isContractAddr = !to.is_left;
@@ -559,7 +559,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} to - The recipient of the minted tokens.
    * @param {Uint<128>} id - The unique identifier for the token type.
    * @param {Uint<128>} value - The quantity of `id` tokens that are minted to `to`.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unsafeMint(to: Identifier, id: Uint<128>, value: Uint<128>): [] {
     assertInitialized();
@@ -581,7 +581,7 @@ module MultiToken {
    * @param {Either<Bytes<32>, ContractAddress>} fromAddress - The owner whose tokens will be destroyed.
    * @param {Uint<128>} id - The unique identifier of the token type.
    * @param {Uint<128>} value - The quantity of `id` tokens that will be destroyed from `fromAddress`.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _burn(fromAddress: Identifier, id: Uint<128>, value: Uint<128>): [] {
     assertInitialized();
@@ -608,7 +608,7 @@ module MultiToken {
    * the `owner`'s assets.
    * @param {Boolean} approved - The boolean value determining if the operator may or may not handle the
    * `owner`'s assets.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _setApprovalForAll(owner: Identifier, operator: Identifier, approved: Boolean): [] {
     assertInitialized();

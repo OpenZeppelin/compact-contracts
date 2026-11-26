@@ -210,7 +210,7 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @param {Field} nonce - The note's nonce.
    * @param {Bytes<32>} slot - The per-output tag; distinct per delivery when
    * one note goes to one key more than once.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
     const e = degradeToTransient(
@@ -272,7 +272,7 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @param {Delivery} delivery - The entry to open.
    * @param {JubjubScalar} ekScalar - The secret behind the `encPk` the entry
    * was addressed to.
-   * @return {RecoveredNote} - The padded pair.
+   * @returns {RecoveredNote} - The padded pair.
    */
   export pure circuit recoverNote(delivery: Delivery, ekScalar: JubjubScalar): RecoveredNote {
     assert(delivery.ephemeralPk != ecMulGenerator(0 as JubjubScalar),

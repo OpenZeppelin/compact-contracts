@@ -56,7 +56,7 @@ module Blocklist {
    * @constraints k=8, rows=249
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to query.
-   * @return {Boolean} - True if `account` is a member of the blocklist.
+   * @returns {Boolean} - True if `account` is a member of the blocklist.
    */
   export circuit isBlocked(account: Identifier): Boolean {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
@@ -78,7 +78,7 @@ module Blocklist {
    * - `account` is not a member of the blocklist.
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account that must not be blocked.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit assertNotBlocked(account: Identifier): [] {
     assert(!isBlocked(account), "Blocklist: account blocked");
@@ -94,7 +94,7 @@ module Blocklist {
    * @constraints k=8, rows=225
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to block.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _block(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);
@@ -107,7 +107,7 @@ module Blocklist {
    * @constraints k=8, rows=223
    *
    * @param {Either<Bytes<32>, ContractAddress>} account - The account to unblock.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _unblock(account: Identifier): [] {
     const canonAcct = Utils_canonicalize<Bytes<32>, ContractAddress>(account);

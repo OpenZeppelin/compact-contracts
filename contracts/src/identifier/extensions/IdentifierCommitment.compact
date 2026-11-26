@@ -71,7 +71,7 @@ module IdentifierCommitment {
    * @param {Bytes<32>} publicKey - The account's key, the `left` of an
    * `Identifier`.
    * @param {Bytes<32>} blinding - The blinding factor.
-   * @return {Bytes<32>} - The account commitment.
+   * @returns {Bytes<32>} - The account commitment.
    */
   export pure circuit commit(domain: Bytes<32>,
                              publicKey: Bytes<32>,

@@ -55,6 +55,8 @@ module ForwarderPrivate {
    * Called once from the preset constructor. The commitment is
    * immutable after init.
    *
+   * @constraints k=8, rows=155
+   *
    * Requirements:
    *
    * - Contract must not be initialized.
@@ -216,7 +218,7 @@ module ForwarderPrivate {
    *
    * - Contract must be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "ForwarderPrivate: contract not initialized");
@@ -229,7 +231,7 @@ module ForwarderPrivate {
    *
    * - Contract must not be initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "ForwarderPrivate: contract already initialized");

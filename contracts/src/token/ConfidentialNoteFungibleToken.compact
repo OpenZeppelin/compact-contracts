@@ -300,6 +300,8 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Sets the salt every `pk` on this deployment is derived
    * under. Call it from the constructor; every mint and spend requires it.
    *
+   * @constraints k=8, rows=155
+   *
    * @dev Sealed:
    * `_instanceSalt` is writable only during construction.
    *
@@ -310,7 +312,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @param {Bytes<32>} instanceSalt - A strong random value unique to this
    * deployment.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit initialize(instanceSalt: Bytes<32>): [] {
     assertNotInitialized();
@@ -324,7 +326,7 @@ module ConfidentialNoteFungibleToken<#depth> {
   /**
    * @description Asserts that the contract has been initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertInitialized(): [] {
     assert(_isInitialized, "ConfidentialNoteFungibleToken: contract not initialized");
@@ -333,7 +335,7 @@ module ConfidentialNoteFungibleToken<#depth> {
   /**
    * @description Asserts that the contract has not been initialized.
    *
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   circuit assertNotInitialized(): [] {
     assert(!_isInitialized, "ConfidentialNoteFungibleToken: contract already initialized");
@@ -363,7 +365,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @param {Field} recipientPk - The identity receiving the note.
    * @param {Uint<128>} value - The amount to create.
-   * @return {Note} - The new note, returned as a local private result.
+   * @returns {Note} - The new note, returned as a local private result.
    */
   export circuit _mint(recipientPk: Field, value: Uint<128>): Note {
     const note = Note { value: value, nonce: freshNonce(pad(32, "CNFT:mint"), recipientPk) };
@@ -383,7 +385,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @param {Bytes<32>} slot - The per-output domain tag.
    * @param {Field} binder - What the output is tied to: the consumed note's
    * nullifier for a spend, the recipient for a mint.
-   * @return {Field} - The output note's nonce.
+   * @returns {Field} - The output note's nonce.
    */
   circuit freshNonce(slot: Bytes<32>, binder: Field): Field {
     return degradeToTransient(
@@ -440,7 +442,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @param {Note} note - The note to commit.
    * @param {Field} ownerPk - The identity that will own it.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _mintNote(note: Note, ownerPk: Field): [] {
     assertInitialized();
@@ -462,7 +464,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * be read as the other.
    *
    * @param {Note} note - The note to tag.
-   * @return {Bytes<32>} - The tag published in `_issuedNonces` when the note is
+   * @returns {Bytes<32>} - The tag published in `_issuedNonces` when the note is
    * committed.
    */
   export pure circuit issuedTagOf(note: Note): Bytes<32> {
@@ -481,7 +483,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @param {Note} note - The note to commit to.
    * @param {Field} pk - The identity that owns the note.
-   * @return {Bytes<32>} - The hiding commitment stored in `_commitments`.
+   * @returns {Bytes<32>} - The hiding commitment stored in `_commitments`.
    */
   export pure circuit commitOf(note: Note, pk: Field): Bytes<32> {
     return persistentHash<CommitPreimage>(
@@ -509,7 +511,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * - `value <= input.value`.
    *
    * @param {Uint<128>} value - The amount to burn.
-   * @return {Note} - The caller's change note, returned as a local private
+   * @returns {Note} - The caller's change note, returned as a local private
    * result.
    */
   export circuit burn(value: Uint<128>): Note {
@@ -533,7 +535,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @constraints k=13, rows=3869
    *
-   * @return {Field} - The caller's spend identity.
+   * @returns {Field} - The caller's spend identity.
    */
   export circuit _spenderPk(): Field {
     return derivePk(wit_ConfidentialNoteSK(), _instanceSalt);
@@ -550,7 +552,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @param {Bytes<32>} sk - The owner's spend secret.
    * @param {Bytes<32>} salt - The deployment's `_instanceSalt`.
-   * @return {Field} - The spend identity that owns notes.
+   * @returns {Field} - The spend identity that owns notes.
    */
   export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
     return degradeToTransient(
@@ -564,11 +566,13 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @description Peeks at the note the next spend consumes, so a composer can
    * size the change before spending. Reads the witness `_consumeNote` reads.
    *
+   * @constraints none
+   *
    * @dev Peek is untrusted:
    * A mismatch with what the composer then passes to `_transfer` / `_burn` is
    * caught by their conservation asserts, which re-read this witness.
    *
-   * @return {Note} - The note the next spend will consume.
+   * @returns {Note} - The note the next spend will consume.
    */
   export circuit _inputNote(): Note {
     return wit_ConfidentialNoteInputNote();
@@ -592,7 +596,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @param {Field} spenderPk - The identity that owns the input note.
    * @param {Uint<128>} value - The amount destroyed.
    * @param {Note} changeNote - The spender's change note.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _burn(spenderPk: Field, value: Uint<128>, changeNote: Note): [] {
     const input = _consumeNote(spenderPk);
@@ -623,7 +627,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * - The path's root is one the tree recognizes, current or historical.
    *
    * @param {Field} ownerPk - The identity the input note is committed to.
-   * @return {Note} - The consumed note, for the caller's value accounting.
+   * @returns {Note} - The consumed note, for the caller's value accounting.
    */
   export circuit _consumeNote(ownerPk: Field): Note {
     assertInitialized();
@@ -653,7 +657,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * knowing the nonce race for one spend.
    *
    * @param {Note} note - The note to nullify.
-   * @return {Bytes<32>} - The nullifier published in `_nullifiers` when the
+   * @returns {Bytes<32>} - The nullifier published in `_nullifiers` when the
    * note is spent.
    */
   export pure circuit nullifierOf(note: Note): Bytes<32> {
@@ -680,7 +684,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    *
    * @param {Field} recipientPk - The identity receiving the output note.
    * @param {Uint<128>} value - The amount to send.
-   * @return {[Note, Note]} - The recipient's note and the caller's change note.
+   * @returns {[Note, Note]} - The recipient's note and the caller's change note.
    */
   export circuit transfer(recipientPk: Field, value: Uint<128>): [Note, Note] {
     const pk = _spenderPk();
@@ -721,7 +725,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @param {Field} recipientPk - The identity receiving `outNote`.
    * @param {Note} outNote - The recipient's output note.
    * @param {Note} changeNote - The spender's change note.
-   * @return {[]} - Empty tuple.
+   * @returns {[]} - Empty tuple.
    */
   export circuit _transfer(
                    spenderPk: Field,

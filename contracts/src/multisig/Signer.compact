@@ -78,6 +78,8 @@ module Signer<T> {
   /**
    * @description Asserts that the given caller is an active signer.
    *
+   * @constraints k=8, rows=129
+   *
    * Requirements:
    *
    * - `caller` must be a member of the signers registry.
@@ -148,6 +150,8 @@ module Signer<T> {
   /**
    * @description Returns whether the given account is an active signer.
    *
+   * @constraints k=8, rows=129
+   *
    * @param {T} account - The account to check.
    * @returns {Boolean} True if the account is an active signer.
    */
@@ -159,6 +163,8 @@ module Signer<T> {
 
   /**
    * @description Adds a new signer to the registry.
+   *
+   * @constraints k=8, rows=169
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -180,6 +186,8 @@ module Signer<T> {
 
   /**
    * @description Removes a signer from the registry.
+   *
+   * @constraints k=9, rows=192
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own

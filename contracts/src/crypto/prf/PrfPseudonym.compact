@@ -79,7 +79,7 @@ module PrfPseudonym {
    * @param {Bytes<32>} domain - The purpose tag.
    * @param {S} salt - The salt the pseudonym is derived under.
    * @param {Bytes<32>} sk - The secret.
-   * @return {Bytes<32>} - The pseudonym.
+   * @returns {Bytes<32>} - The pseudonym.
    */
   export pure circuit derivePseudonym<S>(domain: Bytes<32>, salt: S, sk: Bytes<32>): Bytes<32> {
     return Prf_evaluate<Input<S>, Bytes<32>>(Input<S> { domain: domain, salt: salt }, sk);

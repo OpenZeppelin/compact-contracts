@@ -253,6 +253,8 @@ module ProposalManager {
   /**
    * @description Asserts that a proposal exists.
    *
+   * @constraints k=7, rows=58
+   *
    * Requirements:
    *
    * - Proposal with `id` must have been created.
@@ -375,6 +377,8 @@ module ProposalManager {
   /**
    * @description Cancels a proposal, retiring it before its expiry.
    *
+   * @constraints k=9, rows=173
+   *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
    * authorization policy.
@@ -402,6 +406,8 @@ module ProposalManager {
 
   /**
    * @description Marks a proposal as executed.
+   *
+   * @constraints k=9, rows=173
    *
    * @notice Access control is NOT enforced here.
    * The consuming contract must gate this behind its own
@@ -435,6 +441,8 @@ module ProposalManager {
    * raw encoded field. See `Proposal` for how to read it, and prefer
    * `getProposalStatus` when the lifecycle stage is what is wanted.
    *
+   * @constraints k=8, rows=175
+   *
    * @param {Uint<64>} id - The proposal ID.
    *
    * @returns {Proposal} The proposal.
@@ -446,6 +454,8 @@ module ProposalManager {
 
   /**
    * @description Returns the recipient of a proposal.
+   *
+   * @constraints k=8, rows=131
    *
    * @param {Uint<64>} id - The proposal ID.
    *
@@ -459,6 +469,8 @@ module ProposalManager {
   /**
    * @description Returns the amount of a proposal.
    *
+   * @constraints k=7, rows=109
+   *
    * @param {Uint<64>} id - The proposal ID.
    *
    * @returns {Uint<128>} The amount.
@@ -470,6 +482,8 @@ module ProposalManager {
 
   /**
    * @description Returns the token color of a proposal.
+   *
+   * @constraints k=7, rows=110
    *
    * @param {Uint<64>} id - The proposal ID.
    *

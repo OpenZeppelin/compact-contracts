@@ -80,7 +80,7 @@ module RandBlinding {
    *
    * - The blinding factor is not zero.
    *
-   * @return {Bytes<32>} - The blinding factor.
+   * @returns {Bytes<32>} - The blinding factor.
    */
   export circuit read(): Blinding {
     const blinding = wit_RandBlindingFactor();
