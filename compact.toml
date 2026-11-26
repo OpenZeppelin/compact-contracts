@@ -85,3 +85,82 @@ artifact = "token/extensions/test/mocks/{name}"
 
 [contracts."src/utils/test/mocks/*"]
 artifact = "utils/test/mocks/{name}"
+
+# Doc-comment lint for `compact-linter`. compact-deploy ignores this table.
+
+[lint]
+include = ["contracts/src/**/*.compact"]
+exclude = ["**/test/mocks/**", "**/archive/**"]
+
+[lint.constraints]
+compiler = "0.36.0"
+artifacts = "contracts/artifacts"
+# Contracts compile as they are; every module is measured through its mock.
+self = ["**/presets/**", "**/examples/**"]
+
+[lint.tags]
+forbid = ["@return"]
+rename = { "@return" = "@returns" }
+
+# `sections` is every heading a module header may carry, in order. Only `@module`
+# and `@description` are required.
+[lint.kinds.module]
+docs = "all"
+tags = ["@module", "@description"]
+sections = [
+  "@module",
+  "@description",
+  "@dev Notation",
+  "@dev Derivations",
+  "@dev Parameterization",
+  "@dev Compatibility",
+  "@notice Privacy",
+  "@notice Caller identity",
+  "@dev Features",
+  "@dev Commitment structure",
+  "@dev Security Considerations",
+  "@notice Missing Features and Improvements",
+  "@dev Structure",
+  "@notice Security",
+  "@notice Concurrency",
+  "@notice Scope",
+  "@notice Not enforced",
+  "@dev Layout",
+  "@dev Key type",
+  "@notice Assumption",
+  "@dev Output",
+  "@notice Caller duties",
+  "@dev Authenticators",
+  "@dev Why a struct",
+  "@notice Further discussion and consideration required",
+  "@notice Recipients must be coin public keys",
+  "@notice Supply accounting is opt-in",
+  "@notice Constructor usage",
+  "@notice Minting and recipient privacy",
+  "@notice Composition",
+  "@notice Client-side duties",
+  "@notice Scalability",
+  "@dev Performance",
+  "@dev Composition",
+  "@dev Contract callers",
+  "@notice This variant is deterministic and recipient-PUBLIC by design",
+]
+
+[lint.kinds.circuit]
+tags = ["@description"]
+
+[lint.kinds.ledger]
+tags = ["@description"]
+
+[lint.kinds.witness]
+docs = "all"
+tags = ["@description"]
+
+[lint.kinds.struct]
+tags = ["@description"]
+
+[lint.kinds.enum]
+tags = ["@description"]
+
+[lint.kinds.constructor]
+docs = "none"

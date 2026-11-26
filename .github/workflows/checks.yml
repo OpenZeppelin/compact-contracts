@@ -27,10 +27,12 @@ jobs:
         with:
           fetch-depth: 2 # Recommended by turbo team
 
+      # Installs Compact: the doc lint runs `compact format --check`.
       - name: Setup Environment
         uses: ./.github/actions/setup
-        with:
-          skip-compact: "true"
 
       - name: Format & Lint
         run: yarn lint:ci
+
+      - name: Compact doc lint
+        run: yarn lint:compact --reporter github
