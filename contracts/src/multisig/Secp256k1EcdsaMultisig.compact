@@ -146,9 +146,9 @@ module Secp256k1EcdsaMultisig<#t> {
    * @returns {[]} Empty tuple.
    */
   export circuit initialize<#n>(
-    instanceSalt: Bytes<32>,
-    signerCommitments: Vector<n, Bytes<32>>
-  ): [] {
+                   instanceSalt: Bytes<32>,
+                   signerCommitments: Vector<n, Bytes<32>>
+                   ): [] {
     assert(Signer_getSignerCount() == 0, "Secp256k1EcdsaMultisig: signers already registered");
     assert(instanceSalt != default<Bytes<32>>, "Secp256k1EcdsaMultisig: invalid salt");
     _instanceSalt = disclose(instanceSalt);
@@ -179,10 +179,10 @@ module Secp256k1EcdsaMultisig<#t> {
    * @returns {[]} Empty tuple.
    */
   export circuit assertApprovals(
-    msgHash: Bytes<32>,
-    pubkeys: Vector<t, Secp256k1Point>,
-    signatures: Vector<t, Secp256k1EcdsaSignature>
-  ): [] {
+                   msgHash: Bytes<32>,
+                   pubkeys: Vector<t, Secp256k1Point>,
+                   signatures: Vector<t, Secp256k1EcdsaSignature>
+                   ): [] {
     Signer_assertThresholdMet(t);
 
     const commitments = map(signerCommitment, pubkeys);
@@ -197,10 +197,9 @@ module Secp256k1EcdsaMultisig<#t> {
 
     for (const i of 0..t) {
       Signer_assertSigner(commitments[i]);
-      assert(
-        Ecdsa_secp256k1EcdsaVerifyLowS(msgHash, signatures[i], pubkeys[i]),
-        "Secp256k1EcdsaMultisig: invalid signature"
-      );
+      assert(Ecdsa_secp256k1EcdsaVerifyLowS(msgHash, signatures[i], pubkeys[i]),
+             "Secp256k1EcdsaMultisig: invalid signature"
+             );
     }
   }
 
@@ -229,16 +228,13 @@ module Secp256k1EcdsaMultisig<#t> {
    * @param {Bytes<32>} salt - The instance salt.
    * @returns {Bytes<32>} The signer commitment.
    */
-  export pure circuit calculateSignerId(
-    pk: Secp256k1Point,
-    salt: Bytes<32>
-  ): Bytes<32> {
-    return persistentHash<SignerCommitmentInput>(SignerCommitmentInput {
-      pkX: secp256k1PointX(pk) as Bytes<32>,
-      pkY: secp256k1PointY(pk) as Bytes<32>,
-      salt: salt,
-      domain: pad(32, "Secp256k1EcdsaMultisig:signer")
-    });
+  export pure circuit calculateSignerId(pk: Secp256k1Point, salt: Bytes<32>): Bytes<32> {
+    return persistentHash<SignerCommitmentInput>(
+             SignerCommitmentInput { pkX: secp256k1PointX(pk) as Bytes<32>,
+                                     pkY: secp256k1PointY(pk) as Bytes<32>,
+                                     salt: salt,
+                                     domain: pad(32, "Secp256k1EcdsaMultisig:signer") }
+             );
   }
 
   /**

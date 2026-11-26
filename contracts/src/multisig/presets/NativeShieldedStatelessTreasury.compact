@@ -244,18 +244,14 @@ module NativeShieldedStatelessTreasury<#t> {
    * @returns {[]} Empty tuple.
    */
   export circuit initialize<#n>(
-    instanceSalt: Bytes<32>,
-    signerCommitments: Vector<n, Bytes<32>>
-  ): [] {
+                   instanceSalt: Bytes<32>,
+                   signerCommitments: Vector<n, Bytes<32>>
+                   ): [] {
     Secp256k1EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
 
     const hashedName = keccak256<Bytes<31>>(pad(31, "NativeShieldedStatelessTreasury"));
     const hashedVersion = keccak256<Bytes<1>>(pad(1, "1"));
-    _domainSeparator = Eip712_domainSeparator(
-      hashedName,
-      hashedVersion,
-      disclose(instanceSalt)
-    );
+    _domainSeparator = Eip712_domainSeparator(hashedName, hashedVersion, disclose(instanceSalt));
   }
 
   /**
@@ -270,12 +266,39 @@ module NativeShieldedStatelessTreasury<#t> {
    * @returns {Bytes<32>} The `Execute` type hash.
    */
   pure circuit EXECUTE_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x8e, 0x36, 0xc9, 0x78, 0xf2, 0x00, 0x15, 0xe8,
-      0x1d, 0x7a, 0x53, 0xef, 0xc3, 0x2e, 0x2b, 0x08,
-      0xf1, 0x24, 0x97, 0xa5, 0x05, 0x7c, 0x70, 0x20,
-      0x7f, 0x8b, 0xc4, 0xb7, 0xc6, 0xcf, 0x5e, 0x15
-    ];
+    const typeHash: Vector<32, Uint<8>> =
+            [0x8e,
+             0x36,
+             0xc9,
+             0x78,
+             0xf2,
+             0x00,
+             0x15,
+             0xe8,
+             0x1d,
+             0x7a,
+             0x53,
+             0xef,
+             0xc3,
+             0x2e,
+             0x2b,
+             0x08,
+             0xf1,
+             0x24,
+             0x97,
+             0xa5,
+             0x05,
+             0x7c,
+             0x70,
+             0x20,
+             0x7f,
+             0x8b,
+             0xc4,
+             0xb7,
+             0xc6,
+             0xcf,
+             0x5e,
+             0x15];
 
     return typeHash as Bytes<32>;
   }
@@ -295,10 +318,7 @@ module NativeShieldedStatelessTreasury<#t> {
    *
    * @returns {Bytes<32>} The signer commitment.
    */
-  export pure circuit _calculateSignerId(
-    pk: Secp256k1Point,
-    salt: Bytes<32>
-  ): Bytes<32> {
+  export pure circuit _calculateSignerId(pk: Secp256k1Point, salt: Bytes<32>): Bytes<32> {
     return Secp256k1EcdsaMultisig_calculateSignerId(pk, salt);
   }
 
@@ -358,40 +378,40 @@ module NativeShieldedStatelessTreasury<#t> {
    *
    * @returns {ShieldedSendResult} The send result including any change.
    */
-  export circuit execute(
-    to: Proposal_Recipient,
-    amount: Uint<128>,
-    coin: QualifiedShieldedCoinInfo,
-    pubkeys: Vector<t, Secp256k1Point>,
-    signatures: Vector<t, Secp256k1EcdsaSignature>
-  ): ShieldedSendResult {
+  export circuit execute(to: Proposal_Recipient,
+                         amount: Uint<128>,
+                         coin: QualifiedShieldedCoinInfo,
+                         pubkeys: Vector<t, Secp256k1Point>,
+                         signatures: Vector<t, Secp256k1EcdsaSignature>
+                         ): ShieldedSendResult {
     // Increment nonce
     const currentNonce = _nonce;
     _nonce.increment(1);
 
     // Construct message hash
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<7, Bytes<32>>>([
-      EXECUTE_TYPEHASH(),
-      // Binds the digest to this deployment. The domain cannot carry the
-      // address, so removing this word removes cross-instance replay
-      // protection.
-      kernel.self().bytes,
-      EvmAbi_uint64Word(currentNonce),
-      EvmAbi_uint8Word(to.kind as Uint<8>),
-      to.address,
-      coin.color,
-      EvmAbi_uint128Word(amount)
-    ]));
+    const msgHash = Eip712_hashTypedData(
+                      _domainSeparator,
+                      keccak256<Vector<7, Bytes<32>>>(
+                        [EXECUTE_TYPEHASH(),
+                         // Binds the digest to this deployment. The domain cannot carry the
+                         // address, so removing this word removes cross-instance replay
+                         // protection.
+                         kernel.self().bytes,
+                         EvmAbi_uint64Word(currentNonce),
+                         EvmAbi_uint8Word(to.kind as Uint<8>),
+                         to.address,
+                         coin.color,
+                         EvmAbi_uint128Word(amount)]
+                        )
+                      );
 
     Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
-    assert(
-      to.kind == Proposal_RecipientKind.ShieldedUser,
-      "NativeShieldedStatelessTreasury: recipient must be a coin public key"
-    );
-    const recipient = left<ZswapCoinPublicKey, ContractAddress>(
-      ZswapCoinPublicKey { bytes: to.address }
-    );
+    assert(to.kind == Proposal_RecipientKind.ShieldedUser,
+           "NativeShieldedStatelessTreasury: recipient must be a coin public key"
+           );
+    const recipient =
+            left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: to.address });
     return Treasury__send(coin, recipient, amount);
   }
 

@@ -204,18 +204,12 @@ module NativeShieldedTokenFamily {
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
-  export circuit _mint(
-                   domain: Bytes<32>,
-                   recipient: ZswapCoinPublicKey,
-                   amount: Uint<64>,
-                   nonce: Bytes<32>
-                   ): ShieldedCoinInfo {
-    return Core__mint(
-      domain,
-      left<ZswapCoinPublicKey, ContractAddress>(recipient),
-      amount,
-      nonce
-    );
+  export circuit _mint(domain: Bytes<32>,
+                       recipient: ZswapCoinPublicKey,
+                       amount: Uint<64>,
+                       nonce: Bytes<32>
+                       ): ShieldedCoinInfo {
+    return Core__mint(domain, left<ZswapCoinPublicKey, ContractAddress>(recipient), amount, nonce);
   }
 
   /**
@@ -247,11 +241,11 @@ module NativeShieldedTokenFamily {
                    nonce: Bytes<32>
                    ): ShieldedCoinInfo {
     return Core__mint(
-      domain,
-      right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
-      amount,
-      nonce
-    );
+             domain,
+             right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+             amount,
+             nonce
+             );
   }
 
   /**
@@ -290,18 +284,12 @@ module NativeShieldedTokenFamily {
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
-  export circuit _burn(
-                   domain: Bytes<32>,
-                   coin: ShieldedCoinInfo,
-                   amount: Uint<128>,
-                   refundTo: ZswapCoinPublicKey
-                   ): Maybe<ShieldedCoinInfo> {
-    return Core__burn(
-      domain,
-      coin,
-      amount,
-      left<ZswapCoinPublicKey, ContractAddress>(refundTo)
-    );
+  export circuit _burn(domain: Bytes<32>,
+                       coin: ShieldedCoinInfo,
+                       amount: Uint<128>,
+                       refundTo: ZswapCoinPublicKey
+                       ): Maybe<ShieldedCoinInfo> {
+    return Core__burn(domain, coin, amount, left<ZswapCoinPublicKey, ContractAddress>(refundTo));
   }
 
   /**

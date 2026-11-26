@@ -19,32 +19,31 @@ export { ZswapCoinPublicKey, ContractAddress, Either, Maybe, ShieldedCoinInfo };
 
 // Surface the preset's state unprefixed so `ledger()` readers use the keys the
 // modules declare.
-import {
-  _ownerCommitment,
-  _counter,
-  _instanceSalt,
-  _ownableIsInitialized,
-  _domain,
-  _name,
-  _symbol,
-  _decimals,
-  _isInitialized,
-  _totalMinted,
-  _totalBurned,
-} from "../presets/ZOwnableNativeShieldedToken";
-export {
-  _ownerCommitment,
-  _counter,
-  _instanceSalt,
-  _ownableIsInitialized,
-  _domain,
-  _name,
-  _symbol,
-  _decimals,
-  _isInitialized,
-  _totalMinted,
-  _totalBurned,
-};
+import
+  { _ownerCommitment,
+    _counter,
+    _instanceSalt,
+    _ownableIsInitialized,
+    _domain,
+    _name,
+    _symbol,
+    _decimals,
+    _isInitialized,
+    _totalMinted,
+    _totalBurned, }
+  from "../presets/ZOwnableNativeShieldedToken";
+
+export { _ownerCommitment,
+         _counter,
+         _instanceSalt,
+         _ownableIsInitialized,
+         _domain,
+         _name,
+         _symbol,
+         _decimals,
+         _isInitialized,
+         _totalMinted,
+         _totalBurned, };
 
 /**
  * @description Deploys the token with its owner, domain and metadata.
@@ -58,14 +57,13 @@ export {
  * @param {Bytes<32>} instanceSalt - Random per-deployment salt for the owner commitment.
  * @param {Bytes<32>} tokenDomain - Domain of this contract's token color.
  */
-constructor(
-  ownerId: Bytes<32>,
-  instanceSalt: Bytes<32>,
-  tokenDomain: Bytes<32>,
-  name_: Opaque<"string">,
-  symbol_: Opaque<"string">,
-  decimals_: Uint<8>,
-) {
+constructor(ownerId: Bytes<32>,
+            instanceSalt: Bytes<32>,
+            tokenDomain: Bytes<32>,
+            name_: Opaque<"string">,
+            symbol_: Opaque<"string">,
+            decimals_: Uint<8>,
+            ) {
   ZOwnableNativeShieldedToken_initialize(
     ownerId,
     instanceSalt,
@@ -73,14 +71,20 @@ constructor(
     name_,
     symbol_,
     decimals_,
-  );
+    );
 }
 
-export circuit mint(recipient: ZswapCoinPublicKey, amount: Uint<64>, nonce: Bytes<32>): ShieldedCoinInfo {
+export circuit mint(recipient: ZswapCoinPublicKey,
+                    amount: Uint<64>,
+                    nonce: Bytes<32>
+                    ): ShieldedCoinInfo {
   return ZOwnableNativeShieldedToken_mint(recipient, amount, nonce);
 }
 
-export circuit burn(coin: ShieldedCoinInfo, amount: Uint<64>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
+export circuit burn(coin: ShieldedCoinInfo,
+                    amount: Uint<64>,
+                    refundTo: ZswapCoinPublicKey
+                    ): Maybe<ShieldedCoinInfo> {
   return ZOwnableNativeShieldedToken_burn(coin, amount, refundTo);
 }
 
@@ -96,7 +100,10 @@ export circuit owner(): Bytes<32> {
   return ZOwnableNativeShieldedToken_owner();
 }
 
-export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+export pure circuit _computeOwnerId(
+                      pk: Either<ZswapCoinPublicKey, ContractAddress>,
+                      nonce: Bytes<32>
+                      ): Bytes<32> {
   return ZOwnableNativeShieldedToken__computeOwnerId(pk, nonce);
 }
 

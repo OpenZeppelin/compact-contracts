@@ -22,6 +22,7 @@ pragma language_version >= 0.28.0;
  */
 
 import CompactStandardLibrary;
+
 import "../ForwarderPrivate" prefix ForwarderPrivate_;
 
 export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult, ZswapCoinPublicKey };
@@ -85,12 +86,11 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
  * @returns {ShieldedSendResult} The result containing the sent coin and
  * any change.
  */
-export circuit drain(
-  coin: QualifiedShieldedCoinInfo,
-  parent: ZswapCoinPublicKey,
-  opSecret: Bytes<32>,
-  value: Uint<128>
-): ShieldedSendResult {
+export circuit drain(coin: QualifiedShieldedCoinInfo,
+                     parent: ZswapCoinPublicKey,
+                     opSecret: Bytes<32>,
+                     value: Uint<128>
+                     ): ShieldedSendResult {
   return ForwarderPrivate__drain(coin, parent, opSecret, value);
 }
 
@@ -117,9 +117,6 @@ export circuit getParentCommitment(): Bytes<32> {
  *
  * @returns {Bytes<32>} The commitment `persistentHash([pad(32, "ForwarderPrivate:commitment"), parentAddr, opSecret])`.
  */
-export pure circuit calculateParentCommitment(
-  parentAddr: Bytes<32>,
-  opSecret: Bytes<32>
-): Bytes<32> {
+export pure circuit calculateParentCommitment(parentAddr: Bytes<32>, opSecret: Bytes<32>): Bytes<32> {
   return ForwarderPrivate__calculateParentCommitment(parentAddr, opSecret);
 }

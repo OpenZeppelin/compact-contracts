@@ -57,8 +57,7 @@ module ConfidentialFungibleTokenPublicSupply {
    */
   export circuit _addSupply(value: Uint<128>): [] {
     const MAX_UINT128 = 340282366920938463463374607431768211455;
-    assert(MAX_UINT128 - _totalSupply >= value,
-           "ConfidentialFungibleTokenPublicSupply: overflow");
+    assert(MAX_UINT128 - _totalSupply >= value, "ConfidentialFungibleTokenPublicSupply: overflow");
     _totalSupply = disclose(_totalSupply + value as Uint<128>);
   }
 
@@ -77,8 +76,7 @@ module ConfidentialFungibleTokenPublicSupply {
    * @return {[]} - Empty tuple.
    */
   export circuit _subSupply(value: Uint<128>): [] {
-    assert(_totalSupply >= value,
-           "ConfidentialFungibleTokenPublicSupply: supply underflow");
+    assert(_totalSupply >= value, "ConfidentialFungibleTokenPublicSupply: supply underflow");
     _totalSupply = disclose(_totalSupply - value as Uint<128>);
   }
 

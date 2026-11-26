@@ -22,6 +22,7 @@ pragma language_version >= 0.28.0;
  */
 
 import CompactStandardLibrary;
+
 import "../ForwarderShielded" prefix Forwarder_;
 
 export { ZswapCoinPublicKey, ContractAddress, ShieldedCoinInfo, ShieldedSendResult, Maybe, Either };

@@ -73,14 +73,11 @@ module IdentifierCommitment {
    * @param {Bytes<32>} blinding - The blinding factor.
    * @return {Bytes<32>} - The account commitment.
    */
-  export pure circuit commit(
-                        domain: Bytes<32>,
-                        publicKey: Bytes<32>,
-                        blinding: Bytes<32>
-                        ): IdentifierCommitment {
-    return persistentCommit<Preimage>(
-             Preimage { domain: domain, publicKey: publicKey },
-             blinding
-           ) as IdentifierCommitment;
+  export pure circuit commit(domain: Bytes<32>,
+                             publicKey: Bytes<32>,
+                             blinding: Bytes<32>
+                             ): IdentifierCommitment {
+    return persistentCommit<Preimage>(Preimage { domain: domain, publicKey: publicKey }, blinding)
+           as IdentifierCommitment;
   }
 }

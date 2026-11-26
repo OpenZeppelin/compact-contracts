@@ -43,11 +43,7 @@ module Ecdsa {
    * @param {Uint<8>} halfByte - Byte of `n / 2`.
    * @returns {Boolean} Updated result.
    */
-  pure circuit compareByteLe(
-    isLow: Boolean,
-    sByte: Uint<8>,
-    halfByte: Uint<8>
-  ): Boolean {
+  pure circuit compareByteLe(isLow: Boolean, sByte: Uint<8>, halfByte: Uint<8>): Boolean {
     return sByte == halfByte ? isLow : sByte < halfByte;
   }
 
@@ -59,12 +55,38 @@ module Ecdsa {
    */
   pure circuit SECP256K1_HALF_ORDER_LE(): Vector<32, Uint<8>> {
     // 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0
-    return [
-      160, 32, 27, 104, 70, 47, 233, 223,
-      29, 80, 164, 87, 115, 110, 87, 93,
-      255, 255, 255, 255, 255, 255, 255, 255,
-      255, 255, 255, 255, 255, 255, 255, 127
-    ];
+    return [160,
+            32,
+            27,
+            104,
+            70,
+            47,
+            233,
+            223,
+            29,
+            80,
+            164,
+            87,
+            115,
+            110,
+            87,
+            93,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            127];
   }
 
   // ─── Verification ───────────────────────────────────────────────────────────
@@ -100,10 +122,10 @@ module Ecdsa {
    * @returns {Boolean} True if the signature is valid and canonical.
    */
   export pure circuit secp256k1EcdsaVerifyLowS(
-    msgHash: Bytes<32>,
-    sig: Secp256k1EcdsaSignature,
-    pk: Secp256k1Point
-  ): Boolean {
+                        msgHash: Bytes<32>,
+                        sig: Secp256k1EcdsaSignature,
+                        pk: Secp256k1Point
+                        ): Boolean {
     // TODO: inline into the return once a guarded stdlib verify compiles.
     // Short-circuiting `&&` puts it behind a guard, which trips an internal
     // error in the compiler's missing-guard-workarounds pass.

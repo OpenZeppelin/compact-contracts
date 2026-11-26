@@ -242,8 +242,12 @@ module NativeShieldedTokenIssuer<#t> {
   // The circuits stay behind the prefixes above. The derived-nonce counter is
   // aliased because this module's replay counter already owns `_counter`.
   import { _instanceSalt, _signers, _signerCount, _threshold } from "../Secp256k1EcdsaMultisig"<t>;
-  import { _domain, _name, _symbol, _decimals, _isInitialized } from "../../token/NativeShieldedToken";
-  import { _counter as _derivedNonceCounter } from "../../token/extensions/NativeShieldedTokenDerivedNonce";
+  import
+    { _domain, _name, _symbol, _decimals, _isInitialized }
+    from "../../token/NativeShieldedToken";
+  import
+    { _counter as _derivedNonceCounter }
+    from "../../token/extensions/NativeShieldedTokenDerivedNonce";
   export { _instanceSalt, _signers, _signerCount, _threshold };
   export { _domain, _name, _symbol, _decimals, _isInitialized };
   export { _derivedNonceCounter };
@@ -295,23 +299,19 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {[]} Empty tuple.
    */
   export circuit initialize<#n>(
-    instanceSalt: Bytes<32>,
-    tokenDomain: Bytes<32>,
-    name_: Opaque<"string">,
-    symbol_: Opaque<"string">,
-    decimals_: Uint<8>,
-    signerCommitments: Vector<n, Bytes<32>>
-  ): [] {
+                   instanceSalt: Bytes<32>,
+                   tokenDomain: Bytes<32>,
+                   name_: Opaque<"string">,
+                   symbol_: Opaque<"string">,
+                   decimals_: Uint<8>,
+                   signerCommitments: Vector<n, Bytes<32>>
+                   ): [] {
     Secp256k1EcdsaMultisig_initialize<n>(instanceSalt, signerCommitments);
     NST_initialize(tokenDomain, name_, symbol_, decimals_);
 
     const hashedName = keccak256<Bytes<25>>(pad(25, "NativeShieldedTokenIssuer"));
     const hashedVersion = keccak256<Bytes<1>>(pad(1, "1"));
-    _domainSeparator = Eip712_domainSeparator(
-      hashedName,
-      hashedVersion,
-      disclose(instanceSalt)
-    );
+    _domainSeparator = Eip712_domainSeparator(hashedName, hashedVersion, disclose(instanceSalt));
   }
 
   /**
@@ -324,12 +324,39 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Bytes<32>} The `Mint` type hash.
    */
   pure circuit MINT_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x65, 0x2d, 0x4d, 0xad, 0x8f, 0xb2, 0x6c, 0x5c,
-      0x50, 0xc9, 0x87, 0xd4, 0x19, 0xdc, 0x93, 0x53,
-      0x14, 0xa0, 0x1e, 0xd4, 0x5d, 0xb1, 0x59, 0xf2,
-      0x30, 0xad, 0xc1, 0xa7, 0xe9, 0x02, 0x91, 0x1c
-    ];
+    const typeHash: Vector<32, Uint<8>> =
+            [0x65,
+             0x2d,
+             0x4d,
+             0xad,
+             0x8f,
+             0xb2,
+             0x6c,
+             0x5c,
+             0x50,
+             0xc9,
+             0x87,
+             0xd4,
+             0x19,
+             0xdc,
+             0x93,
+             0x53,
+             0x14,
+             0xa0,
+             0x1e,
+             0xd4,
+             0x5d,
+             0xb1,
+             0x59,
+             0xf2,
+             0x30,
+             0xad,
+             0xc1,
+             0xa7,
+             0xe9,
+             0x02,
+             0x91,
+             0x1c];
 
     return typeHash as Bytes<32>;
   }
@@ -344,12 +371,39 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Bytes<32>} The `MintToSelf` type hash.
    */
   pure circuit MINT_TO_SELF_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0xf8, 0xb3, 0x1e, 0x4e, 0x0f, 0x2d, 0x10, 0x33,
-      0x82, 0xb4, 0xb3, 0x72, 0xac, 0x65, 0xa7, 0xad,
-      0xcd, 0x03, 0x89, 0x39, 0x8d, 0x24, 0x6c, 0x5e,
-      0xc2, 0xc9, 0x09, 0x38, 0x53, 0xdb, 0x49, 0x91
-    ];
+    const typeHash: Vector<32, Uint<8>> =
+            [0xf8,
+             0xb3,
+             0x1e,
+             0x4e,
+             0x0f,
+             0x2d,
+             0x10,
+             0x33,
+             0x82,
+             0xb4,
+             0xb3,
+             0x72,
+             0xac,
+             0x65,
+             0xa7,
+             0xad,
+             0xcd,
+             0x03,
+             0x89,
+             0x39,
+             0x8d,
+             0x24,
+             0x6c,
+             0x5e,
+             0xc2,
+             0xc9,
+             0x09,
+             0x38,
+             0x53,
+             0xdb,
+             0x49,
+             0x91];
 
     return typeHash as Bytes<32>;
   }
@@ -364,12 +418,39 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Bytes<32>} The `Burn` type hash.
    */
   pure circuit BURN_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x96, 0x8e, 0x03, 0xa5, 0xba, 0x91, 0xc8, 0xdd,
-      0x27, 0x56, 0x79, 0x5a, 0xc6, 0x57, 0x52, 0x13,
-      0x06, 0xe0, 0xd9, 0x7c, 0xe8, 0x1e, 0xbf, 0x9b,
-      0x68, 0x24, 0x45, 0xa2, 0x86, 0xfc, 0xeb, 0xef
-    ];
+    const typeHash: Vector<32, Uint<8>> =
+            [0x96,
+             0x8e,
+             0x03,
+             0xa5,
+             0xba,
+             0x91,
+             0xc8,
+             0xdd,
+             0x27,
+             0x56,
+             0x79,
+             0x5a,
+             0xc6,
+             0x57,
+             0x52,
+             0x13,
+             0x06,
+             0xe0,
+             0xd9,
+             0x7c,
+             0xe8,
+             0x1e,
+             0xbf,
+             0x9b,
+             0x68,
+             0x24,
+             0x45,
+             0xa2,
+             0x86,
+             0xfc,
+             0xeb,
+             0xef];
 
     return typeHash as Bytes<32>;
   }
@@ -386,12 +467,39 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Bytes<32>} The `BurnFromSelf` type hash.
    */
   pure circuit BURN_FROM_SELF_TYPEHASH(): Bytes<32> {
-    const typeHash: Vector<32, Uint<8>> = [
-      0x50, 0xa1, 0xf2, 0x88, 0xba, 0xb8, 0x77, 0x4b,
-      0x1f, 0x55, 0x86, 0x31, 0xc7, 0x75, 0xda, 0x49,
-      0xec, 0x20, 0x4e, 0x07, 0xcf, 0x88, 0x53, 0x9b,
-      0xca, 0x8e, 0xb9, 0x8c, 0xac, 0xf4, 0x5b, 0xe9
-    ];
+    const typeHash: Vector<32, Uint<8>> =
+            [0x50,
+             0xa1,
+             0xf2,
+             0x88,
+             0xba,
+             0xb8,
+             0x77,
+             0x4b,
+             0x1f,
+             0x55,
+             0x86,
+             0x31,
+             0xc7,
+             0x75,
+             0xda,
+             0x49,
+             0xec,
+             0x20,
+             0x4e,
+             0x07,
+             0xcf,
+             0x88,
+             0x53,
+             0x9b,
+             0xca,
+             0x8e,
+             0xb9,
+             0x8c,
+             0xac,
+             0xf4,
+             0x5b,
+             0xe9];
 
     return typeHash as Bytes<32>;
   }
@@ -410,10 +518,7 @@ module NativeShieldedTokenIssuer<#t> {
    * @param {Bytes<32>} salt - The instance salt.
    * @returns {Bytes<32>} The signer commitment.
    */
-  export pure circuit _calculateSignerId(
-    pk: Secp256k1Point,
-    salt: Bytes<32>
-  ): Bytes<32> {
+  export pure circuit _calculateSignerId(pk: Secp256k1Point, salt: Bytes<32>): Bytes<32> {
     return Secp256k1EcdsaMultisig_calculateSignerId(pk, salt);
   }
 
@@ -442,25 +547,27 @@ module NativeShieldedTokenIssuer<#t> {
    * @param {Vector<t, Secp256k1EcdsaSignature>} signatures - ECDSA signatures over the mint hash.
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
-  export circuit mint(
-    amount: Uint<64>,
-    recipient: ZswapCoinPublicKey,
-    pubkeys: Vector<t, Secp256k1Point>,
-    signatures: Vector<t, Secp256k1EcdsaSignature>
-  ): ShieldedCoinInfo {
+  export circuit mint(amount: Uint<64>,
+                      recipient: ZswapCoinPublicKey,
+                      pubkeys: Vector<t, Secp256k1Point>,
+                      signatures: Vector<t, Secp256k1EcdsaSignature>
+                      ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
 
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<5, Bytes<32>>>([
-      MINT_TYPEHASH(),
-      // Binds the digest to this deployment. The domain cannot carry the
-      // address, so removing this word removes cross-instance replay
-      // protection.
-      kernel.self().bytes,
-      recipient.bytes,
-      EvmAbi_uint64Word(opNonce),
-      EvmAbi_uint64Word(amount)
-    ]));
+    const msgHash = Eip712_hashTypedData(
+                      _domainSeparator,
+                      keccak256<Vector<5, Bytes<32>>>(
+                        [MINT_TYPEHASH(),
+                         // Binds the digest to this deployment. The domain cannot carry the
+                         // address, so removing this word removes cross-instance replay
+                         // protection.
+                         kernel.self().bytes,
+                         recipient.bytes,
+                         EvmAbi_uint64Word(opNonce),
+                         EvmAbi_uint64Word(amount)]
+                        )
+                      );
 
     Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
@@ -489,22 +596,25 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {ShieldedCoinInfo} The minted coin (nonce, color, value).
    */
   export circuit mintToSelf(
-    amount: Uint<64>,
-    pubkeys: Vector<t, Secp256k1Point>,
-    signatures: Vector<t, Secp256k1EcdsaSignature>
-  ): ShieldedCoinInfo {
+                   amount: Uint<64>,
+                   pubkeys: Vector<t, Secp256k1Point>,
+                   signatures: Vector<t, Secp256k1EcdsaSignature>
+                   ): ShieldedCoinInfo {
     const opNonce = _counter;
     _counter.increment(1);
 
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<4, Bytes<32>>>([
-      MINT_TO_SELF_TYPEHASH(),
-      // Binds the digest to this deployment. The domain cannot carry the
-      // address, so removing this word removes cross-instance replay
-      // protection.
-      kernel.self().bytes,
-      EvmAbi_uint64Word(opNonce),
-      EvmAbi_uint64Word(amount)
-    ]));
+    const msgHash = Eip712_hashTypedData(
+                      _domainSeparator,
+                      keccak256<Vector<4, Bytes<32>>>(
+                        [MINT_TO_SELF_TYPEHASH(),
+                         // Binds the digest to this deployment. The domain cannot carry the
+                         // address, so removing this word removes cross-instance replay
+                         // protection.
+                         kernel.self().bytes,
+                         EvmAbi_uint64Word(opNonce),
+                         EvmAbi_uint64Word(amount)]
+                        )
+                      );
 
     Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
@@ -538,26 +648,28 @@ module NativeShieldedTokenIssuer<#t> {
    * @returns {Maybe<ShieldedCoinInfo>} The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
-  export circuit burn(
-    coin: ShieldedCoinInfo,
-    amount: Uint<128>,
-    refundTo: ZswapCoinPublicKey,
-    pubkeys: Vector<t, Secp256k1Point>,
-    signatures: Vector<t, Secp256k1EcdsaSignature>
-  ): Maybe<ShieldedCoinInfo> {
+  export circuit burn(coin: ShieldedCoinInfo,
+                      amount: Uint<128>,
+                      refundTo: ZswapCoinPublicKey,
+                      pubkeys: Vector<t, Secp256k1Point>,
+                      signatures: Vector<t, Secp256k1EcdsaSignature>
+                      ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
 
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<5, Bytes<32>>>([
-      BURN_TYPEHASH(),
-      // Binds the digest to this deployment. The domain cannot carry the
-      // address, so removing this word removes cross-instance replay
-      // protection.
-      kernel.self().bytes,
-      refundTo.bytes,
-      EvmAbi_uint64Word(opNonce),
-      EvmAbi_uint128Word(amount)
-    ]));
+    const msgHash = Eip712_hashTypedData(
+                      _domainSeparator,
+                      keccak256<Vector<5, Bytes<32>>>(
+                        [BURN_TYPEHASH(),
+                         // Binds the digest to this deployment. The domain cannot carry the
+                         // address, so removing this word removes cross-instance replay
+                         // protection.
+                         kernel.self().bytes,
+                         refundTo.bytes,
+                         EvmAbi_uint64Word(opNonce),
+                         EvmAbi_uint128Word(amount)]
+                        )
+                      );
 
     Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 
@@ -595,25 +707,28 @@ module NativeShieldedTokenIssuer<#t> {
    * contract, or `none` if the coin was burned in full.
    */
   export circuit burnFromSelf(
-    coin: QualifiedShieldedCoinInfo,
-    amount: Uint<128>,
-    pubkeys: Vector<t, Secp256k1Point>,
-    signatures: Vector<t, Secp256k1EcdsaSignature>
-  ): Maybe<ShieldedCoinInfo> {
+                   coin: QualifiedShieldedCoinInfo,
+                   amount: Uint<128>,
+                   pubkeys: Vector<t, Secp256k1Point>,
+                   signatures: Vector<t, Secp256k1EcdsaSignature>
+                   ): Maybe<ShieldedCoinInfo> {
     const opNonce = _counter;
     _counter.increment(1);
 
-    const msgHash = Eip712_hashTypedData(_domainSeparator, keccak256<Vector<6, Bytes<32>>>([
-      BURN_FROM_SELF_TYPEHASH(),
-      // Binds the digest to this deployment. The domain cannot carry the
-      // address, so removing this word removes cross-instance replay
-      // protection.
-      kernel.self().bytes,
-      EvmAbi_uint64Word(opNonce),
-      EvmAbi_uint128Word(amount),
-      coin.nonce,
-      EvmAbi_uint128Word(coin.value)
-    ]));
+    const msgHash = Eip712_hashTypedData(
+                      _domainSeparator,
+                      keccak256<Vector<6, Bytes<32>>>(
+                        [BURN_FROM_SELF_TYPEHASH(),
+                         // Binds the digest to this deployment. The domain cannot carry the
+                         // address, so removing this word removes cross-instance replay
+                         // protection.
+                         kernel.self().bytes,
+                         EvmAbi_uint64Word(opNonce),
+                         EvmAbi_uint128Word(amount),
+                         coin.nonce,
+                         EvmAbi_uint128Word(coin.value)]
+                        )
+                      );
 
     Secp256k1EcdsaMultisig_assertApprovals(msgHash, pubkeys, signatures);
 

@@ -349,13 +349,11 @@ module ShieldedAccessControl {
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit assertOnlyRole(
-                   caller: Caller,
-                   blinding: Blinding,
-                   role: RoleIdentifier
-                   ): [] {
+  export circuit assertOnlyRole(caller: Caller, blinding: Blinding, role: RoleIdentifier): [] {
     assertInitialized();
-    assert(_uncheckedCanProveRole(caller, blinding, role), "ShieldedAccessControl: unauthorized account");
+    assert(_uncheckedCanProveRole(caller, blinding, role),
+           "ShieldedAccessControl: unauthorized account"
+           );
   }
 
   /**
@@ -384,11 +382,7 @@ module ShieldedAccessControl {
    *
    * @return {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
    */
-  export circuit canProveRole(
-                   caller: Caller,
-                   blinding: Blinding,
-                   role: RoleIdentifier
-                   ): Boolean {
+  export circuit canProveRole(caller: Caller, blinding: Blinding, role: RoleIdentifier): Boolean {
     assertInitialized();
     return _uncheckedCanProveRole(caller, blinding, role);
   }
@@ -420,11 +414,7 @@ module ShieldedAccessControl {
    *
    * @return {Boolean} - A boolean determining if a caller successfully proved ownership of `role`
    */
-  circuit _uncheckedCanProveRole(
-            caller: Caller,
-            blinding: Blinding,
-            role: RoleIdentifier
-            ): Boolean {
+  circuit _uncheckedCanProveRole(caller: Caller, blinding: Blinding, role: RoleIdentifier): Boolean {
     return _validateRole(role, _computeAccountCommitment(caller, blinding));
   }
 
@@ -890,6 +880,6 @@ module ShieldedAccessControl {
              pad(32, "ShieldedAccessControl:account"),
              account,
              blinding as Bytes<32>
-           );
+             );
   }
 }

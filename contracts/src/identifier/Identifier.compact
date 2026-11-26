@@ -138,13 +138,7 @@ module Identifier {
    */
   export pure circuit unpack(account: Identifier): UnpackedIdentifier {
     return account.is_left
-           ? UnpackedIdentifier {
-               kind: IdentifierKind.Key,
-               bytes: account.left
-             }
-           : UnpackedIdentifier {
-               kind: IdentifierKind.Contract,
-               bytes: account.right.bytes
-             };
+             ? UnpackedIdentifier { kind: IdentifierKind.Key, bytes: account.left }
+             : UnpackedIdentifier { kind: IdentifierKind.Contract, bytes: account.right.bytes };
   }
 }

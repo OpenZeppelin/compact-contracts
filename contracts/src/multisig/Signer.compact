@@ -172,10 +172,7 @@ module Signer<T> {
    * @returns {[]} Empty tuple.
    */
   export circuit _addSigner(signer: T): [] {
-    assert(
-      !isSigner(signer),
-      "Signer: signer already active"
-    );
+    assert(!isSigner(signer), "Signer: signer already active");
 
     _signers.insert(disclose(signer));
     _signerCount = _signerCount + 1 as Uint<8>;

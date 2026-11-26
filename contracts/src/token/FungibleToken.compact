@@ -96,8 +96,7 @@ module FungibleToken {
    * @type {Map<account, Map<spender, allowance>>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Uint<128>>>} _allowances
    */
-  export ledger _allowances: Map<Identifier,
-                                 Map<Identifier, Uint<128>>>;
+  export ledger _allowances: Map<Identifier, Map<Identifier, Uint<128>>>;
 
   /**
    * @description Total tokens in circulation. `_update` raises it on a mint and
@@ -278,11 +277,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
-  export circuit transfer(
-                   caller: Caller,
-                   to: Identifier,
-                   value: Uint<128>
-                   ): Boolean {
+  export circuit transfer(caller: Caller, to: Identifier, value: Uint<128>): Boolean {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
@@ -311,11 +306,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Boolean} - As per the IERC20 spec, this MUST return true.
    */
-  export circuit _unsafeTransfer(
-                   caller: Caller,
-                   to: Identifier,
-                   value: Uint<128>
-                   ): Boolean {
+  export circuit _unsafeTransfer(caller: Caller, to: Identifier, value: Uint<128>): Boolean {
     assertInitialized();
     const owner = caller.identifier;
     _unsafeUncheckedTransfer(owner, to, value);
@@ -338,15 +329,13 @@ module FungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} spender - The account id or contract address of spender.
    * @return {Uint<128>} - The `spender`'s allowance over `owner`'s tokens.
    */
-  export circuit allowance(
-                   owner: Identifier,
-                   spender: Identifier
-                   ): Uint<128> {
+  export circuit allowance(owner: Identifier, spender: Identifier): Uint<128> {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
 
-    if (!_allowances.member(disclose(canonOwner)) || !_allowances.lookup(canonOwner).member(disclose(canonSpender))) {
+    if (!_allowances.member(disclose(canonOwner)) ||
+        !_allowances.lookup(canonOwner).member(disclose(canonSpender))) {
       return 0;
     }
 
@@ -368,10 +357,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens the `spender` may spend.
    * @return {Boolean} - Returns a boolean value indicating whether the operation succeeded.
    */
-  export circuit approve(caller: Caller,
-                         spender: Identifier,
-                         value: Uint<128>
-                         ): Boolean {
+  export circuit approve(caller: Caller, spender: Identifier, value: Uint<128>): Boolean {
     assertInitialized();
 
     const owner = caller.identifier;
@@ -478,11 +464,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens to transfer.
    * @return {[]} - Empty tuple.
    */
-  export circuit _transfer(
-                   fromAddress: Identifier,
-                   to: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _transfer(fromAddress: Identifier, to: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "FungibleToken: unsafe transfer");
@@ -538,10 +520,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens moved from `fromAddress` to `to`.
    * @return {[]} - Empty tuple.
    */
-  circuit _update(fromAddress: Identifier,
-                  to: Identifier,
-                  value: Uint<128>
-                  ): [] {
+  circuit _update(fromAddress: Identifier, to: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const canonFrom = Utils_canonicalize<Bytes<32>, ContractAddress>(fromAddress);
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
@@ -613,10 +592,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens minted.
    * @return {[]} - Empty tuple.
    */
-  export circuit _unsafeMint(
-                   account: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _unsafeMint(account: Identifier, value: Uint<128>): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(account), "FungibleToken: invalid receiver");
     _update(Utils_zeroAccount(), account, value);
@@ -662,11 +638,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of tokens `spender` may spend on behalf of `owner`.
    * @return {[]} - Empty tuple.
    */
-  export circuit _approve(
-                   owner: Identifier,
-                   spender: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _approve(owner: Identifier, spender: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
@@ -676,10 +648,7 @@ module FungibleToken {
 
     if (!_allowances.member(disclose(canonOwner))) {
       // If owner doesn't exist, create and insert a new sub-map directly
-      _allowances.insert(
-        disclose(canonOwner),
-        default<Map<Identifier, Uint<128>>>
-        );
+      _allowances.insert(disclose(canonOwner), default<Map<Identifier, Uint<128>>>);
     }
     _allowances.lookup(canonOwner).insert(disclose(canonSpender), disclose(value));
   }
@@ -700,11 +669,7 @@ module FungibleToken {
    * @param {Uint<128>} value - The amount of token allowance to spend.
    * @return {[]} - Empty tuple.
    */
-  export circuit _spendAllowance(
-                   owner: Identifier,
-                   spender: Identifier,
-                   value: Uint<128>
-                   ): [] {
+  export circuit _spendAllowance(owner: Identifier, spender: Identifier, value: Uint<128>): [] {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);

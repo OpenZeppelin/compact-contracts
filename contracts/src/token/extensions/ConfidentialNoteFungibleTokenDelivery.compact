@@ -213,26 +213,40 @@ module ConfidentialNoteFungibleTokenDelivery {
    * @return {[]} - Empty tuple.
    */
   export circuit _deliver(encPk: JubjubPoint, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
-    const e = degradeToTransient(persistentHash<EphemeralPreimage>(EphemeralPreimage {
-      seed: wit_ConfidentialNoteDeliveryRandomness(),
-      domain: pad(32, "CNFT:delivery:e"),
-      slot: slot,
-      nonce: nonce,
-      encPk: encPk
-    })) as JubjubScalar;
+    const e = degradeToTransient(
+                persistentHash<EphemeralPreimage>(
+                  EphemeralPreimage { seed: wit_ConfidentialNoteDeliveryRandomness(),
+                                      domain: pad(32, "CNFT:delivery:e"),
+                                      slot: slot,
+                                      nonce: nonce,
+                                      encPk: encPk }
+                  )
+                )
+              as JubjubScalar;
     // The identity-key and zero-ephemeral guards come from `deriveShared`.
     const shared = Ecdh_deriveShared(encPk, e);
     // One point digest feeds both pads.
     const sharedDigest = EcdhMask_pointDigest(shared.sShared);
     // The cast is the width check: a bit above the pad would sit in the clear.
     const paddedNonce = nonce as Uint<248>;
-    const delivery = Delivery {
-      ephemeralPk: shared.ephemeralPk,
-      valueCt: U248_wrappingAdd(value as Uint<248>,
-                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:value")) as Uint<248>),
-      nonceCt: U248_wrappingAdd(paddedNonce,
-                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
-    };
+    const delivery =
+            Delivery { ephemeralPk: shared.ephemeralPk,
+                       valueCt: U248_wrappingAdd(
+                                  value as Uint<248>,
+                                  EcdhMask_kdfFromDigest(
+                                    sharedDigest,
+                                    pad(32, "CNFT:delivery:value")
+                                    )
+                                  as Uint<248>
+                                  ),
+                       nonceCt: U248_wrappingAdd(
+                                  paddedNonce,
+                                  EcdhMask_kdfFromDigest(
+                                    sharedDigest,
+                                    pad(32, "CNFT:delivery:nonce")
+                                    )
+                                  as Uint<248>
+                                  ) };
     _deliveries.pushFront(disclose(delivery));
   }
 
@@ -262,13 +276,24 @@ module ConfidentialNoteFungibleTokenDelivery {
    */
   export pure circuit recoverNote(delivery: Delivery, ekScalar: JubjubScalar): RecoveredNote {
     assert(delivery.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
-           "ConfidentialNoteFungibleTokenDelivery: identity ephemeral");
+           "ConfidentialNoteFungibleTokenDelivery: identity ephemeral"
+           );
     const sharedDigest = EcdhMask_pointDigest(Ecdh_recoverShared(delivery.ephemeralPk, ekScalar));
-    return RecoveredNote {
-      value: U248_wrappingSub(delivery.valueCt,
-                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:value")) as Uint<248>),
-      nonce: U248_wrappingSub(delivery.nonceCt,
-                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:delivery:nonce")) as Uint<248>)
-    };
+    return RecoveredNote { value: U248_wrappingSub(
+                                    delivery.valueCt,
+                                    EcdhMask_kdfFromDigest(
+                                      sharedDigest,
+                                      pad(32, "CNFT:delivery:value")
+                                      )
+                                    as Uint<248>
+                                    ),
+                           nonce: U248_wrappingSub(
+                                    delivery.nonceCt,
+                                    EcdhMask_kdfFromDigest(
+                                      sharedDigest,
+                                      pad(32, "CNFT:delivery:nonce")
+                                      )
+                                    as Uint<248>
+                                    ) };
   }
 }

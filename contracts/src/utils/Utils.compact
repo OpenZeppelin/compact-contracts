@@ -88,12 +88,10 @@ module Utils {
    * @param {Either<T1, T2>} value - The value to canonicalize.
    * @return {Either<T1, T2>} - The canonicalized value.
    */
-  export pure circuit canonicalize<T1, T2>(
-                        value: Either<T1, T2>
-                        ): Either<T1, T2> {
+  export pure circuit canonicalize<T1, T2>(value: Either<T1, T2>): Either<T1, T2> {
     return value.is_left
-      ? Either<T1, T2>{ is_left: true, left: value.left, right: default<T2> }
-      : Either<T1, T2>{ is_left: false, left: default<T1>, right: value.right };
+             ? Either<T1, T2> { is_left: true, left: value.left, right: default<T2> }
+             : Either<T1, T2> { is_left: false, left: default<T1>, right: value.right };
   }
 
   /**
@@ -109,9 +107,9 @@ module Utils {
    * @return {Either<Bytes<32>, ContractAddress>} - The canonical zero value.
    */
   export pure circuit zeroAccount(): Either<Bytes<32>, ContractAddress> {
-    return Either<Bytes<32>, ContractAddress> {
-      is_left: true, left: default<Bytes<32>>, right: default<ContractAddress>
-    };
+    return Either<Bytes<32>, ContractAddress> { is_left: true,
+                                                left: default<Bytes<32>>,
+                                                right: default<ContractAddress> };
   }
 
   /**

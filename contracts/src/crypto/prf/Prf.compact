@@ -68,8 +68,6 @@ module Prf {
    * @return {Bytes<32>} - The digest.
    */
   export pure circuit evaluate<T, K>(input: T, key: K): Bytes<32> {
-    return persistentHash<Preimage<T, K>>(
-      Preimage<T, K> { input: input, key: key }
-    );
+    return persistentHash<Preimage<T, K>>(Preimage<T, K> { input: input, key: key });
   }
 }

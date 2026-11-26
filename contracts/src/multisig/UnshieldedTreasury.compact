@@ -119,11 +119,10 @@ module UnshieldedTreasury {
    *
    * @returns {[]} Empty tuple.
    */
-  export circuit _send(
-    recipient: Either<ContractAddress, UserAddress>,
-    color: Bytes<32>,
-    amount: Uint<128>
-  ): [] {
+  export circuit _send(recipient: Either<ContractAddress, UserAddress>,
+                       color: Bytes<32>,
+                       amount: Uint<128>
+                       ): [] {
     assert(amount != 0, "UnshieldedTreasury: zero amount");
 
     const bal = getTokenBalance(color);

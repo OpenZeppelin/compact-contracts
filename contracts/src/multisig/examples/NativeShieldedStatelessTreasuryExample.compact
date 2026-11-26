@@ -22,6 +22,7 @@ export { ShieldedCoinInfo, QualifiedShieldedCoinInfo, ShieldedSendResult };
 // Surface the preset's replay counter and domain separator unprefixed so
 // `ledger()` readers see the key names the preset published.
 import { _nonce, _domainSeparator } from "../presets/NativeShieldedStatelessTreasury"<2>;
+
 export { _nonce, _domainSeparator };
 
 /**
@@ -30,17 +31,11 @@ export { _nonce, _domainSeparator };
  * @param {Bytes<32>} instanceSalt - Random salt for commitment derivation.
  * @param {Vector<3, Bytes<32>>} signerCommitments - Hashed signer identities.
  */
-constructor(
-  instanceSalt: Bytes<32>,
-  signerCommitments: Vector<3, Bytes<32>>
-) {
+constructor(instanceSalt: Bytes<32>, signerCommitments: Vector<3, Bytes<32>>) {
   NativeShieldedStatelessTreasury_initialize<3>(instanceSalt, signerCommitments);
 }
 
-export pure circuit _calculateSignerId(
-  pk: Secp256k1Point,
-  salt: Bytes<32>
-): Bytes<32> {
+export pure circuit _calculateSignerId(pk: Secp256k1Point, salt: Bytes<32>): Bytes<32> {
   return NativeShieldedStatelessTreasury__calculateSignerId(pk, salt);
 }
 
@@ -48,13 +43,12 @@ export circuit deposit(coin: ShieldedCoinInfo): [] {
   return NativeShieldedStatelessTreasury_deposit(coin);
 }
 
-export circuit execute(
-  to: NativeShieldedStatelessTreasury_Proposal_Recipient,
-  amount: Uint<128>,
-  coin: QualifiedShieldedCoinInfo,
-  pubkeys: Vector<2, Secp256k1Point>,
-  signatures: Vector<2, Secp256k1EcdsaSignature>
-): ShieldedSendResult {
+export circuit execute(to: NativeShieldedStatelessTreasury_Proposal_Recipient,
+                       amount: Uint<128>,
+                       coin: QualifiedShieldedCoinInfo,
+                       pubkeys: Vector<2, Secp256k1Point>,
+                       signatures: Vector<2, Secp256k1EcdsaSignature>
+                       ): ShieldedSendResult {
   return NativeShieldedStatelessTreasury_execute(to, amount, coin, pubkeys, signatures);
 }
 

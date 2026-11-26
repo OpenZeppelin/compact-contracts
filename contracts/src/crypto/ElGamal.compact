@@ -160,10 +160,9 @@ module ElGamal {
    */
   export pure circuit secretToScalar(secret: Bytes<32>): JubjubScalar {
     return degradeToTransient(
-             persistentHash<Vector<2, Bytes<32>>>(
-               [pad(32, "ElGamal:secretToScalar"), secret]
+             persistentHash<Vector<2, Bytes<32>>>([pad(32, "ElGamal:secretToScalar"), secret])
              )
-           ) as JubjubScalar;
+           as JubjubScalar;
   }
 
   /**
@@ -441,8 +440,7 @@ module ElGamal {
    * @param ek - The secret claimed to correspond to `pk`.
    */
   export pure circuit assertKeyPair(pk: JubjubPoint, ek: Bytes<32>): [] {
-    assert(derivePk(ek) == pk,
-           "ElGamal: ek/pk mismatch");
+    assert(derivePk(ek) == pk, "ElGamal: ek/pk mismatch");
   }
 
   /**
@@ -462,23 +460,21 @@ module ElGamal {
    * @param m - The message point `ct` is claimed to encrypt.
    */
   export pure circuit assertDecryptsToPoint(
-                   ct: Ciphertext,
-                   pk: JubjubPoint,
-                   ek: Bytes<32>,
-                   m: JubjubPoint
-                   ): [] {
+                        ct: Ciphertext,
+                        pk: JubjubPoint,
+                        ek: Bytes<32>,
+                        m: JubjubPoint
+                        ): [] {
     // Inlines the same key check as `assertKeyPair` (rather than calling it) so
     // `ekScalar` is computed once and reused for the decryption below, avoiding
     // a second `secretToScalar` hash in this hot verification path.
     const ekScalar = secretToScalar(ek);
-    assert(ecMulGenerator(ekScalar) == pk,
-           "ElGamal: ek/pk mismatch");
+    assert(ecMulGenerator(ekScalar) == pk, "ElGamal: ek/pk mismatch");
 
     // m = c2 - ek*c1, with ek*c1 negated via ecNeg.
     const ekC1 = ecMul(ct.c1, ekScalar);
     const mPoint = ecAdd(ct.c2, ecNeg(ekC1));
-    assert(mPoint == m,
-           "ElGamal: plaintext mismatch");
+    assert(mPoint == m, "ElGamal: plaintext mismatch");
   }
 
   /**
@@ -511,11 +507,11 @@ module ElGamal {
    * @param claimedValue - The plaintext `ct` is claimed to encrypt.
    */
   export pure circuit assertDecryptsTo(
-                   ct: Ciphertext,
-                   pk: JubjubPoint,
-                   ek: Bytes<32>,
-                   claimedValue: Uint<248>
-                   ): [] {
+                        ct: Ciphertext,
+                        pk: JubjubPoint,
+                        ek: Bytes<32>,
+                        claimedValue: Uint<248>
+                        ): [] {
     assertDecryptsToPoint(ct, pk, ek, ecMulGenerator(claimedValue as JubjubScalar));
   }
 }

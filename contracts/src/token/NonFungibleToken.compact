@@ -122,8 +122,7 @@ module NonFungibleToken {
    * @type {Map<owner, Map<operator, approved>>}
    * @type {Map<Either<Bytes<32>, ContractAddress>, Map<Either<Bytes<32>, ContractAddress>, Boolean>>} _operatorApprovals
    */
-  export ledger _operatorApprovals: Map<Identifier,
-                                        Map<Identifier, Boolean>>;
+  export ledger _operatorApprovals: Map<Identifier, Map<Identifier, Boolean>>;
 
   /**
    * @description Mapping from token IDs to their metadata URIs.
@@ -328,11 +327,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token `to` may be permitted to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit approve(
-                   caller: Caller,
-                   to: Identifier,
-                   tokenId: Uint<128>
-                   ): [] {
+  export circuit approve(caller: Caller, to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(caller.identifier), "NonFungibleToken: invalid caller");
     const auth = caller.identifier;
@@ -375,11 +370,7 @@ module NonFungibleToken {
    * @param {Boolean} approved - A boolean determining if `operator` may manage all tokens of the caller
    * @return {[]} - Empty tuple.
    */
-  export circuit setApprovalForAll(
-                   caller: Caller,
-                   operator: Identifier,
-                   approved: Boolean
-                   ): [] {
+  export circuit setApprovalForAll(caller: Caller, operator: Identifier, approved: Boolean): [] {
     assertInitialized();
     const owner = caller.identifier;
     _setApprovalForAll(owner, operator, approved);
@@ -398,10 +389,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} operator - An account that may operate on `owner`'s tokens
    * @return {Boolean} - A boolean determining if `operator` is allowed to manage all of the tokens of `owner`
    */
-  export circuit isApprovedForAll(
-                   owner: Identifier,
-                   operator: Identifier
-                   ): Boolean {
+  export circuit isApprovedForAll(owner: Identifier, operator: Identifier): Boolean {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonOp = Utils_canonicalize<Bytes<32>, ContractAddress>(operator);
@@ -554,11 +542,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - Token to spend
    * @return {Boolean} - A boolean determining if `spender` may manage `tokenId`
    */
-  export circuit _isAuthorized(
-                   owner: Identifier,
-                   spender: Identifier,
-                   tokenId: Uint<128>
-                   ): Boolean {
+  export circuit _isAuthorized(owner: Identifier, spender: Identifier, tokenId: Uint<128>): Boolean {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     const canonSpender = Utils_canonicalize<Bytes<32>, ContractAddress>(spender);
@@ -587,11 +571,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to spend
    * @return {[]} - Empty tuple.
    */
-  export circuit _checkAuthorized(
-                   owner: Identifier,
-                   spender: Identifier,
-                   tokenId: Uint<128>
-                   ): [] {
+  export circuit _checkAuthorized(owner: Identifier, spender: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
     if (!_isAuthorized(owner, spender, tokenId)) {
       assert(!Utils_isTargetZero(owner), "NonFungibleToken: nonexistent token");
@@ -614,10 +594,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} auth - An account authorized to transfer the token
    * @return {Either<Bytes<32>, ContractAddress>} - Owner of the token before it was transferred
    */
-  circuit _update(to: Identifier,
-                  tokenId: Uint<128>,
-                  auth: Identifier
-                  ): Identifier {
+  circuit _update(to: Identifier, tokenId: Uint<128>, auth: Identifier): Identifier {
     assertInitialized();
     const canonTo = Utils_canonicalize<Bytes<32>, ContractAddress>(to);
     const canonAuth = Utils_canonicalize<Bytes<32>, ContractAddress>(auth);
@@ -694,10 +671,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit _unsafeMint(
-                   to: Identifier,
-                   tokenId: Uint<128>
-                   ): [] {
+  export circuit _unsafeMint(to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
 
@@ -750,11 +724,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit _transfer(
-                   fromAddress: Identifier,
-                   to: Identifier,
-                   tokenId: Uint<128>
-                   ): [] {
+  export circuit _transfer(fromAddress: Identifier, to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
     const isContractAddr = !to.is_left;
     assert(!isContractAddr, "NonFungibleToken: unsafe transfer");
@@ -785,11 +755,7 @@ module NonFungibleToken {
    * @param {Uint<128>} tokenId - The token to transfer
    * @return {[]} - Empty tuple.
    */
-  export circuit _unsafeTransfer(
-                   fromAddress: Identifier,
-                   to: Identifier,
-                   tokenId: Uint<128>
-                   ): [] {
+  export circuit _unsafeTransfer(fromAddress: Identifier, to: Identifier, tokenId: Uint<128>): [] {
     assertInitialized();
     assert(!Utils_isTargetZero(to), "NonFungibleToken: invalid receiver");
 
@@ -821,11 +787,7 @@ module NonFungibleToken {
    * @param {Either<Bytes<32>, ContractAddress>} auth - An account authorized to operate on all tokens held by the owner of the token
    * @return {[]} - Empty tuple.
    */
-  export circuit _approve(
-                   to: Identifier,
-                   tokenId: Uint<128>,
-                   auth: Identifier
-                   ): [] {
+  export circuit _approve(to: Identifier, tokenId: Uint<128>, auth: Identifier): [] {
     _unsafeApprove(to, tokenId, auth, true);
   }
 
@@ -905,11 +867,7 @@ module NonFungibleToken {
    * @param {Boolean} approved - A boolean determining if `operator` may operate on all of `owner` tokens
    * @return {[]} - Empty tuple.
    */
-  export circuit _setApprovalForAll(
-                   owner: Identifier,
-                   operator: Identifier,
-                   approved: Boolean
-                   ): [] {
+  export circuit _setApprovalForAll(owner: Identifier, operator: Identifier, approved: Boolean): [] {
     assertInitialized();
     const canonOwner = Utils_canonicalize<Bytes<32>, ContractAddress>(owner);
     assert(!Utils_isTargetZero(canonOwner), "NonFungibleToken: invalid owner");
@@ -918,10 +876,7 @@ module NonFungibleToken {
     assert(!Utils_isTargetZero(canonOp), "NonFungibleToken: invalid operator");
 
     if (!_operatorApprovals.member(disclose(canonOwner))) {
-      _operatorApprovals.insert(
-        disclose(canonOwner),
-        default<Map<Identifier, Boolean>>
-        );
+      _operatorApprovals.insert(disclose(canonOwner), default<Map<Identifier, Boolean>>);
     }
 
     _operatorApprovals.lookup(canonOwner).insert(disclose(canonOp), disclose(approved));

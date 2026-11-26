@@ -117,10 +117,7 @@ module ShieldedTreasury {
       _coins.insertCoin(coinColor, disclose(coin), Utils_selfAsRecipient());
     }
 
-    _received.insert(
-      coinColor,
-      disclose(currentReceived + coin.value as Uint<128>)
-    );
+    _received.insert(coinColor, disclose(currentReceived + coin.value as Uint<128>));
   }
 
   // ─── Send ───────────────────────────────────────────────────────
@@ -158,11 +155,10 @@ module ShieldedTreasury {
    *
    * @returns {ShieldedSendResult} The result containing sent coin and any change.
    */
-  export circuit _send(
-    recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-    color: Bytes<32>,
-    amount: Uint<128>
-  ): ShieldedSendResult {
+  export circuit _send(recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                       color: Bytes<32>,
+                       amount: Uint<128>
+                       ): ShieldedSendResult {
     assert(_coins.member(disclose(color)), "ShieldedTreasury: no balance");
 
     const coin = _coins.lookup(disclose(color));
@@ -184,10 +180,7 @@ module ShieldedTreasury {
       _coins.remove(disclose(color));
     }
 
-    _sent.insert(
-      disclose(color),
-      disclose(currentSent + amount as Uint<128>)
-    );
+    _sent.insert(disclose(color), disclose(currentSent + amount as Uint<128>));
 
     return result;
   }

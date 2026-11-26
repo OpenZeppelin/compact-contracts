@@ -331,7 +331,7 @@ module ConfidentialFungibleToken {
    */
   export struct EscrowEntry {
     spenderCt: ElGamal_Ciphertext;
-    ownerCt:   ElGamal_Ciphertext;
+    ownerCt: ElGamal_Ciphertext;
     // Owner-readable copy of the CURRENT remaining allowance, delivered as an
     // ECDH one-time-pad memo (see `crypto/EcdhMask`). `spenderCt`/`ownerCt` are
     // exponential ElGamal (g^value), so neither party can cheaply recover the
@@ -352,11 +352,11 @@ module ConfidentialFungibleToken {
   // sharing a seed repeat `rOwner` against one owner. Either repeat cancels on
   // subtraction, because the colliding pair is encrypted under one key.
   struct SpendRandomnessPreimage {
-    seed:    Bytes<32>;
-    domain:  Bytes<32>;
-    owner:   Bytes<32>;
+    seed: Bytes<32>;
+    domain: Bytes<32>;
+    owner: Bytes<32>;
     spender: Bytes<32>;
-    epoch:   Field;
+    epoch: Field;
   }
 
   // ---------------------------------------------------------------------------
@@ -477,7 +477,6 @@ module ConfidentialFungibleToken {
    * construction. Purely presentational; no circuit scales by it.
    */
   export sealed ledger _decimals: Uint<8>;
-
 
   // ---------------------------------------------------------------------------
   // Constants (Compact does not support module-level constants, so these are
@@ -655,14 +654,9 @@ module ConfidentialFungibleToken {
         !_escrow.lookup(disclose(owner)).member(disclose(spender))) {
       const id = constructJubjubPoint(0 as Field, 1 as Field);
       const zeroCt = ElGamal_Ciphertext { c1: id, c2: id };
-      return EscrowEntry {
-        spenderCt: zeroCt,
-        ownerCt:   zeroCt,
-        ownerMemo: EcdhMask_Ciphertext {
-          ephemeralPk: id,
-          ct: 0 as Field
-        }
-      };
+      return EscrowEntry { spenderCt: zeroCt,
+                           ownerCt: zeroCt,
+                           ownerMemo: EcdhMask_Ciphertext { ephemeralPk: id, ct: 0 as Field } };
     }
     return _escrow.lookup(disclose(owner)).lookup(disclose(spender));
   }
@@ -717,10 +711,7 @@ module ConfidentialFungibleToken {
    * @param {JubjubPoint} pk - The caller's encryption public key.
    * @return {Bytes<32>} - The registered (caller's) accountId.
    */
-  export circuit registerWithKey(
-                   caller: Caller,
-                   pk: JubjubPoint
-                   ): Bytes<32> {
+  export circuit registerWithKey(caller: Caller, pk: JubjubPoint): Bytes<32> {
     ElGamal_assertKeyPair(pk, wit_ConfidentialTokenEK());
     return _register(caller, pk);
   }
@@ -741,15 +732,13 @@ module ConfidentialFungibleToken {
    * @param {JubjubPoint} pk - The caller's encryption public key.
    * @return {Bytes<32>} - The registered (caller's) accountId.
    */
-  circuit _register(
-            caller: Caller,
-            pk: JubjubPoint
-            ): Bytes<32> {
+  circuit _register(caller: Caller, pk: JubjubPoint): Bytes<32> {
     assertInitialized();
     const accountId = _callerId(caller);
     assert(accountId != default<Bytes<32>>, "ConfidentialFungibleToken: invalid caller");
     assert(!_encryptionKeys.member(disclose(accountId)),
-           "ConfidentialFungibleToken: already registered");
+           "ConfidentialFungibleToken: already registered"
+           );
 
     _encryptionKeys.insert(disclose(accountId), disclose(pk));
     _balances.insert(disclose(accountId), disclose(ElGamal_encryptZero()));
@@ -827,16 +816,14 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to debit.
    * @return {Bytes<32>} - The caller's accountId.
    */
-  circuit _debit(
-            caller: Caller,
-            value: Uint<128>
-            ): Bytes<32> {
+  circuit _debit(caller: Caller, value: Uint<128>): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
 
     const accountId = _callerId(caller);
     assert(_encryptionKeys.member(disclose(accountId)),
-           "ConfidentialFungibleToken: sender not registered");
+           "ConfidentialFungibleToken: sender not registered"
+           );
 
     const ek = wit_ConfidentialTokenEK();
     const pk = _encryptionKeys.lookup(disclose(accountId));
@@ -845,8 +832,7 @@ module ConfidentialFungibleToken {
     const plaintextBalance = wit_PlaintextBalance(ct);
     ElGamal_assertDecryptsTo(ct, pk, ek, plaintextBalance);
 
-    assert(plaintextBalance >= value,
-           "ConfidentialFungibleToken: insufficient balance");
+    assert(plaintextBalance >= value, "ConfidentialFungibleToken: insufficient balance");
 
     const seed = wit_RandomnessSeed();
     const r = ElGamal_expandRandomness(seed, pad(32, "debit_balance"));
@@ -877,10 +863,10 @@ module ConfidentialFungibleToken {
   circuit _credit(account: Bytes<32>, value: Uint<128>): [] {
     assertInitialized();
     _assertValueInBound(value);
-    assert(account != default<Bytes<32>>,
-           "ConfidentialFungibleToken: invalid receiver");
+    assert(account != default<Bytes<32>>, "ConfidentialFungibleToken: invalid receiver");
     assert(_encryptionKeys.member(disclose(account)),
-           "ConfidentialFungibleToken: receiver not registered");
+           "ConfidentialFungibleToken: receiver not registered"
+           );
 
     const recipientPk = _encryptionKeys.lookup(disclose(account));
 
@@ -914,12 +900,19 @@ module ConfidentialFungibleToken {
     // rows on the hot credit path. `countHash` is in-circuit only; nothing
     // reproduces it off chain, so this is a free saving.
     const countHash = persistentHash<Field>(count);
-    const rBalance = degradeToTransient(
-      persistentHash<Vector<4, Bytes<32>>>([seed, pad(32, "credit_balance"), account, countHash])
-    ) as JubjubScalar;
+    const rBalance =
+            degradeToTransient(
+              persistentHash<Vector<4, Bytes<32>>>(
+                [seed, pad(32, "credit_balance"), account, countHash]
+                )
+              )
+            as JubjubScalar;
     const e = degradeToTransient(
-      persistentHash<Vector<4, Bytes<32>>>([seed, pad(32, "credit_memo"), account, countHash])
-    ) as JubjubScalar;
+                persistentHash<Vector<4, Bytes<32>>>(
+                  [seed, pad(32, "credit_memo"), account, countHash]
+                  )
+                )
+              as JubjubScalar;
 
     // Credit lands in the recipient's PENDING pool (not spendable), so incoming
     // value never churns their spendable ciphertext; they sweep it when ready.
@@ -975,10 +968,7 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to burn.
    * @return {Bytes<32>} - The caller's accountId.
    */
-  export circuit _burn(
-                   caller: Caller,
-                   value: Uint<128>
-                   ): Bytes<32> {
+  export circuit _burn(caller: Caller, value: Uint<128>): Bytes<32> {
     return _debit(caller, value);
   }
 
@@ -1008,11 +998,7 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to transfer.
    * @return {Bytes<32>} - The caller's (sender's) accountId.
    */
-  export circuit transfer(
-                   caller: Caller,
-                   to: Bytes<32>,
-                   value: Uint<128>
-                   ): Bytes<32> {
+  export circuit transfer(caller: Caller, to: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
     const senderId = _debit(caller, value);
     // A self-transfer would debit the caller's spendable and re-credit their own pending,
@@ -1057,11 +1043,7 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to move.
    * @return {Bytes<32>} - The caller's accountId (for caller-side gating).
    */
-  export circuit _move(
-                   caller: Caller,
-                   to: Bytes<32>,
-                   value: Uint<128>
-                   ): Bytes<32> {
+  export circuit _move(caller: Caller, to: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
     const senderId = _debit(caller, value);
     _credit(to, value);
@@ -1096,9 +1078,8 @@ module ConfidentialFungibleToken {
     assertInitialized();
     const accountId = _callerId(caller);
     _assertOwnsEncryptionKey(accountId);
-    const newSpendable = ElGamal_add(
-      _balances.lookup(disclose(accountId)),
-      _pending.lookup(disclose(accountId)));
+    const newSpendable =
+            ElGamal_add(_balances.lookup(disclose(accountId)), _pending.lookup(disclose(accountId)));
     _balances.insert(disclose(accountId), disclose(newSpendable));
     _pending.insert(disclose(accountId), disclose(ElGamal_encryptZero()));
     return disclose(accountId);
@@ -1134,22 +1115,19 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The allowance amount.
    * @return {Bytes<32>} - The caller's (approver's) accountId.
    */
-  export circuit approve(
-                   caller: Caller,
-                   spender: Bytes<32>,
-                   value: Uint<128>
-                   ): Bytes<32> {
+  export circuit approve(caller: Caller, spender: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
-    assert(spender != default<Bytes<32>>,
-           "ConfidentialFungibleToken: invalid spender");
+    assert(spender != default<Bytes<32>>, "ConfidentialFungibleToken: invalid spender");
 
     const ownerId = _callerId(caller);
     assert(ownerId != spender, "ConfidentialFungibleToken: self-approval");
     assert(_encryptionKeys.member(disclose(spender)),
-           "ConfidentialFungibleToken: spender not registered");
+           "ConfidentialFungibleToken: spender not registered"
+           );
     assert(_encryptionKeys.member(disclose(ownerId)),
-           "ConfidentialFungibleToken: owner not registered");
+           "ConfidentialFungibleToken: owner not registered"
+           );
 
     const ek = wit_ConfidentialTokenEK();
     const ownerPk = _encryptionKeys.lookup(disclose(ownerId));
@@ -1162,13 +1140,12 @@ module ConfidentialFungibleToken {
     const plaintextBalance = wit_PlaintextBalance(ownerCt);
     ElGamal_assertDecryptsTo(ownerCt, ownerPk, ek, plaintextBalance);
 
-    assert(plaintextBalance >= value,
-           "ConfidentialFungibleToken: insufficient balance");
+    assert(plaintextBalance >= value, "ConfidentialFungibleToken: insufficient balance");
 
     const seed = wit_RandomnessSeed();
-    const rDebit   = ElGamal_expandRandomness(seed, pad(32, "approve_debit"));
+    const rDebit = ElGamal_expandRandomness(seed, pad(32, "approve_debit"));
     const rSpender = ElGamal_expandRandomness(seed, pad(32, "approve_spender_ct"));
-    const rOwner   = ElGamal_expandRandomness(seed, pad(32, "approve_owner_ct"));
+    const rOwner = ElGamal_expandRandomness(seed, pad(32, "approve_owner_ct"));
     // Ephemeral for the owner-readable remaining memo. Shares the escrow
     // ciphertexts' seed-freshness dependency (a reused seed reuses this pad, just
     // as it reuses rSpender/rOwner); the wallet MUST supply a fresh seed.
@@ -1178,20 +1155,16 @@ module ConfidentialFungibleToken {
     _balances.insert(disclose(ownerId), disclose(newOwnerCt));
 
     const spenderPk = _encryptionKeys.lookup(disclose(spender));
-    const spenderCt        = ElGamal_encrypt(spenderPk, value, rSpender);
-    const ownerCtForRefund = ElGamal_encrypt(ownerPk,   value, rOwner);
+    const spenderCt = ElGamal_encrypt(spenderPk, value, rSpender);
+    const ownerCtForRefund = ElGamal_encrypt(ownerPk, value, rOwner);
     // Right after approve, the remaining allowance is the full cap (`value`).
-    const ownerMemo = EcdhMask_encrypt(ownerPk, value, eOwnerMemo,
-                                       pad(32, "OZ_CFT_escrow_owner_v1"));
+    const ownerMemo =
+            EcdhMask_encrypt(ownerPk, value, eOwnerMemo, pad(32, "OZ_CFT_escrow_owner_v1"));
 
     _escrow.lookup(disclose(ownerId)).insert(
       disclose(spender),
-      disclose(EscrowEntry {
-        spenderCt: spenderCt,
-        ownerCt: ownerCtForRefund,
-        ownerMemo: ownerMemo
-      })
-    );
+      disclose(EscrowEntry { spenderCt: spenderCt, ownerCt: ownerCtForRefund, ownerMemo: ownerMemo })
+      );
     return disclose(ownerId);
   }
 
@@ -1225,8 +1198,7 @@ module ConfidentialFungibleToken {
                    ): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
-    assert(to != default<Bytes<32>>,
-           "ConfidentialFungibleToken: invalid receiver");
+    assert(to != default<Bytes<32>>, "ConfidentialFungibleToken: invalid receiver");
 
     const spenderId = _spendEscrow(caller, fromAddress, value);
 
@@ -1274,20 +1246,17 @@ module ConfidentialFungibleToken {
    *
    * @return {[]} - Empty tuple.
    */
-  export circuit clearMemos(
-                   caller: Caller,
-                   expectedEpoch: Uint<64>
-                   ): [] {
+  export circuit clearMemos(caller: Caller, expectedEpoch: Uint<64>): [] {
     assertInitialized();
     const accountId = _callerId(caller);
     _assertOwnsEncryptionKey(accountId);
 
     // Both reads are unconditional, so both are pinned in the transcript and a
     // concurrent credit invalidates this tx
-    assert(_memos.member(disclose(accountId)),
-           "ConfidentialFungibleToken: no memo list");
+    assert(_memos.member(disclose(accountId)), "ConfidentialFungibleToken: no memo list");
     assert(_creditEpochs.lookup(disclose(accountId)) as Field == expectedEpoch as Field,
-           "ConfidentialFungibleToken: memo list changed");
+           "ConfidentialFungibleToken: memo list changed"
+           );
 
     _memos.insert(disclose(accountId), default<List<EcdhMask_Ciphertext>>);
   }
@@ -1305,8 +1274,7 @@ module ConfidentialFungibleToken {
    * the bound check shared by every value-bearing circuit.
    */
   circuit _assertValueInBound(value: Uint<128>): [] {
-    assert(value <= MAX_TRANSFER_VALUE(),
-           "ConfidentialFungibleToken: value exceeds bound");
+    assert(value <= MAX_TRANSFER_VALUE(), "ConfidentialFungibleToken: value exceeds bound");
   }
 
   /**
@@ -1339,11 +1307,11 @@ module ConfidentialFungibleToken {
    * learn.
    */
   circuit _assertOwnsEncryptionKey(accountId: Bytes<32>): [] {
-    assert(_encryptionKeys.member(disclose(accountId)),
-           "ConfidentialFungibleToken: not registered");
+    assert(_encryptionKeys.member(disclose(accountId)), "ConfidentialFungibleToken: not registered");
     assert(ElGamal_derivePk(wit_ConfidentialTokenEK()) ==
-             _encryptionKeys.lookup(disclose(accountId)),
-           "ConfidentialFungibleToken: wrong encryption key");
+           _encryptionKeys.lookup(disclose(accountId)),
+           "ConfidentialFungibleToken: wrong encryption key"
+           );
   }
 
   /**
@@ -1376,18 +1344,15 @@ module ConfidentialFungibleToken {
    * @param fromAddress - The owner whose escrow the caller (spender) draws on.
    * @param value - The amount to consume from the allowance.
    */
-  circuit _spendEscrow(
-            caller: Caller,
-            fromAddress: Bytes<32>,
-            value: Uint<128>
-            ): Bytes<32> {
+  circuit _spendEscrow(caller: Caller, fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
     assertInitialized();
     _assertValueInBound(value);
 
     const spenderId = _callerId(caller);
     assert(_escrow.member(disclose(fromAddress)) &&
            _escrow.lookup(disclose(fromAddress)).member(disclose(spenderId)),
-           "ConfidentialFungibleToken: no escrow");
+           "ConfidentialFungibleToken: no escrow"
+           );
 
     const entry = _escrow.lookup(disclose(fromAddress)).lookup(disclose(spenderId));
 
@@ -1398,11 +1363,9 @@ module ConfidentialFungibleToken {
     // than stacks, and `_spendEscrow` only reduces it. Narrowing states that
     // invariant here instead of leaving it to inspection of those two circuits.
     // The cast fails closed, so an out-of-range claim aborts rather than wraps.
-    const escrowPlaintext =
-      wit_PlaintextBalance(entry.spenderCt) as Uint<128>;
+    const escrowPlaintext = wit_PlaintextBalance(entry.spenderCt) as Uint<128>;
     ElGamal_assertDecryptsTo(entry.spenderCt, spenderPk, ek, escrowPlaintext as Uint<248>);
-    assert(escrowPlaintext >= value,
-           "ConfidentialFungibleToken: insufficient allowance");
+    assert(escrowPlaintext >= value, "ConfidentialFungibleToken: insufficient allowance");
 
     const seed = wit_RandomnessSeed();
 
@@ -1417,32 +1380,48 @@ module ConfidentialFungibleToken {
     }
     _escrowSpendEpochs.lookup(disclose(fromAddress)).lookup(disclose(spenderId)).increment(1);
     const spendEpoch =
-      _escrowSpendEpochs.lookup(disclose(fromAddress)).lookup(disclose(spenderId)) as Field;
+            _escrowSpendEpochs.lookup(disclose(fromAddress)).lookup(disclose(spenderId)) as Field;
 
-    const rSpender   = _expandSpendRandomness(seed, pad(32, "spend_escrow_spender"), fromAddress, spenderId, spendEpoch);
-    const rOwner     = _expandSpendRandomness(seed, pad(32, "spend_escrow_owner"),   fromAddress, spenderId, spendEpoch);
-    const eOwnerMemo = _expandSpendRandomness(seed, pad(32, "spend_owner_memo"),     fromAddress, spenderId, spendEpoch);
+    const rSpender =
+            _expandSpendRandomness(
+              seed,
+              pad(32, "spend_escrow_spender"),
+              fromAddress,
+              spenderId,
+              spendEpoch
+              );
+    const rOwner = _expandSpendRandomness(
+                     seed,
+                     pad(32, "spend_escrow_owner"),
+                     fromAddress,
+                     spenderId,
+                     spendEpoch
+                     );
+    const eOwnerMemo =
+            _expandSpendRandomness(
+              seed,
+              pad(32, "spend_owner_memo"),
+              fromAddress,
+              spenderId,
+              spendEpoch
+              );
 
     const ownerPk = _encryptionKeys.lookup(disclose(fromAddress));
     const newSpenderCt = ElGamal_subEncrypted(entry.spenderCt, spenderPk, value, rSpender);
-    const newOwnerCt   = ElGamal_subEncrypted(entry.ownerCt,   ownerPk,   value, rOwner);
+    const newOwnerCt = ElGamal_subEncrypted(entry.ownerCt, ownerPk, value, rOwner);
 
     // Notify the owner of the new remaining allowance so a partial spend never
     // blinds them (`escrowPlaintext >= value` is asserted above, so no underflow).
     // Refreshes the owner-scoped memo set at approve; this is what lets the owner
     // prove the post-refund balance on a later re-approve/revoke.
     const remaining = (escrowPlaintext - value) as Uint<128>;
-    const ownerMemo = EcdhMask_encrypt(ownerPk, remaining, eOwnerMemo,
-                                       pad(32, "OZ_CFT_escrow_owner_v1"));
+    const ownerMemo =
+            EcdhMask_encrypt(ownerPk, remaining, eOwnerMemo, pad(32, "OZ_CFT_escrow_owner_v1"));
 
     _escrow.lookup(disclose(fromAddress)).insert(
       disclose(spenderId),
-      disclose(EscrowEntry {
-        spenderCt: newSpenderCt,
-        ownerCt: newOwnerCt,
-        ownerMemo: ownerMemo
-      })
-    );
+      disclose(EscrowEntry { spenderCt: newSpenderCt, ownerCt: newOwnerCt, ownerMemo: ownerMemo })
+      );
     return disclose(spenderId);
   }
 
@@ -1465,11 +1444,7 @@ module ConfidentialFungibleToken {
    * @param {Uint<128>} value - The amount to burn.
    * @return {Bytes<32>} - The caller's (spender's) accountId.
    */
-  export circuit _burnFrom(
-                   caller: Caller,
-                   fromAddress: Bytes<32>,
-                   value: Uint<128>
-                   ): Bytes<32> {
+  export circuit _burnFrom(caller: Caller, fromAddress: Bytes<32>, value: Uint<128>): Bytes<32> {
     return _spendEscrow(caller, fromAddress, value);
   }
 
@@ -1480,16 +1455,22 @@ module ConfidentialFungibleToken {
    * each spend gets distinct randomness even when a seed is reused.
    */
   pure circuit _expandSpendRandomness(
-      seed: Bytes<32>, domain: Bytes<32>, owner: Bytes<32>, spender: Bytes<32>,
-      epoch: Field): JubjubScalar {
+                 seed: Bytes<32>,
+                 domain: Bytes<32>,
+                 owner: Bytes<32>,
+                 spender: Bytes<32>,
+                 epoch: Field
+                 ): JubjubScalar {
     return degradeToTransient(
              persistentHash<SpendRandomnessPreimage>(
-               SpendRandomnessPreimage {
-                 seed: seed, domain: domain, owner: owner, spender: spender,
-                 epoch: epoch
-               }
+               SpendRandomnessPreimage { seed: seed,
+                                         domain: domain,
+                                         owner: owner,
+                                         spender: spender,
+                                         epoch: epoch }
+               )
              )
-           ) as JubjubScalar;
+           as JubjubScalar;
   }
 
   /**
@@ -1516,19 +1497,17 @@ module ConfidentialFungibleToken {
     if (!_escrow.lookup(disclose(ownerId)).member(disclose(spender))) {
       _escrow.lookup(disclose(ownerId)).insert(
         disclose(spender),
-        disclose(EscrowEntry {
-          spenderCt: ElGamal_encryptZero(),
-          ownerCt:   ElGamal_encryptZero(),
-          // Transient placeholder: this slot exists only so the refund reads an
-          // on-curve no-op, and it is removed immediately below, so the memo is
-          // never decrypted. Use an on-curve identity point (never a `default`,
-          // which is off-curve).
-          ownerMemo: EcdhMask_Ciphertext {
-            ephemeralPk: ecMulGenerator(0 as JubjubScalar),
-            ct: 0 as Field
-          }
-        })
-      );
+        disclose(EscrowEntry { spenderCt: ElGamal_encryptZero(),
+                               ownerCt: ElGamal_encryptZero(),
+                               // Transient placeholder: this slot exists only so the refund reads an
+                               // on-curve no-op, and it is removed immediately below, so the memo is
+                               // never decrypted. Use an on-curve identity point (never a `default`,
+                               // which is off-curve).
+                               ownerMemo: EcdhMask_Ciphertext { ephemeralPk: ecMulGenerator(
+                                                                               0 as JubjubScalar
+                                                                               ),
+                                                                ct: 0 as Field } })
+        );
     }
 
     const entry = _escrow.lookup(disclose(ownerId)).lookup(disclose(spender));

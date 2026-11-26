@@ -315,7 +315,8 @@ module ConfidentialNoteFungibleToken<#depth> {
   export circuit initialize(instanceSalt: Bytes<32>): [] {
     assertNotInitialized();
     assert(instanceSalt != default<Bytes<32>>,
-           "ConfidentialNoteFungibleToken: instance salt must not be zero");
+           "ConfidentialNoteFungibleToken: instance salt must not be zero"
+           );
     _isInitialized = true;
     _instanceSalt = disclose(instanceSalt);
   }
@@ -365,10 +366,7 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {Note} - The new note, returned as a local private result.
    */
   export circuit _mint(recipientPk: Field, value: Uint<128>): Note {
-    const note = Note {
-      value: value,
-      nonce: freshNonce(pad(32, "CNFT:mint"), recipientPk)
-    };
+    const note = Note { value: value, nonce: freshNonce(pad(32, "CNFT:mint"), recipientPk) };
     _mintNote(note, recipientPk);
     return disclose(note);
   }
@@ -388,12 +386,14 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {Field} - The output note's nonce.
    */
   circuit freshNonce(slot: Bytes<32>, binder: Field): Field {
-    return degradeToTransient(persistentHash<NoncePreimage>(NoncePreimage {
-      seed: wit_ConfidentialNoteNonceRandomness(),
-      domain: pad(32, "CNFT:nonce:core"),
-      slot: slot,
-      binder: binder
-    }));
+    return degradeToTransient(
+             persistentHash<NoncePreimage>(
+               NoncePreimage { seed: wit_ConfidentialNoteNonceRandomness(),
+                               domain: pad(32, "CNFT:nonce:core"),
+                               slot: slot,
+                               binder: binder }
+               )
+             );
   }
 
   /**
@@ -447,7 +447,8 @@ module ConfidentialNoteFungibleToken<#depth> {
     // Reserve before committing, so a duplicate fails with nothing written.
     const tag = issuedTagOf(note);
     assert(!_issuedNonces.member(disclose(tag)),
-           "ConfidentialNoteFungibleToken: nonce already issued");
+           "ConfidentialNoteFungibleToken: nonce already issued"
+           );
     _issuedNonces.insert(disclose(tag));
     _commitments.insert(disclose(commitOf(note, ownerPk)));
   }
@@ -465,10 +466,9 @@ module ConfidentialNoteFungibleToken<#depth> {
    * committed.
    */
   export pure circuit issuedTagOf(note: Note): Bytes<32> {
-    return persistentHash<NullifierPreimage>(NullifierPreimage {
-      domain: pad(32, "CNFT:issued"),
-      nonce: note.nonce
-    });
+    return persistentHash<NullifierPreimage>(
+             NullifierPreimage { domain: pad(32, "CNFT:issued"), nonce: note.nonce }
+             );
   }
 
   /**
@@ -484,12 +484,12 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {Bytes<32>} - The hiding commitment stored in `_commitments`.
    */
   export pure circuit commitOf(note: Note, pk: Field): Bytes<32> {
-    return persistentHash<CommitPreimage>(CommitPreimage {
-      domain: pad(32, "CNFT:commitment"),
-      value: note.value,
-      nonce: note.nonce,
-      pk: pk
-    });
+    return persistentHash<CommitPreimage>(
+             CommitPreimage { domain: pad(32, "CNFT:commitment"),
+                              value: note.value,
+                              nonce: note.nonce,
+                              pk: pk }
+             );
   }
 
   /**
@@ -519,10 +519,9 @@ module ConfidentialNoteFungibleToken<#depth> {
 
     // Peeked, not consumed: `_burn` is what publishes the nullifier.
     const spendId = degradeToTransient(nullifierOf(input));
-    const changeNote = Note {
-      value: (input.value - value) as Uint<128>,
-      nonce: freshNonce(pad(32, "CNFT:change"), spendId)
-    };
+    const changeNote =
+            Note { value: (input.value - value) as Uint<128>,
+                   nonce: freshNonce(pad(32, "CNFT:change"), spendId) };
     _burn(pk, value, changeNote);
     return disclose(changeNote);
   }
@@ -554,11 +553,11 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @return {Field} - The spend identity that owns notes.
    */
   export pure circuit derivePk(sk: Bytes<32>, salt: Bytes<32>): Field {
-    return degradeToTransient(persistentHash<PkPreimage>(PkPreimage {
-      domain: pad(32, "CNFT:pk"),
-      salt: salt,
-      sk: sk
-    }));
+    return degradeToTransient(
+             persistentHash<PkPreimage>(
+               PkPreimage { domain: pad(32, "CNFT:pk"), salt: salt, sk: sk }
+               )
+             );
   }
 
   /**
@@ -598,7 +597,8 @@ module ConfidentialNoteFungibleToken<#depth> {
   export circuit _burn(spenderPk: Field, value: Uint<128>, changeNote: Note): [] {
     const input = _consumeNote(spenderPk);
     assert(input.value == value + changeNote.value,
-           "ConfidentialNoteFungibleToken: burn does not conserve value");
+           "ConfidentialNoteFungibleToken: burn does not conserve value"
+           );
     _mintNote(changeNote, spenderPk);
   }
 
@@ -634,14 +634,11 @@ module ConfidentialNoteFungibleToken<#depth> {
     const cm = commitOf(input, ownerPk);
     const path = wit_ConfidentialNotePath(cm);
     const root = disclose(merkleTreePathRoot<depth, Bytes<32>>(path));
-    assert(_commitments.checkRoot(root),
-           "ConfidentialNoteFungibleToken: input root not recognized");
-    assert(cm == path.leaf,
-           "ConfidentialNoteFungibleToken: path does not match input commitment");
+    assert(_commitments.checkRoot(root), "ConfidentialNoteFungibleToken: input root not recognized");
+    assert(cm == path.leaf, "ConfidentialNoteFungibleToken: path does not match input commitment");
 
     const nf = nullifierOf(input);
-    assert(!_nullifiers.member(disclose(nf)),
-           "ConfidentialNoteFungibleToken: note already spent");
+    assert(!_nullifiers.member(disclose(nf)), "ConfidentialNoteFungibleToken: note already spent");
     _nullifiers.insert(disclose(nf));
 
     return input;
@@ -660,10 +657,9 @@ module ConfidentialNoteFungibleToken<#depth> {
    * note is spent.
    */
   export pure circuit nullifierOf(note: Note): Bytes<32> {
-    return persistentHash<NullifierPreimage>(NullifierPreimage {
-      domain: pad(32, "CNFT:nullifier"),
-      nonce: note.nonce
-    });
+    return persistentHash<NullifierPreimage>(
+             NullifierPreimage { domain: pad(32, "CNFT:nullifier"), nonce: note.nonce }
+             );
   }
 
   /**
@@ -693,14 +689,10 @@ module ConfidentialNoteFungibleToken<#depth> {
 
     // Peeked, not consumed: `_transfer` is what publishes the nullifier.
     const spendId = degradeToTransient(nullifierOf(input));
-    const outNote = Note {
-      value: value,
-      nonce: freshNonce(pad(32, "CNFT:out"), spendId)
-    };
-    const changeNote = Note {
-      value: (input.value - value) as Uint<128>,
-      nonce: freshNonce(pad(32, "CNFT:change"), spendId)
-    };
+    const outNote = Note { value: value, nonce: freshNonce(pad(32, "CNFT:out"), spendId) };
+    const changeNote =
+            Note { value: (input.value - value) as Uint<128>,
+                   nonce: freshNonce(pad(32, "CNFT:change"), spendId) };
     _transfer(pk, recipientPk, outNote, changeNote);
     return [disclose(outNote), disclose(changeNote)];
   }
@@ -731,10 +723,16 @@ module ConfidentialNoteFungibleToken<#depth> {
    * @param {Note} changeNote - The spender's change note.
    * @return {[]} - Empty tuple.
    */
-  export circuit _transfer(spenderPk: Field, recipientPk: Field, outNote: Note, changeNote: Note): [] {
+  export circuit _transfer(
+                   spenderPk: Field,
+                   recipientPk: Field,
+                   outNote: Note,
+                   changeNote: Note
+                   ): [] {
     const input = _consumeNote(spenderPk);
     assert(input.value == outNote.value + changeNote.value,
-           "ConfidentialNoteFungibleToken: transfer does not conserve value");
+           "ConfidentialNoteFungibleToken: transfer does not conserve value"
+           );
     _mintNote(outNote, recipientPk);
     _mintNote(changeNote, spenderPk);
   }

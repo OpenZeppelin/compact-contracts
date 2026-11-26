@@ -97,10 +97,12 @@ module ZOwnableNativeShieldedToken {
   // The circuits stay behind the prefixes above. The ownable flag is aliased
   // because the token module already owns `_isInitialized`.
   // `_totalBurned` is never written, so it stays empty.
-  import { _ownerCommitment, _counter, _instanceSalt, _isInitialized as _ownableIsInitialized } from "../../access/ZOwnablePK";
+  import
+    { _ownerCommitment, _counter, _instanceSalt, _isInitialized as _ownableIsInitialized }
+    from "../../access/ZOwnablePK";
   import { _domain, _name, _symbol, _decimals, _isInitialized } from "../NativeShieldedToken";
   import { _totalMinted, _totalBurned } from "../extensions/NativeShieldedTokenPublicSupply";
-  
+
   export { _ownerCommitment, _counter, _instanceSalt, _ownableIsInitialized };
   export { _domain, _name, _symbol, _decimals, _isInitialized };
   export { _totalMinted, _totalBurned };
@@ -130,13 +132,13 @@ module ZOwnableNativeShieldedToken {
    * @param {Uint<8>} decimals_ - The token decimals.
    */
   export circuit initialize(
-    ownerId: Bytes<32>,
-    instanceSalt: Bytes<32>,
-    tokenDomain: Bytes<32>,
-    name_: Opaque<"string">,
-    symbol_: Opaque<"string">,
-    decimals_: Uint<8>,
-  ): [] {
+                   ownerId: Bytes<32>,
+                   instanceSalt: Bytes<32>,
+                   tokenDomain: Bytes<32>,
+                   name_: Opaque<"string">,
+                   symbol_: Opaque<"string">,
+                   decimals_: Uint<8>,
+                   ): [] {
     ZOwnablePK_initialize(ownerId, instanceSalt);
     NST_initialize(tokenDomain, name_, symbol_, decimals_);
   }
@@ -157,7 +159,10 @@ module ZOwnableNativeShieldedToken {
    * @param {Bytes<32>} nonce - Fresh random bytes per mint.
    * @returns {ShieldedCoinInfo} The minted coin; persist it.
    */
-  export circuit mint(recipient: ZswapCoinPublicKey, amount: Uint<64>, nonce: Bytes<32>): ShieldedCoinInfo {
+  export circuit mint(recipient: ZswapCoinPublicKey,
+                      amount: Uint<64>,
+                      nonce: Bytes<32>
+                      ): ShieldedCoinInfo {
     ZOwnablePK_assertOnlyOwner();
     const coin = NST__mint(recipient, amount, nonce);
     NSTPublicSupply__addMinted(amount);
@@ -182,7 +187,10 @@ module ZOwnableNativeShieldedToken {
    * @param {ZswapCoinPublicKey} refundTo - Coin public key that receives the change.
    * @returns {Maybe<ShieldedCoinInfo>} The refund coin, or `none` on a full burn.
    */
-  export circuit burn(coin: ShieldedCoinInfo, amount: Uint<64>, refundTo: ZswapCoinPublicKey): Maybe<ShieldedCoinInfo> {
+  export circuit burn(coin: ShieldedCoinInfo,
+                      amount: Uint<64>,
+                      refundTo: ZswapCoinPublicKey
+                      ): Maybe<ShieldedCoinInfo> {
     ZOwnablePK_assertOnlyOwner();
     return NST__burn(coin, amount, refundTo);
   }
@@ -246,7 +254,10 @@ module ZOwnableNativeShieldedToken {
    * @param {Either<ZswapCoinPublicKey, ContractAddress>} pk - The owner's coin public key.
    * @param {Bytes<32>} nonce - The owner's secret nonce.
    */
-  export pure circuit _computeOwnerId(pk: Either<ZswapCoinPublicKey, ContractAddress>, nonce: Bytes<32>): Bytes<32> {
+  export pure circuit _computeOwnerId(
+                        pk: Either<ZswapCoinPublicKey, ContractAddress>,
+                        nonce: Bytes<32>
+                        ): Bytes<32> {
     return ZOwnablePK__computeOwnerId(pk, nonce);
   }
 

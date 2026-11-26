@@ -259,18 +259,24 @@ module NativeShieldedTokenCore {
    * @param {Bytes<32>} nonce - Caller-supplied nonce. Must be unique per (domain, contract).
    * @return {ShieldedCoinInfo} - The newly created coin's info (nonce, color, value).
    */
-  export circuit _mint(
-                   domain: Bytes<32>,
-                   recipient: Either<ZswapCoinPublicKey, ContractAddress>,
-                   amount: Uint<64>,
-                   nonce: Bytes<32>
-                   ): ShieldedCoinInfo {
+  export circuit _mint(domain: Bytes<32>,
+                       recipient: Either<ZswapCoinPublicKey, ContractAddress>,
+                       amount: Uint<64>,
+                       nonce: Bytes<32>
+                       ): ShieldedCoinInfo {
     assertInitialized();
     const self = kernel.self();
     assert(!Utils_isKeyOrAddressZero(recipient), "NativeShieldedToken: invalid recipient");
-    assert(recipient.is_left || recipient.right == self, "NativeShieldedToken: recipient contract must be self");
+    assert(recipient.is_left || recipient.right == self,
+           "NativeShieldedToken: recipient contract must be self"
+           );
 
-    return mintShieldedToken(disclose(domain), disclose(amount), disclose(nonce), disclose(recipient));
+    return mintShieldedToken(
+             disclose(domain),
+             disclose(amount),
+             disclose(nonce),
+             disclose(recipient)
+             );
   }
 
   /**
@@ -312,28 +318,30 @@ module NativeShieldedTokenCore {
    * @return {Maybe<ShieldedCoinInfo>} - The refund coin created for `refundTo`,
    * or `none` if the coin was burned in full.
    */
-  export circuit _burn(
-                   domain: Bytes<32>,
-                   coin: ShieldedCoinInfo,
-                   amount: Uint<128>,
-                   refundTo: Either<ZswapCoinPublicKey, ContractAddress>
-                   ): Maybe<ShieldedCoinInfo> {
+  export circuit _burn(domain: Bytes<32>,
+                       coin: ShieldedCoinInfo,
+                       amount: Uint<128>,
+                       refundTo: Either<ZswapCoinPublicKey, ContractAddress>
+                       ): Maybe<ShieldedCoinInfo> {
     assertInitialized();
     const self = kernel.self();
     assert(coin.color == tokenType(disclose(domain), self), "NativeShieldedToken: wrong token");
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
     assert(!Utils_isKeyOrAddressZero(refundTo), "NativeShieldedToken: invalid refund target");
-    assert(refundTo.is_left || refundTo.right == self, "NativeShieldedToken: refund contract must be self");
+    assert(refundTo.is_left || refundTo.right == self,
+           "NativeShieldedToken: refund contract must be self"
+           );
 
     receiveShielded(disclose(coin));
     const sendRes = sendImmediateShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));
 
     if (disclose(sendRes.change.is_some)) {
-      const refundRes = sendImmediateShielded(
-        disclose(sendRes.change.value),
-        disclose(refundTo),
-        disclose(sendRes.change.value.value)
-      );
+      const refundRes =
+              sendImmediateShielded(
+                disclose(sendRes.change.value),
+                disclose(refundTo),
+                disclose(sendRes.change.value.value)
+                );
       return some<ShieldedCoinInfo>(refundRes.sent);
     }
     return none<ShieldedCoinInfo>();
@@ -368,7 +376,9 @@ module NativeShieldedTokenCore {
                    amount: Uint<128>
                    ): Maybe<ShieldedCoinInfo> {
     assertInitialized();
-    assert(coin.color == tokenType(disclose(domain), kernel.self()), "NativeShieldedToken: wrong token");
+    assert(coin.color == tokenType(disclose(domain), kernel.self()),
+           "NativeShieldedToken: wrong token"
+           );
     assert(coin.value >= amount, "NativeShieldedToken: insufficient coin value");
 
     const sendRes = sendShielded(disclose(coin), shieldedBurnAddress(), disclose(amount));

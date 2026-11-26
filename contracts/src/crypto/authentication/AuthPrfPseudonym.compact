@@ -84,17 +84,14 @@ module AuthPrfPseudonym {
    * @param {Bytes<32>} salt - The per-deployment salt.
    * @return {Either<Bytes<32>, ContractAddress>} - The account, a `left`.
    */
-  export pure circuit deriveIdentifier(
-                        secretKey: Bytes<32>,
-                        salt: Bytes<32>
-                        ): Identifier {
+  export pure circuit deriveIdentifier(secretKey: Bytes<32>, salt: Bytes<32>): Identifier {
     return left<Bytes<32>, ContractAddress>(
              PrfPseudonym_derivePseudonym<Bytes<32>>(
                pad(32, "AuthPrfPseudonym:identifier"),
                salt,
                secretKey
-             )
-           );
+               )
+             );
   }
 
   /**
@@ -114,9 +111,7 @@ module AuthPrfPseudonym {
    * @return {Caller} - The authenticated caller.
    */
   export circuit authenticate(salt: Bytes<32>): Caller {
-    return Caller {
-      identifier: deriveIdentifier(wit_AuthPrfPseudonymSK(), salt)
-    };
+    return Caller { identifier: deriveIdentifier(wit_AuthPrfPseudonymSK(), salt) };
   }
 
   /**
