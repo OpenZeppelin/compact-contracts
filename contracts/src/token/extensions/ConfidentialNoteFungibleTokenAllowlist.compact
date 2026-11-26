@@ -1,0 +1,253 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialNoteFungibleTokenAllowlist.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenAllowlist
+ * @description Extension that restricts a `ConfidentialNoteFungibleToken`
+ * to a list of accounts, with membership proven in zero knowledge against a
+ * Merkle tree of account leaves. An observer learns that some member acted,
+ * never which one. It imports no token module: the composer calls
+ * `assertAllowed` beside the core's `_mint`, `_transfer` and `_burn`.
+ *
+ * ```compact
+ * import "./ConfidentialNoteFungibleTokenAllowlist"<32> prefix Allowlist_;
+ *
+ * export circuit transfer(recipientPk: Either<Bytes<32>, ContractAddress>, value: Uint<128>,
+ *                         note: Core_Note, path: Vector<32, MerkleTreePathEntry>,
+ *                         spenderAllowPath: Vector<32, MerkleTreePathEntry>,
+ *                         recipientAllowPath: Vector<32, MerkleTreePathEntry>): [Core_Note, Core_Note] {
+ *   const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+ *   Allowlist_assertAllowed(caller.identifier, spenderAllowPath);
+ *   Allowlist_assertAllowed(recipientPk, recipientAllowPath);
+ *   return Core__transfer(caller.identifier, recipientPk, value, note, path);
+ * }
+ * ```
+ *
+ * @dev Notation:
+ * - `leaf = persistentHash(pad(32, "CNFT:allowlist:leaf"), canonicalize(account))`,
+ *   computed by `leafOf`. One leaf per member in `_allowed`.
+ * - A path is the `depth` sibling entries from a leaf to a root. `path[0]` is
+ *   the leaf level.
+ *
+ * @dev Parameterization:
+ * `depth` is the allowlist tree's own depth, independent of the core's. It
+ * caps lifetime additions at `2^depth` and sets the cost of every membership
+ * proof.
+ *
+ * @dev Compatibility:
+ * The leaf tag, the preimage layout `(domain, account)` and `depth` are wire
+ * format: a client recomputes the leaf to find its path. Changing any of them
+ * orphans every existing leaf.
+ *
+ * @dev Canonicalization:
+ * `leafOf` canonicalizes the account, so every path (allow, check, removal)
+ * hashes the active arm only. A non-canonical account resolves to the same
+ * leaf as its canonical form.
+ *
+ * @notice Privacy:
+ * - `assertAllowed` publishes one recognized root. The account, the leaf and
+ *   its position stay private. The anonymity set is the live leaves under
+ *   that root.
+ * - `_allow` publishes the leaf, so the list size and each addition are
+ *   public.
+ * - `_disallow` publishes the root it proved against, the leaf and its index.
+ * - Leaves are unsalted. `leafOf` is a public function of the account:
+ *   whoever holds a candidate account tests it against `_members` and sees
+ *   when it was added or removed. The list hides which member acts, not who
+ *   is listed.
+ *
+ * @notice Security:
+ * - `assertAllowed` binds the `account` it is given. For a spender, the
+ *   composer passes the authenticated `caller.identifier`.
+ * - `_allow` and `_disallow` are ungated. The composer's access control gates
+ *   them.
+ * - `_members` keeps at most one live leaf per account, so the proven path is
+ *   the only live position and one `_disallow` removes the account.
+ * - `_disallow` tombstones the slot its proven path leads to, then resets the
+ *   root history: every path built before the removal stops verifying.
+ * - A non-canonical recipient passes `assertAllowed`, while the core commits
+ *   the raw `Either`, so the note is unspendable. The composer must reject a
+ *   non-canonical recipient before the core call.
+ *
+ * @notice Concurrency:
+ * - `assertAllowed` pins "root in history". It survives a later `_allow` and
+ *   fails after any `_disallow`.
+ * - `_allow` conflicts only with an `_allow` of the same account.
+ * - `_disallow` aborts every in-flight `assertAllowed` and every other
+ *   `_disallow`.
+ * - An `_allow` in flight when another `_allow` of the same account lands is
+ *   rejected, and can land after a later `_disallow` of that account. The
+ *   administrator lets a rejected `_allow` expire before removing the account.
+ *
+ * @notice Composition:
+ * - Call `assertAllowed` once per account the policy covers. Each call takes
+ *   one path and publishes one root.
+ * - `mint`: the recipient. `transfer`: the spender, and the recipient to keep
+ *   value off non-member keys. `burn`: the spender. A seize path takes no
+ *   line.
+ * - Checks run before the core call, so a failed check rejects the whole
+ *   transaction.
+ *
+ * @notice Client-side duties:
+ * - Fetch the path of `leafOf(account)` from `_allowed` right before proving,
+ *   and fetch it again after any removal.
+ * - `isAllowed` has no circuit: a Boolean query would disclose the leaf. Off
+ *   chain, `_members.member(leafOf(account))` answers it.
+ *
+ * @notice Scalability:
+ * - A tombstoned slot is never reused, so lifetime additions are capped at
+ *   `2^depth`.
+ * - A removed member keeps its notes. Under a spender check they cannot move
+ *   until the account is allowed again or the notes are seized.
+ *
+ * @dev Performance:
+ * `assertAllowed` pays one leaf hash and `depth` path hashes. A composed
+ * `transfer` with both checks pays two membership proofs beside the core's.
+ * Per-circuit `k` and rows are on each `@constraints` line, measured at
+ * `depth = 32`.
+ */
+module ConfidentialNoteFungibleTokenAllowlist<#depth> {
+  import CompactStandardLibrary;
+
+  import { Identifier } from "../../identifier/Identifier";
+
+  import "../../utils/Utils" prefix Utils_;
+
+  /**
+   * @description The preimage `leafOf` hashes.
+   * @type {Bytes<32>} domain - `pad(32, "CNFT:allowlist:leaf")`.
+   * @type {Either<Bytes<32>, ContractAddress>} account - The canonical
+   * account.
+   */
+  struct LeafPreimage {
+    domain: Bytes<32>;
+    account: Identifier;
+  }
+
+  /**
+   * @description One leaf per member ever allowed. A removed member's slot
+   * holds the default leaf. Roots stay recognized until the next removal.
+   * @type {HistoricMerkleTree<depth, Bytes<32>>} _allowed - The membership
+   * tree paths are proven against.
+   */
+  export ledger _allowed: HistoricMerkleTree<depth, Bytes<32>>;
+
+  /**
+   * @description The leaves currently live, one per member.
+   * @type {Set<Bytes<32>>} _members - Live leaf digests.
+   */
+  export ledger _members: Set<Bytes<32>>;
+
+  /**
+   * @description The leaf `account` occupies in `_allowed`.
+   *
+   * @constraints k=13, rows=3973
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account.
+   * @return {Bytes<32>} - The leaf digest of the canonical account.
+   */
+  export pure circuit leafOf(account: Identifier): Bytes<32> {
+    return persistentHash<LeafPreimage>(LeafPreimage {
+      domain: pad(32, "CNFT:allowlist:leaf"),
+      account: Utils_canonicalize<Bytes<32>, ContractAddress>(account)
+    });
+  }
+
+  /**
+   * @description The root `path` leads to from `leaf`.
+   */
+  pure circuit rootOf(leaf: Bytes<32>, path: Vector<depth, MerkleTreePathEntry>): MerkleTreeDigest {
+    return merkleTreePathRoot<depth, Bytes<32>>(
+      MerkleTreePath<depth, Bytes<32>> { leaf: leaf, path: path }
+    );
+  }
+
+  /**
+   * @description Asserts that `account` is a member, by a path from its leaf
+   * to a root `_allowed` recognizes.
+   *
+   * @constraints k=13, rows=7387
+   *
+   * @notice The root is the only disclosure. The account and its position
+   * stay private.
+   *
+   * Requirements:
+   *
+   * - `path` leads from `leafOf(account)` to a recognized root.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account that
+   * must be allowed.
+   * @param {Vector<depth, MerkleTreePathEntry>} path - The sibling entries of
+   * the account's leaf.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit assertAllowed(account: Identifier, path: Vector<depth, MerkleTreePathEntry>): [] {
+    assert(_allowed.checkRoot(disclose(rootOf(leafOf(account), path))),
+           "ConfidentialNoteFungibleTokenAllowlist: account not allowed");
+  }
+
+  /**
+   * @description Adds `account` to the list.
+   *
+   * @constraints k=13, rows=5952
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * Requirements:
+   *
+   * - `account` is not the zero account.
+   * - `account` is not already allowed.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to
+   * allow.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _allow(account: Identifier): [] {
+    assert(!Utils_isTargetZero(account), "ConfidentialNoteFungibleTokenAllowlist: zero account");
+    const leaf = leafOf(account);
+    assert(!_members.member(disclose(leaf)),
+           "ConfidentialNoteFungibleTokenAllowlist: account already allowed");
+    _members.insert(disclose(leaf));
+    _allowed.insert(disclose(leaf));
+  }
+
+  /**
+   * @description Removes `account` from the list. The slot is derived from
+   * the proven path, so only the account's live leaf is cleared.
+   *
+   * @constraints k=14, rows=9441
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * @dev Removal invalidates every earlier root, so every in-flight
+   * `assertAllowed` fails and members fetch fresh paths.
+   *
+   * Requirements:
+   *
+   * - `path` leads from `leafOf(account)` to a recognized root.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} account - The account to
+   * remove.
+   * @param {Vector<depth, MerkleTreePathEntry>} path - The sibling entries of
+   * the account's leaf.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _disallow(account: Identifier, path: Vector<depth, MerkleTreePathEntry>): [] {
+    const leaf = leafOf(account);
+    assert(_allowed.checkRoot(disclose(rootOf(leaf, path))),
+           "ConfidentialNoteFungibleTokenAllowlist: account not allowed");
+    // path[0] is the leaf level: bit i of the index is set when entry i is a right child.
+    const index = fold((acc: [Field, Field], entry: MerkleTreePathEntry): [Field, Field] =>
+                         [acc[0] + (entry.goes_left ? 0 as Field : acc[1] as Field), acc[1] * 2],
+                       [0 as Field, 1 as Field],
+                       path)[0] as Uint<64>;
+    // Tombstone before the reset: the reset keeps whatever root is current when it runs.
+    _allowed.insertIndexDefault(disclose(index));
+    _allowed.resetHistory();
+    _members.remove(disclose(leaf));
+  }
+}
