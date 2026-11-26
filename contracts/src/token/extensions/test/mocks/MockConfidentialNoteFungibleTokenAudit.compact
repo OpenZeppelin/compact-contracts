@@ -1,0 +1,53 @@
+// TEST-ONLY. Mock for the ConfidentialNoteFungibleTokenAudit extension in
+// isolation: `_audit` and `_setAuditKey` are re-exported ungated, so anyone can
+// push a record or rotate the key. The extension imports no token module, so
+// nothing here is committed. DO NOT deploy this mock.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../ConfidentialNoteFungibleTokenAudit" prefix Audit_;
+
+export { ContractAddress, Either };
+
+export { Audit_AuditRecord, Audit_RecoveredRecord };
+
+export { Audit__isInitialized, Audit__auditKey, Audit__auditTrail };
+
+// `inits` is how many times the constructor calls `initialize`: 0 leaves the
+// contract uninitialized, 2 reaches the guard against a second call.
+constructor(auditKey: JubjubPoint, inits: Uint<8>) {
+  if (disclose(inits) >= 1) {
+    Audit_initialize(auditKey);
+  }
+  if (disclose(inits) >= 2) {
+    Audit_initialize(auditKey);
+  }
+}
+
+export circuit _setAuditKey(newAuditKey: JubjubPoint): [] {
+  return Audit__setAuditKey(newAuditKey);
+}
+
+export circuit _audit(
+  owner: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  nonce: Field,
+  slot: Bytes<32>,
+): [] {
+  return Audit__audit(owner, value, nonce, slot);
+}
+
+export pure circuit recoverRecord(
+  record: Audit_AuditRecord,
+  auditScalar: JubjubScalar,
+): Audit_RecoveredRecord {
+  return Audit_recoverRecord(record, auditScalar);
+}
+
+export pure circuit ownerOf(
+  ownerLo: Uint<128>,
+  ownerHi: Uint<128>,
+): Either<Bytes<32>, ContractAddress> {
+  return Audit_ownerOf(ownerLo, ownerHi);
+}

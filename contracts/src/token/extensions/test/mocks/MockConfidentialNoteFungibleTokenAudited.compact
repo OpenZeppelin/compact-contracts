@@ -1,0 +1,130 @@
+// TEST-ONLY. Composes the ConfidentialNoteFungibleToken core at depth 32 with
+// the Audit extension the way a deployed token would: every output note is
+// committed and audited in one circuit, so the auditor can match a record to
+// every leaf. `mint`, `_setAuditKey` and `seize` are ungated, so anyone can
+// create value, rotate the key or seize a note. DO NOT deploy this mock.
+//
+// Spends authenticate the caller under `_noteSalt` and take the note and its
+// path as arguments. Created notes are returned.
+pragma language_version >= 0.28.0;
+
+import CompactStandardLibrary;
+
+import "../../../../crypto/authentication/AuthPrfPseudonym" prefix AuthPrfPseudonym_;
+import "../../../../crypto/randomness/RandPrfExpand" prefix RandPrfExpand_;
+import "../../../ConfidentialNoteFungibleToken"<32, Either<Bytes<32>, ContractAddress>> prefix Core_;
+import "../../../utils/ConfidentialNoteFungibleTokenUtils" prefix Utils_;
+import "../../ConfidentialNoteFungibleTokenAudit" prefix Audit_;
+
+export { ContractAddress, Either };
+
+export { Core_Note, Audit_AuditRecord, Audit_RecoveredRecord };
+
+export {
+  Core__commitments,
+  Core__nullifiers,
+  Core__issuedNonces,
+  Audit__isInitialized,
+  Audit__auditKey,
+  Audit__auditTrail,
+};
+
+// The salt every holder's note key on this deployment is derived under.
+sealed ledger _noteSalt: Bytes<32>;
+
+constructor(noteSalt: Bytes<32>, auditKey: JubjubPoint) {
+  _noteSalt = disclose(noteSalt);
+  Audit_initialize(auditKey);
+}
+
+export circuit _setAuditKey(newAuditKey: JubjubPoint): [] {
+  Audit__setAuditKey(newAuditKey);
+}
+
+export circuit mint(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+): Core_Note {
+  const note = Core__mint(recipientPk, value);
+  Audit__audit(recipientPk, note.value, note.nonce, pad(32, "MockAudited:mint"));
+  return note;
+}
+
+// Both outputs are audited, the change to the spender, so the record count
+// per transfer is two whatever the amounts.
+export circuit transfer(
+  recipientPk: Either<Bytes<32>, ContractAddress>,
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): [Core_Note, Core_Note] {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  const notes = Core__transfer(caller.identifier, recipientPk, value, note, path);
+  Audit__audit(recipientPk, notes[0].value, notes[0].nonce, pad(32, "MockAudited:out"));
+  Audit__audit(caller.identifier, notes[1].value, notes[1].nonce, pad(32, "MockAudited:change"));
+  return notes;
+}
+
+export circuit burn(
+  value: Uint<128>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): Core_Note {
+  const caller = AuthPrfPseudonym_authenticate(_noteSalt);
+  const change = Core__burn(caller.identifier, value, note, path);
+  Audit__audit(caller.identifier, change.value, change.nonce, pad(32, "MockAudited:change"));
+  return change;
+}
+
+// The output carries the consumed value, so no conservation check is needed.
+export circuit seize(
+  targetPk: Either<Bytes<32>, ContractAddress>,
+  recoveryPk: Either<Bytes<32>, ContractAddress>,
+  note: Core_Note,
+  path: Vector<32, MerkleTreePathEntry>,
+): Core_Note {
+  Core__consumeNote(note, targetPk, path);
+  const seized = Core_Note {
+    value: note.value,
+    nonce: degradeToTransient(RandPrfExpand_derive<[Field, Either<Bytes<32>, ContractAddress>]>(
+      pad(32, "MockAudited:nonce"),
+      pad(32, "MockAudited:seize"),
+      [note.nonce, recoveryPk]
+    ))
+  };
+  Core__mintNote(seized, recoveryPk);
+  Audit__audit(recoveryPk, seized.value, seized.nonce, pad(32, "MockAudited:seize"));
+  return disclose(seized);
+}
+
+export pure circuit deriveIdentifier(
+  secretKey: Bytes<32>,
+  salt: Bytes<32>,
+): Either<Bytes<32>, ContractAddress> {
+  return AuthPrfPseudonym_deriveIdentifier(secretKey, salt);
+}
+
+export pure circuit commitOf(
+  note: Core_Note,
+  pk: Either<Bytes<32>, ContractAddress>,
+): Bytes<32> {
+  return Utils_commitOf<Either<Bytes<32>, ContractAddress>>(note, pk);
+}
+
+export pure circuit nullifierOf(note: Core_Note): Bytes<32> {
+  return Utils_nullifierOf(note);
+}
+
+export pure circuit recoverRecord(
+  record: Audit_AuditRecord,
+  auditScalar: JubjubScalar,
+): Audit_RecoveredRecord {
+  return Audit_recoverRecord(record, auditScalar);
+}
+
+export pure circuit ownerOf(
+  ownerLo: Uint<128>,
+  ownerHi: Uint<128>,
+): Either<Bytes<32>, ContractAddress> {
+  return Audit_ownerOf(ownerLo, ownerHi);
+}

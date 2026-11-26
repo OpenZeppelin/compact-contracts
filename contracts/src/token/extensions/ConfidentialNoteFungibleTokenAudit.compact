@@ -1,0 +1,430 @@
+// SPDX-License-Identifier: MIT
+// OpenZeppelin Compact Contracts v0.5.0-alpha.2 (token/extensions/ConfidentialNoteFungibleTokenAudit.compact)
+
+pragma language_version >= 0.28.0;
+
+/**
+ * @module ConfidentialNoteFungibleTokenAudit
+ * @description Extension that publishes one encrypted record of
+ * `(owner, value, nonce)` per output note of a `ConfidentialNoteFungibleToken`,
+ * to an audit key the module holds. One ECDH per output, four one-time pads
+ * from `EcdhMask.kdfFromDigest`, one append-only `_auditTrail` list. It imports
+ * no token module: the composer calls `_audit` for a note the core already
+ * created.
+ *
+ * ```compact
+ * constructor(auditKey: JubjubPoint) {
+ *   Audit_initialize(auditKey);
+ * }
+ *
+ * export circuit mint(recipientPk: Either<Bytes<32>, ContractAddress>, value: Uint<128>): Core_Note {
+ *   // The composer's issuer gate goes first.
+ *   const note = Core__mint(recipientPk, value);
+ *   Audit__audit(recipientPk, note.value, note.nonce, pad(32, "Token:mint"));
+ *   return note;
+ * }
+ * ```
+ *
+ * @dev Notation. `pk`, `nonce` and `cm` are defined in the core
+ * - `auditKey = g^auditScalar`: the key in `_auditKey`.
+ * - `owner`: the `Either<Bytes<32>, ContractAddress>` the core commits for the
+ *   output, always its key arm here.
+ * - `ownerLo`, `ownerHi`: bytes 0 to 15 and 16 to 31 of `owner.left`, each
+ *   read as a little-endian `Uint<128>`.
+ * - `e`: the ephemeral scalar, `RandPrfExpand.derive` under the tag
+ *   `"CNFT:audit:e"`, the caller's `slot` and the context
+ *   `(nonce, auditKey, value, owner.left)`, reduced to a scalar.
+ * - `E = g^e` and `S = auditKey^e = E^auditScalar`: the `crypto/Ecdh` exchange.
+ * - `xCt = (x + kdf(S, "CNFT:audit:<x>")) mod 2^248` for `x` in `value`,
+ *   `nonce`, `owner:lo` and `owner:hi`: one-time pads over `[0, 2^248)`, the
+ *   width of `kdf`'s output.
+ *
+ * @dev Compatibility:
+ * The wire format an auditor depends on is the `AuditRecord` layout, the four
+ * pad tags, the modular pad and the limb order (`lo` is bytes 0 to 15, each
+ * limb little-endian). The `e` tag and its derivation are sender-side: the
+ * auditor recovers `S` from `E` and never recomputes `e`.
+ *
+ * @notice Privacy:
+ * - Public, per output: `E`, a fresh pseudorandom point, and four pad outputs,
+ *   each uniform to anyone without `auditScalar`. No field names the owner or
+ *   `cm`, so records cannot be grouped by owner.
+ * - Public, per tx: one record per `_audit` call. The count is constant per
+ *   entry point when the composer audits every output (see Composition).
+ * - Public, per rotation: the new key and the fact that a rotation happened.
+ * - Private: `owner`, `value`, `nonce`, the seed, `e`, `S`. `slot` is hashed
+ *   into `e` and never written.
+ * - The key holder learns every owner, value and nonce, so every balance and
+ *   the full flow of the token.
+ *
+ * @notice Security:
+ * - The module holds the key. A composer cannot pick one per call.
+ * - No authentication: the pads are malleable and nothing binds a record to a
+ *   leaf. The auditor accepts a record only once its commitment is a leaf
+ *   (see Client-side duties).
+ * - No authorization: `_audit` and `_setAuditKey` are ungated like the core's
+ *   `_` circuits. The composer gates them.
+ * - Not checked here: that the recorded triple is the committed note. The
+ *   composer passes one owner and one note to the core and to `_audit` in one
+ *   circuit.
+ * - The owner must be a canonical key arm. It is checked, never rewritten: the
+ *   core commits the whole `Either`, so a rewritten owner would give a record
+ *   that matches no leaf. A zero key is accepted, since the record stays
+ *   faithful to it.
+ * - The nonce in a record is spend-critical. The key holder derives every
+ *   nullifier, and together with a seizure gate it can claw back any note.
+ *   Hold the audit key and that gate apart.
+ * - The pads are one-time: a repeated `e` to one key opens both records. `e`
+ *   binds the whole plaintext and the key, so under a reused seed two records
+ *   share a pad only when they carry the same triple to the same key. The
+ *   seed MUST still be fresh and secret per call.
+ * - Rotation is forward-only: records written earlier need the earlier scalar.
+ * - `auditScalar` never enters an on-chain circuit: `recoverRecord` is pure.
+ *
+ * @notice Concurrency:
+ * - `_audit` reads the flag and `_auditKey`, then pushes one record. It fails
+ *   only when `_setAuditKey` lands first.
+ * - `_setAuditKey` reads the flag and writes `_auditKey`. Every `_audit` in
+ *   flight fails when a different key lands. The caller rebuilds the
+ *   transaction against the new key.
+ * - `pushFront` pins nothing, so two `_audit` calls in one block never conflict.
+ *
+ * @notice Composition:
+ * - Call `initialize` once, from the constructor.
+ * - Call `_audit` once per output, zero-value change included, never under a
+ *   condition on private data. `owner` is the value passed to the core for
+ *   that output.
+ *   - `mint`: one call with the recipient.
+ *   - `transfer`: one for the output with the recipient and one for the
+ *     change with the spender, under distinct slots.
+ *   - `burn`: one for the change with the spender.
+ *   - Seizure: one for the re-minted note with the recovery key.
+ * - A composer whose `T` is `Bytes<32>` passes
+ *   `left<Bytes<32>, ContractAddress>(pk)`, and its auditor recomputes the
+ *   leaf with `commitOf<Bytes<32>>(note, owner.left)`.
+ * - Gate `_setAuditKey` behind the composer's access control.
+ * - Completeness depends on the composer's wiring. A note created on a path
+ *   that skips `_audit` has no record. The gap is detectable (step 6 below),
+ *   not prevented.
+ *
+ * @notice Client-side duties:
+ * - Randomness: implement `RandPrfExpand`'s seed witness.
+ * - Keys: `auditKey = g^auditScalar`. Derive `auditScalar` under a
+ *   module-specific domain.
+ * - Recovery, by the auditor:
+ *   1. Read `_auditTrail` from the length last seen. It is newest first.
+ *   2. `r = recoverRecord(record, auditScalar)`.
+ *   3. Drop the record unless `r.value`, `r.ownerLo` and `r.ownerHi` are all
+ *      below `2^128`.
+ *   4. `owner = ownerOf(r.ownerLo, r.ownerHi)` and
+ *      `note = { value: r.value, nonce: r.nonce }`.
+ *   5. Keep it only if `commitOf<T>(note, owner)` is a leaf of the core's
+ *      `_commitments`. `nullifierOf(note)` in `_nullifiers` means spent.
+ *   6. Completeness check: every leaf has a kept record. A leaf with none is
+ *      a wiring gap.
+ *
+ * @notice Scalability:
+ * `_auditTrail` gains one record per output and is never pruned. The auditor
+ * scans every record once.
+ *
+ * @dev Performance:
+ * `_audit` pays one SHA-256 over the ephemeral preimage, two scalar
+ * multiplications, one point digest, four masks derived from it, four modular
+ * pads and the owner split.
+ */
+module ConfidentialNoteFungibleTokenAudit {
+  import CompactStandardLibrary;
+
+  import { Identifier, IdentifierKind } from "../../identifier/Identifier";
+
+  import "../../crypto/Ecdh" prefix Ecdh_;
+  import "../../crypto/EcdhMask" prefix EcdhMask_;
+  import "../../crypto/randomness/RandPrfExpand" prefix RandPrfExpand_;
+  import "../../identifier/Identifier" prefix Identifier_;
+  import "../../math/UintN"<248> prefix U248_;
+  import "../../utils/Utils" prefix Utils_;
+
+  /**
+   * @description One output note, encrypted to the audit key. Public once
+   * written; no field is secret on its own.
+   * @type {JubjubPoint} ephemeralPk - `E = g^e`, fresh per output. Never the
+   * identity.
+   * @type {Uint<248>} valueCt - `(value + kdf(S, "CNFT:audit:value")) mod 2^248`.
+   * @type {Uint<248>} nonceCt - `(nonce + kdf(S, "CNFT:audit:nonce")) mod 2^248`.
+   * @type {Uint<248>} ownerLoCt - `(ownerLo + kdf(S, "CNFT:audit:owner:lo")) mod 2^248`.
+   * @type {Uint<248>} ownerHiCt - `(ownerHi + kdf(S, "CNFT:audit:owner:hi")) mod 2^248`.
+   *
+   * @dev The `Uint<248>` pads keep every ciphertext atom below 32 bytes. The
+   * generated `List` accessors (`head`, `popFront`) throw `exceeded structure
+   * bounds` on an entry with a full-width field atom.
+   */
+  export struct AuditRecord {
+    ephemeralPk: JubjubPoint;
+    valueCt: Uint<248>;
+    nonceCt: Uint<248>;
+    ownerLoCt: Uint<248>;
+    ownerHiCt: Uint<248>;
+  }
+
+  /**
+   * @description A record with its pads stripped, nothing checked. A wrong
+   * scalar yields four uniform values; the auditor range-checks them and
+   * matches the commitment.
+   * @type {Uint<248>} value - The note's value, below `2^128` for a record
+   * addressed to the scalar's key.
+   * @type {Uint<248>} nonce - The note's nonce.
+   * @type {Uint<248>} ownerLo - Bytes 0 to 15 of the owner key, little-endian.
+   * @type {Uint<248>} ownerHi - Bytes 16 to 31 of the owner key, little-endian.
+   */
+  export struct RecoveredRecord {
+    value: Uint<248>;
+    nonce: Uint<248>;
+    ownerLo: Uint<248>;
+    ownerHi: Uint<248>;
+  }
+
+  struct OwnerLimbs {
+    bytes: Bytes<32>;
+    lo: Uint<128>;
+    hi: Uint<128>;
+  }
+
+  /**
+   * @description Whether `initialize` has run.
+   * @type {Boolean} _isInitialized
+   */
+  export ledger _isInitialized: Boolean;
+
+  /**
+   * @description The key every record is encrypted to. Never the identity
+   * once initialized.
+   * @type {JubjubPoint} _auditKey
+   */
+  export ledger _auditKey: JubjubPoint;
+
+  /**
+   * @description Every record ever written, newest first. Append-only: no
+   * circuit reads, removes or overwrites a record. Unbounded.
+   * @type {List<AuditRecord>} _auditTrail - The feed the auditor scans.
+   */
+  export ledger _auditTrail: List<AuditRecord>;
+
+  /**
+   * @description Sets the audit key. Call it once, from the constructor.
+   *
+   * @constraints k=10, rows=787
+   *
+   * Requirements:
+   *
+   * - The contract is not initialized.
+   * - `auditKey` is not the identity point.
+   *
+   * @param {JubjubPoint} auditKey - The initial audit key, `g^auditScalar`.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit initialize(auditKey: JubjubPoint): [] {
+    assertNotInitialized();
+    _isInitialized = true;
+    _setAuditKey(auditKey);
+  }
+
+  /**
+   * @description Replaces the audit key. Records already written stay
+   * encrypted to the earlier key.
+   *
+   * @constraints k=10, rows=763
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * Requirements:
+   *
+   * - The contract is initialized.
+   * - `newAuditKey` is not the identity point.
+   *
+   * @param {JubjubPoint} newAuditKey - The new audit key, `g^auditScalar`.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _setAuditKey(newAuditKey: JubjubPoint): [] {
+    assertInitialized();
+    assert(newAuditKey != ecMulGenerator(0 as JubjubScalar),
+           "ConfidentialNoteFungibleTokenAudit: identity audit key");
+    _auditKey = disclose(newAuditKey);
+  }
+
+  /**
+   * @description Publishes `(owner, value, nonce)` encrypted to `_auditKey`:
+   * one ECDH under an ephemeral bound to the key and the plaintext, four
+   * modular `EcdhMask` pads, one `_auditTrail` record. Call it beside the
+   * core's note creation, once per output.
+   *
+   * @constraints k=16, rows=34232
+   *
+   * @warning No authorization:
+   * The composer gates who may call this.
+   *
+   * @dev Bound ephemeral:
+   * `e` is derived under `slot` and the context
+   * `(nonce, auditKey, value, owner.left)`, so it repeats only when all of
+   * `(seed, slot, nonce, auditKey, value, owner)` repeat.
+   *
+   * @dev Constant shape:
+   * No branch on the ledger: the transcript is the same for every input.
+   *
+   * Requirements:
+   *
+   * - The contract is initialized.
+   * - `owner` is a key arm.
+   * - `owner` is canonical: its unused `right` arm is the default.
+   * - The seed is not zero.
+   * - `nonce < 2^248`. Every `degradeToTransient` output qualifies.
+   *
+   * @param {Either<Bytes<32>, ContractAddress>} owner - The owner the core
+   * committed the note to.
+   * @param {Uint<128>} value - The note's value.
+   * @param {Field} nonce - The note's nonce.
+   * @param {Bytes<32>} slot - The per-output tag; distinct per call when one
+   * circuit audits more than one output.
+   * @return {[]} - Empty tuple.
+   */
+  export circuit _audit(owner: Identifier, value: Uint<128>, nonce: Field, slot: Bytes<32>): [] {
+    assertInitialized();
+    const limbs = ownerLimbs(owner);
+    const key = _auditKey;
+    // The tag keeps `e` apart from a core nonce drawn from the same seed.
+    const e = degradeToTransient(RandPrfExpand_derive<[Field, JubjubPoint, Uint<128>, Bytes<32>]>(
+      pad(32, "CNFT:audit:e"),
+      slot,
+      [nonce, key, value, limbs.bytes]
+    )) as JubjubScalar;
+    const shared = Ecdh_deriveShared(key, e);
+    // One point digest feeds all four pads.
+    const sharedDigest = EcdhMask_pointDigest(shared.sShared);
+    // The cast is the width check: a bit above the pad would sit in the clear.
+    const paddedNonce = nonce as Uint<248>;
+    const record = AuditRecord {
+      ephemeralPk: shared.ephemeralPk,
+      valueCt: U248_wrappingAdd(value as Uint<248>,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:value")) as Uint<248>),
+      nonceCt: U248_wrappingAdd(paddedNonce,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:nonce")) as Uint<248>),
+      ownerLoCt: U248_wrappingAdd(limbs.lo as Uint<248>,
+                                  EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:owner:lo")) as Uint<248>),
+      ownerHiCt: U248_wrappingAdd(limbs.hi as Uint<248>,
+                                  EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:owner:hi")) as Uint<248>)
+    };
+    _auditTrail.pushFront(disclose(record));
+  }
+
+  /**
+   * @description Strips the pads from a record with the audit scalar. Pure
+   * and off-chain: the auditor reads records with no proof.
+   *
+   * @constraints k=15, rows=21276
+   *
+   * @notice Raw result:
+   * Nothing derived from `auditScalar` or the recovered values is checked, so
+   * the circuit is no oracle for a candidate key. A wrong scalar returns four
+   * uniform values; the auditor filters on `2^128` and the commitment tree.
+   *
+   * @dev Identity ephemeral:
+   * `_audit` never writes one, and its pads would be public constants, so
+   * the record is refused rather than opened.
+   *
+   * Requirements:
+   *
+   * - `record.ephemeralPk` is not the identity point.
+   *
+   * @param {AuditRecord} record - The record to open.
+   * @param {JubjubScalar} auditScalar - The secret behind the key the record
+   * was written to.
+   * @return {RecoveredRecord} - The padded quadruple.
+   */
+  export pure circuit recoverRecord(record: AuditRecord, auditScalar: JubjubScalar): RecoveredRecord {
+    assert(record.ephemeralPk != ecMulGenerator(0 as JubjubScalar),
+           "ConfidentialNoteFungibleTokenAudit: identity ephemeral");
+    const sharedDigest = EcdhMask_pointDigest(Ecdh_recoverShared(record.ephemeralPk, auditScalar));
+    return RecoveredRecord {
+      value: U248_wrappingSub(record.valueCt,
+                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:value")) as Uint<248>),
+      nonce: U248_wrappingSub(record.nonceCt,
+                              EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:nonce")) as Uint<248>),
+      ownerLo: U248_wrappingSub(record.ownerLoCt,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:owner:lo")) as Uint<248>),
+      ownerHi: U248_wrappingSub(record.ownerHiCt,
+                                EcdhMask_kdfFromDigest(sharedDigest, pad(32, "CNFT:audit:owner:hi")) as Uint<248>)
+    };
+  }
+
+  /**
+   * @description Joins two recovered limbs into the owner's key arm, the
+   * inverse of the split `_audit` records.
+   *
+   * @constraints k=14, rows=8864
+   *
+   * @param {Uint<128>} ownerLo - Bytes 0 to 15 of the key, little-endian.
+   * @param {Uint<128>} ownerHi - Bytes 16 to 31 of the key, little-endian.
+   * @return {Either<Bytes<32>, ContractAddress>} - The canonical key arm.
+   */
+  export pure circuit ownerOf(ownerLo: Uint<128>, ownerHi: Uint<128>): Identifier {
+    const lo = (ownerLo as Bytes<16>) as Vector<16, Uint<8>>;
+    const hi = (ownerHi as Bytes<16>) as Vector<16, Uint<8>>;
+    const bytes: Vector<32, Uint<8>> = [...lo, ...hi];
+    return left<Bytes<32>, ContractAddress>(bytes as Bytes<32>);
+  }
+
+  // The one place the owner is checked. `owner` is an
+  // `Either<Bytes<32>, ContractAddress>`. Asserts, never rewrites: the record
+  // must reproduce the committed `Either` exactly.
+  pure circuit ownerLimbs(owner: Identifier): OwnerLimbs {
+    const id = Identifier_unpack(owner);
+    assert(id.kind == IdentifierKind.Key, "ConfidentialNoteFungibleTokenAudit: contract owner");
+    assert(owner == Utils_canonicalize<Bytes<32>, ContractAddress>(owner),
+           "ConfidentialNoteFungibleTokenAudit: non-canonical owner");
+    const b = id.bytes as Vector<32, Uint<8>>;
+    const lo: Vector<16, Uint<8>> = [b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+                                     b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]];
+    const hi: Vector<16, Uint<8>> = [b[16], b[17], b[18], b[19], b[20], b[21], b[22], b[23],
+                                     b[24], b[25], b[26], b[27], b[28], b[29], b[30], b[31]];
+    return OwnerLimbs {
+      bytes: id.bytes,
+      lo: limbOf(lo),
+      hi: limbOf(hi)
+    };
+  }
+
+  // Little-endian value of 16 bytes. The field sum costs fewer rows than a
+  // cast through `Bytes<16>`.
+  pure circuit limbOf(bytes: Vector<16, Uint<8>>): Uint<128> {
+    return fold((acc: [Field, Field], byte: Uint<8>): [Field, Field] =>
+                  [acc[0] + (byte as Field) * acc[1], acc[1] * 256],
+                [0 as Field, 1 as Field],
+                bytes)[0] as Uint<128>;
+  }
+
+  /**
+   * @description Asserts that the contract is initialized.
+   *
+   * Requirements:
+   *
+   * - Contract is initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertInitialized(): [] {
+    assert(_isInitialized, "ConfidentialNoteFungibleTokenAudit: contract not initialized");
+  }
+
+  /**
+   * @description Asserts that the contract is not initialized.
+   *
+   * Requirements:
+   *
+   * - Contract is not initialized.
+   *
+   * @return {[]} - Empty tuple.
+   */
+  circuit assertNotInitialized(): [] {
+    assert(!_isInitialized, "ConfidentialNoteFungibleTokenAudit: contract already initialized");
+  }
+}
