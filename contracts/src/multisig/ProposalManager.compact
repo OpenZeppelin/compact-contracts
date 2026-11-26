@@ -182,7 +182,7 @@ module ProposalManager {
    *
    * @returns {Recipient} The typed recipient.
    */
-  export circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Recipient {
+  export pure circuit shieldedUserRecipient(key: ZswapCoinPublicKey): Recipient {
     return Recipient { kind: RecipientKind.ShieldedUser, address: key.bytes };
   }
 
@@ -193,7 +193,7 @@ module ProposalManager {
    *
    * @returns {Recipient} The typed recipient.
    */
-  export circuit unshieldedUserRecipient(addr: UserAddress): Recipient {
+  export pure circuit unshieldedUserRecipient(addr: UserAddress): Recipient {
     return Recipient { kind: RecipientKind.UnshieldedUser, address: addr.bytes };
   }
 
@@ -204,7 +204,7 @@ module ProposalManager {
    *
    * @returns {Recipient} The typed recipient.
    */
-  export circuit contractRecipient(addr: ContractAddress): Recipient {
+  export pure circuit contractRecipient(addr: ContractAddress): Recipient {
     return Recipient { kind: RecipientKind.Contract, address: addr.bytes };
   }
 
@@ -220,7 +220,7 @@ module ProposalManager {
    *
    * @returns {Either<ZswapCoinPublicKey, ContractAddress>} The shielded recipient.
    */
-  export circuit toShieldedRecipient(r: Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
+  export pure circuit toShieldedRecipient(r: Recipient): Either<ZswapCoinPublicKey, ContractAddress> {
     if (r.kind == RecipientKind.ShieldedUser) {
       return left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: r.address });
     }
@@ -240,7 +240,7 @@ module ProposalManager {
    *
    * @returns {Either<ContractAddress, UserAddress>} The unshielded recipient.
    */
-  export circuit toUnshieldedRecipient(r: Recipient): Either<ContractAddress, UserAddress> {
+  export pure circuit toUnshieldedRecipient(r: Recipient): Either<ContractAddress, UserAddress> {
     if (r.kind == RecipientKind.Contract) {
       return left<ContractAddress, UserAddress>(ContractAddress { bytes: r.address });
     }
