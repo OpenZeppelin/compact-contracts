@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** Remove the key witnesses `wit_OwnableSK`, `wit_AccessControlSK`, `wit_secretKey`, `wit_FungibleTokenSK`, `wit_NonFungibleTokenSK`, `wit_MultiTokenSK` and `wit_ConfidentialTokenSK`. Each module takes the caller as an argument. (#1243)
 - **Breaking:** Remove `computeAccountId` from `Utils`, `ShieldedAccessControl` and `ConfidentialFungibleToken`. `AuthPrfPseudonym.deriveIdentifier(secretKey, salt)` replaces it. (#1243)
 
+### Fixed
+
+- `ZOwnableNativeShieldedToken.burn` takes a `Uint<128>` amount, the shielded coin value range, instead of narrowing it to `Uint<64>`. `burn` grows from 48,448 to 48,464 rows and stays at k=16. (#1247)
+
 ### Known issues
 
 - Under toolchain 0.36.0, circuits that verify secp256k1 ECDSA cost about 49% more rows: `Ecdsa.secp256k1EcdsaVerifyLowS` goes from 34,056 to 50,859, and `Secp256k1EcdsaMultisig.assertApprovals` at `t = 3`, `NativeShieldedTokenIssuer.burn` / `burnFromSelf` and `NativeShieldedStatelessTreasury.execute` cross from k=17 to k=18, roughly doubling their proving time. Most of it is the standard library's identity-key check in `secp256k1EcdsaVerify`
