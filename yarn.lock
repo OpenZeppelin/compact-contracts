@@ -686,6 +686,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnightntwrk/wallet-sdk-address-format@npm:4.0.1":
+  version: 4.0.1
+  resolution: "@midnightntwrk/wallet-sdk-address-format@npm:4.0.1"
+  dependencies:
+    "@midnightntwrk/ledger-v9": "npm:1.0.2"
+    "@scure/base": "npm:^2.4.0"
+    "@subsquid/scale-codec": "npm:^4.0.1"
+  checksum: 10/2ebb2055dbc3d6de075773da9f44631416a017329f733e32e0562a8ca7e964a97d101cf5e3b2c2a3d490adab3e5118ccda7864cea96becdec456494cdaac4ea1
+  languageName: node
+  linkType: hard
+
 "@midnightntwrk/wallet-sdk-capabilities@npm:4.0.0-beta.2":
   version: 4.0.0-beta.2
   resolution: "@midnightntwrk/wallet-sdk-capabilities@npm:4.0.0-beta.2"
@@ -1069,7 +1080,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "npm:5.0.0-beta.7"
     "@midnight-ntwrk/testkit-js": "npm:5.0.0-beta.7"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
-    "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-beta.2"
+    "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.1"
     "@noble/curves": "npm:^2.2.0"
     "@noble/hashes": "npm:^2.4.0"
     "@openzeppelin/compact-cli": "npm:^0.2.0"
@@ -1833,6 +1844,13 @@ __metadata:
   version: 1.2.6
   resolution: "@scure/base@npm:1.2.6"
   checksum: 10/c1a7bd5e0b0c8f94c36fbc220f4a67cc832b00e2d2065c7d8a404ed81ab1c94c5443def6d361a70fc382db3496e9487fb9941728f0584782b274c18a4bed4187
+  languageName: node
+  linkType: hard
+
+"@scure/base@npm:^2.4.0":
+  version: 2.4.0
+  resolution: "@scure/base@npm:2.4.0"
+  checksum: 10/acf3f04119fdba33365e387110edc01585616fe81e96b1b9685fc2e3970736c204613f94614d7b8f4a63d1d31b8b155405eed0ac7afb27d57cdaaf5ea76eb857
   languageName: node
   linkType: hard
 
