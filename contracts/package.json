@@ -67,7 +67,7 @@
     "@noble/hashes": "^2.4.0",
     "@openzeppelin/compact-deployer": "^0.4.0",
     "@openzeppelin/compact-simulator": "^0.5.0",
-    "@tsconfig/node24": "^24.0.5",
+    "@tsconfig/node24": "^24.0.6",
     "@types/node": "26.6.6",
     "@vitest/coverage-v8": "^5.0.0",
     "ethers": "^6.17.0",
