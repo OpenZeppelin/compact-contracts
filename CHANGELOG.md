@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `identifier/extensions/IdentifierCommitment`: the pure `commit(domain, publicKey, blinding)` returns an `IdentifierCommitment` (`Bytes<32>`), a hiding commitment to an account's key, `persistentCommit` over `{domain, publicKey}` with `blinding`. (#1243)
 - Add `crypto/randomness/RandBlinding`: `read()` returns the caller's blinding factor (`wit_RandBlindingFactor`) as a `Blinding` (`Bytes<32>`) and rejects zero with `RandBlinding: zero blinding`. (#1243)
 
+### Changed
+
+- Document the list postures in `Allowlist` and `Blocklist`. `Blocklist` is fail-open: an empty list permits everyone, so the composing contract must gate `_block` and `_unblock` and call `assertNotBlocked` on every guarded path. `Allowlist` is fail-closed: enforcing `assertAllowed` before the set is populated locks every account out, the operator included. `isAllowed` and `isBlocked`, and the asserts that call them, disclose the queried account to the public transcript. (#1296)
+
 ### Changed (breaking)
 
 - Upgrade the Compact toolchain and Midnight dependencies:
