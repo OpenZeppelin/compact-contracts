@@ -28,6 +28,13 @@ pragma language_version >= 0.28.0;
  * right posture for transparent or public-graph assets. A graph-private asset
  * should instead use a shielded blocklist (a public blocklist would re-expose
  * the candidate set and bound the anonymity set).
+ *
+ * @notice SECURITY: this list is fail-open. An empty blocklist permits every
+ * account, unlike `Allowlist`, where an empty set rejects everyone. The list is
+ * only as strong as the composing contract, which MUST gate `_block` and
+ * `_unblock` and MUST call `assertNotBlocked` on every path that blocked
+ * accounts may not use. A path that skips the check lets a blocked account
+ * through, and this module gives no signal that it happened.
  */
 module Blocklist {
   import CompactStandardLibrary;
@@ -52,6 +59,9 @@ module Blocklist {
 
   /**
    * @description Returns whether `account` is currently blocked.
+   *
+   * @notice Calling this circuit, or `assertNotBlocked`, which calls it,
+   * discloses `account` to the public transcript.
    *
    * @constraints k=8, rows=249
    *

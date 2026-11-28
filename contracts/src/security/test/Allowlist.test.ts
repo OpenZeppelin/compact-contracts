@@ -37,6 +37,13 @@ describe('Allowlist', () => {
         'Allowlist: account not allowed',
       );
     });
+
+    it('isAllowed does not change the set', async () => {
+      await allowlist.isAllowed(ALICE);
+      const allowed = (await allowlist.getPublicState()).Allowlist__allowed;
+      expect(allowed.member(ALICE)).toBe(false);
+      expect(allowed.isEmpty()).toBe(true);
+    });
   });
 
   describe('allow', () => {
@@ -69,6 +76,15 @@ describe('Allowlist', () => {
       // Membership is binary, not a counter: one disallow clears it regardless
       // of how many times it was allowed.
       expect(await allowlist.isAllowed(ALICE)).toBe(false);
+    });
+
+    it('assertAllowed throws after a single disallow of a multiply-allowed account', async () => {
+      await allowlist.allow(ALICE);
+      await allowlist.allow(ALICE);
+      await allowlist.disallow(ALICE);
+      await expect(allowlist.assertAllowed(ALICE)).rejects.toThrow(
+        'Allowlist: account not allowed',
+      );
     });
   });
 
@@ -186,6 +202,20 @@ describe('Allowlist', () => {
       expect(
         (await sim.getPublicState()).Allowlist__allowed.member(ALICE),
       ).toBe(true);
+    });
+
+    it('reflects disallow in the public ledger', async () => {
+      const sim = await AllowlistSimulator.create();
+
+      await sim.allow(ALICE);
+      expect(
+        (await sim.getPublicState()).Allowlist__allowed.member(ALICE),
+      ).toBe(true);
+
+      await sim.disallow(ALICE);
+      expect(
+        (await sim.getPublicState()).Allowlist__allowed.member(ALICE),
+      ).toBe(false);
     });
   });
 });

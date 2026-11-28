@@ -30,6 +30,12 @@ pragma language_version >= 0.28.0;
  * right posture for transparent or public-graph assets. A graph-private asset
  * should instead use a shielded allowlist (a public allowlist would re-expose
  * the candidate set and bound the anonymity set).
+ *
+ * @notice This list is fail-closed. An empty allowlist rejects every account,
+ * the operator included, so a contract that enforces `assertAllowed` before the
+ * set is populated locks everyone out. The operator must populate the set, or
+ * gate enforcement behind a flag such as the "eligibility required" flag
+ * above, before enforcing it.
  */
 module Allowlist {
   import CompactStandardLibrary;
@@ -54,6 +60,9 @@ module Allowlist {
 
   /**
    * @description Returns whether `account` is currently allowed.
+   *
+   * @notice Calling this circuit, or `assertAllowed`, which calls it,
+   * discloses `account` to the public transcript.
    *
    * @constraints k=8, rows=249
    *

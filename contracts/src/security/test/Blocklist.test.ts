@@ -35,6 +35,13 @@ describe('Blocklist', () => {
     it('assertNotBlocked passes for a non-member', async () => {
       await blocklist.assertNotBlocked(ALICE);
     });
+
+    it('isBlocked does not change the set', async () => {
+      await blocklist.isBlocked(ALICE);
+      const blocked = (await blocklist.getPublicState()).Blocklist__blocked;
+      expect(blocked.member(ALICE)).toBe(false);
+      expect(blocked.isEmpty()).toBe(true);
+    });
   });
 
   describe('block', () => {
@@ -69,6 +76,13 @@ describe('Blocklist', () => {
       // Membership is binary, not a counter: one unblock clears it regardless
       // of how many times it was blocked.
       expect(await blocklist.isBlocked(ALICE)).toBe(false);
+    });
+
+    it('assertNotBlocked passes after a single unblock of a multiply-blocked account', async () => {
+      await blocklist.block(ALICE);
+      await blocklist.block(ALICE);
+      await blocklist.unblock(ALICE);
+      await blocklist.assertNotBlocked(ALICE);
     });
   });
 
@@ -166,6 +180,20 @@ describe('Blocklist', () => {
       expect(
         (await sim.getPublicState()).Blocklist__blocked.member(ALICE),
       ).toBe(true);
+    });
+
+    it('reflects unblock in the public ledger', async () => {
+      const sim = await BlocklistSimulator.create();
+
+      await sim.block(ALICE);
+      expect(
+        (await sim.getPublicState()).Blocklist__blocked.member(ALICE),
+      ).toBe(true);
+
+      await sim.unblock(ALICE);
+      expect(
+        (await sim.getPublicState()).Blocklist__blocked.member(ALICE),
+      ).toBe(false);
     });
   });
 });
